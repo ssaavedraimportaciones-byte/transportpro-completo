@@ -1,0 +1,82 @@
+══════════════════════════════════════════════════════════════
+ TRANSPORTPRO — CONFIGURACIÓN COMPLETA — 22 Marzo 2026
+ RESPALDO DE SEGURIDAD — NO SUBIR A REPOSITORIOS PÚBLICOS
+══════════════════════════════════════════════════════════════
+
+═══ SUPABASE PROJECT ═══
+  Proyecto:     ozmnfdndauyzcsxunxig
+  Region:       sa-east-1 (São Paulo)
+  Org ID:       dyuyilxrmihegylhxhzw
+  URL:          https://ozmnfdndauyzcsxunxig.supabase.co
+  Dashboard:    https://supabase.com/dashboard/project/ozmnfdndauyzcsxunxig
+
+═══ API KEYS ═══
+  Anon Key:     eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im96bW5mZG5kYXV5emNzeHVueGlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxMDMwNjMsImV4cCI6MjA4OTY3OTA2M30.zxn6HYIW-chr2kfbwwQFFBvNXaXBgDrlBr5nyrk0A58
+  Service Key:  eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im96bW5mZG5kYXV5emNzeHVueGlnIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NDEwMzA2MywiZXhwIjoyMDg5Njc5MDYzfQ.f-y2qxuiMQyc5Iuu8vYZorM_XbH3V1oVR9fHG8LX7c8
+  Mgmt Token:   sbp_09a5e247a30133de9f4891369a6a60ab086e13d2
+
+═══ BASE DE DATOS ═══
+  DATABASE_URL: postgresql://postgres.ozmnfdndauyzcsxunxig:TransportPro2026DB@aws-0-sa-east-1.pooler.supabase.com:6543/postgres
+  DB Password:  TransportPro2026DB
+
+═══ EMPRESA ═══
+  ID:           77aef6c9-71b1-4178-9012-5bdd24b9e8f4
+  Nombre:       MCM LOGISTIVA SPA
+  Plan:         starter
+
+═══ USUARIOS ═══
+  1. Sebastian Saavedra (admin)
+     Email:    ssaavedra.importaciones@gmail.com
+     Pass:     TransportPro2026
+     Auth UID: 9c0e6c56-4ac1-40e3-98f5-2499f73bc39a
+
+  2. Matias Navea (operador)
+     Email:    matias.navea.perez@gmail.com
+     Pass:     852710
+     Auth UID: 96ab6719-61d9-4d36-9576-1ee04665e5d1
+
+═══ DESPLIEGUE ═══
+  Frontend:     https://transportpro-nuevo.surge.sh
+  Backend:      Puerto 3001 (local)
+
+═══ BACKEND .env ═══
+  PORT=3001
+  JWT_SECRET=14b3f41d7d3e12e6ad51e75ad8b84bc7b6972b19509b0330066629c6cdb1350253f986636665049c9ec6a39d6e6cdf14c07ff925a449591a66859337fc696806
+  ADMIN_SECRET=1c7fa7abca695feffe2298126c675d42567080aac5cb4f700958929633ad16c3
+  GROQ_API_KEY=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
+
+═══ TABLAS (12) ═══
+  empresas, usuarios, clientes, vehiculos, conductores, viajes,
+  combustible, mantenimiento, gastos, facturas, neumaticos, cotizaciones
+
+═══ RLS ═══
+  Todas las tablas usan: empresa_id = get_my_empresa_id()
+  Función get_my_empresa_id() es SECURITY DEFINER
+  usuarios tiene políticas separadas (SELECT permite auth_uid match)
+
+═══ FK CONSTRAINTS ═══
+  viajes      → clientes, vehiculos, conductores
+  facturas    → clientes, viajes
+  combustible → vehiculos
+  mantenimiento → vehiculos
+  gastos      → vehiculos
+  neumaticos  → vehiculos
+  cotizaciones → clientes
+  usuarios    → empresas
+
+═══ DATOS DE PRUEBA CREADOS ═══
+  Cliente:    Transportes Valparaíso SpA (RUT 76.543.210-K)
+  Vehículo:   HRBB-45 Volvo FH 540 2023 (45.000 km)
+  Conductor:  Carlos Muñoz (RUT 18.765.432-1, Lic A-4)
+  Viaje:      Valparaíso → Santiago ($250.000, planificado)
+  Combustible: 120.5 lts @ $1.150 = $138.575
+  Gasto:      Peaje Ruta 68 ($12.800)
+
+═══ BACKUPS ═══
+  Frontend:   /Users/macbookair/Downloads/transportpro-completo_backup_20260322/
+  Backend:    /Users/macbookair/Downloads/transportpro_backend_backup_20260322/
+  Backend v1: /Users/macbookair/Downloads/transportpro_backend_backup/
+
+═══ OTROS PROYECTOS SUPABASE ═══
+  rescate-sabor: apnaovbuanetejhrlchy (ACTIVO)
+  tradeos:       (PAUSADO para liberar slot)

@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "transportpro",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["-e", "const h=require('http'),f=require('fs'),p=require('path');h.createServer((q,r)=>{let u=q.url.split('?')[0];if(u==='/')u='/index.html';const fp=p.join('/Users/macbookair/Downloads/transportpro-completo',u);f.readFile(fp,(e,d)=>{if(e){r.writeHead(404);r.end('Not found');return}const m={'html':'text/html','js':'application/javascript','css':'text/css','json':'application/json','png':'image/png','jpg':'image/jpeg','svg':'image/svg+xml'};const ext=fp.split('.').pop();r.writeHead(200,{'Content-Type':m[ext]||'text/plain','Access-Control-Allow-Origin':'*'});r.end(d)})}).listen(8099,()=>console.log('OK 8099'))"],
+      "port": 8099
+    }
+  ]
+}

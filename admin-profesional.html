@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TransportPro Admin - Panel de Control</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: #0f172a; min-height: 100vh; color: #e2e8f0; }
+
+        .sidebar { position: fixed; left: 0; top: 0; width: 260px; height: 100vh; background: #1e293b; border-right: 1px solid #334155; padding: 24px 0; overflow-y: auto; z-index: 100; }
+        .logo { padding: 0 24px 24px; border-bottom: 1px solid #334155; }
+        .logo h1 { font-size: 20px; color: #f43f5e; margin-bottom: 4px; }
+        .logo p  { font-size: 11px; color: #94a3b8; }
+        .nav { padding: 16px 0; }
+        .nav-section { padding: 12px 24px 4px; font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: #475569; font-weight: 700; }
+        .nav-item { padding: 10px 24px; color: #cbd5e1; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 10px; font-size: 13px; }
+        .nav-item:hover, .nav-item.active { background: #334155; color: #f43f5e; border-left: 3px solid #f43f5e; padding-left: 21px; }
+
+        .main { margin-left: 260px; padding: 28px; }
+        .page-header { background: #1e293b; padding: 20px 28px; border-radius: 12px; margin-bottom: 24px; border: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; }
+        .page-header h2 { font-size: 22px; color: #f1f5f9; }
+        .page-header p { font-size: 13px; color: #94a3b8; margin-top: 2px; }
+        .page-header-actions { display: flex; gap: 10px; align-items: center; }
+
+        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+        .stat-card { padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        .stat-card-red   { background: linear-gradient(135deg, #dc2626, #991b1b); }
+        .stat-card-blue  { background: linear-gradient(135deg, #2563eb, #1d4ed8); }
+        .stat-card-green { background: linear-gradient(135deg, #059669, #065f46); }
+        .stat-card-amber { background: linear-gradient(135deg, #d97706, #92400e); }
+        .stat-card-purple{ background: linear-gradient(135deg, #7c3aed, #4c1d95); }
+        .stat-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.85; margin-bottom: 6px; color: #fff; }
+        .stat-value { font-size: 30px; font-weight: 700; color: white; }
+        .stat-sub   { font-size: 11px; color: rgba(255,255,255,0.7); margin-top: 4px; }
+
+        .card { background: #1e293b; border-radius: 12px; padding: 24px; margin-bottom: 20px; border: 1px solid #334155; }
+        .card-title { font-size: 16px; color: #f1f5f9; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; font-weight: 700; }
+
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 20px; }
+        .form-group { display: flex; flex-direction: column; }
+        label { font-size: 12px; font-weight: 600; color: #cbd5e1; margin-bottom: 6px; }
+        input, select, textarea { background: #0f172a; border: 1px solid #334155; padding: 10px 14px; border-radius: 8px; color: #e2e8f0; font-size: 13px; transition: all 0.2s; }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: #f43f5e; }
+
+        .btn { padding: 10px 20px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 13px; transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-primary { background: linear-gradient(135deg, #dc2626, #991b1b); color: white; }
+        .btn-primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 6px 14px rgba(220,38,38,0.3); }
+        .btn-success { background: #059669; color: white; }
+        .btn-danger  { background: #dc2626; color: white; }
+        .btn-ghost   { background: #334155; color: #cbd5e1; }
+        .btn-sm      { padding: 5px 12px; font-size: 11px; }
+
+        .alert { padding: 12px 18px; border-radius: 8px; margin-bottom: 16px; animation: slideIn 0.3s ease; font-size: 13px; }
+        @keyframes slideIn { from { transform: translateY(-8px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .alert-success { background: rgba(16,185,129,0.1); border-left: 4px solid #10b981; color: #6ee7b7; }
+        .alert-error   { background: rgba(239,68,68,0.1);  border-left: 4px solid #ef4444; color: #fca5a5; }
+
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th { background: #0f172a; color: #94a3b8; padding: 12px 14px; text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }
+        td { padding: 13px 14px; border-bottom: 1px solid #1e293b; color: #cbd5e1; }
+        tr:hover td { background: #1e293b; }
+
+        .badge { display: inline-block; padding: 3px 10px; border-radius: 10px; font-size: 11px; font-weight: 600; text-transform: uppercase; }
+        .badge-success { background: rgba(16,185,129,0.15); color: #6ee7b7; }
+        .badge-warning { background: rgba(251,191,36,0.15); color: #fcd34d; }
+        .badge-danger  { background: rgba(239,68,68,0.15);  color: #fca5a5; }
+        .badge-info    { background: rgba(59,130,246,0.15);  color: #93c5fd; }
+        .badge-purple  { background: rgba(124,58,237,0.15);  color: #c4b5fd; }
+
+        .loading { display: inline-block; width: 12px; height: 12px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.6s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .section { display: none; }
+        .section.active { display: block; }
+
+        .credential-box { background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 14px; margin-top: 14px; font-family: monospace; }
+        .credential-row { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px solid #334155; }
+        .credential-row:last-child { border-bottom: none; }
+        .credential-label { color: #94a3b8; font-size: 11px; }
+        .credential-value { color: #6ee7b7; font-size: 13px; font-weight: 600; }
+
+        .plan-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 24px; }
+        .plan-card { padding: 18px; border-radius: 10px; border: 1px solid #334155; background: #0f172a; text-align: center; }
+        .plan-card h3 { font-size: 14px; color: #f1f5f9; margin-bottom: 8px; }
+        .plan-card .price { font-size: 22px; font-weight: 700; color: #f43f5e; }
+        .plan-card .count { font-size: 12px; color: #94a3b8; margin-top: 6px; }
+
+        .kpi-mini { display: inline-flex; gap: 4px; align-items: center; font-size: 12px; color: #94a3b8; }
+        .modal-overlay { display: none; position: fixed; top:0;left:0;width:100%;height:100%; background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center; }
+        .modal-overlay.open { display: flex; }
+        .modal-box { background: #1e293b; border-radius: 14px; padding: 28px; width: 480px; max-width: 95vw; border: 1px solid #334155; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .modal-header h3 { font-size: 17px; color: #f1f5f9; }
+        .modal-close { background: none; border: none; color: #94a3b8; font-size: 22px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="logo">
+            <h1>🔐 Admin Panel</h1>
+            <p>TransportPro SaaS · v2.0</p>
+        </div>
+        <div class="nav">
+            <div class="nav-section">General</div>
+            <div class="nav-item active" onclick="showSection('dashboard', event)">📊 Dashboard</div>
+            <div class="nav-section">Gestión</div>
+            <div class="nav-item" onclick="showSection('empresas', event)">🏢 Empresas</div>
+            <div class="nav-item" onclick="showSection('usuarios', event)">👥 Usuarios</div>
+            <div class="nav-item" onclick="showSection('suscripciones', event)">💳 Suscripciones</div>
+            <div class="nav-section">Datos</div>
+            <div class="nav-item" onclick="showSection('reportes', event)">📈 Reportes</div>
+        </div>
+        <div style="padding: 20px 24px; border-top: 1px solid #334155; position: absolute; bottom: 0; width: 100%;">
+            <button class="btn btn-ghost" style="width:100%;font-size:12px" onclick="cerrarSesion()">🚪 Cerrar sesión</button>
+        </div>
+    </div>
+
+    <div class="main">
+        <div id="alertContainer"></div>
+
+        <!-- ══ DASHBOARD ══════════════════════════════════════════ -->
+        <div id="sec-dashboard" class="section active">
+            <div class="page-header">
+                <div>
+                    <h2>📊 Dashboard</h2>
+                    <p>Resumen general del sistema TransportPro</p>
+                </div>
+                <div class="page-header-actions">
+                    <button class="btn btn-ghost btn-sm" onclick="loadStats(); loadEmpresas(); showAlert('♻️ Datos actualizados','success')">↻ Actualizar</button>
+                    <span id="dashFecha" style="font-size:12px;color:#94a3b8"></span>
+                </div>
+            </div>
+
+            <div class="stats">
+                <div class="stat-card stat-card-red">
+                    <div class="stat-label">Total Empresas</div>
+                    <div class="stat-value" id="statEmpresas">-</div>
+                    <div class="stat-sub" id="statEmpresasSub">—</div>
+                </div>
+                <div class="stat-card stat-card-blue">
+                    <div class="stat-label">Total Usuarios</div>
+                    <div class="stat-value" id="statUsuarios">-</div>
+                    <div class="stat-sub" id="statUsuariosSub">—</div>
+                </div>
+                <div class="stat-card stat-card-green">
+                    <div class="stat-label">Empresas Activas</div>
+                    <div class="stat-value" id="statActivas">-</div>
+                    <div class="stat-sub">con plan activo</div>
+                </div>
+                <div class="stat-card stat-card-amber">
+                    <div class="stat-label">Ingreso Mensual</div>
+                    <div class="stat-value" id="statMRR">-</div>
+                    <div class="stat-sub">MRR estimado</div>
+                </div>
+                <div class="stat-card stat-card-purple">
+                    <div class="stat-label">Con Facturación</div>
+                    <div class="stat-value" id="statApiKey">-</div>
+                    <div class="stat-sub">API Key configurada</div>
+                </div>
+            </div>
+
+            <!-- Distribución de planes -->
+            <div class="card">
+                <div class="card-title">💳 Distribución de Planes</div>
+                <div class="plan-grid" id="planGrid">
+                    <div class="plan-card">
+                        <h3>🟢 Starter</h3>
+                        <div class="price">$29.990</div>
+                        <div class="count" id="planStarter">— empresas</div>
+                    </div>
+                    <div class="plan-card">
+                        <h3>🔵 Professional</h3>
+                        <div class="price">$59.990</div>
+                        <div class="count" id="planProfessional">— empresas</div>
+                    </div>
+                    <div class="plan-card">
+                        <h3>🟣 Enterprise</h3>
+                        <div class="price">$99.990</div>
+                        <div class="count" id="planEnterprise">— empresas</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Resumen rápido -->
+            <div class="card">
+                <div class="card-title">🏢 Empresas recientes</div>
+                <table>
+                    <thead><tr><th>Empresa</th><th>RUT</th><th>Plan</th><th>Estado</th><th>Creada</th></tr></thead>
+                    <tbody id="tDashEmpresas"><tr><td colspan="5" style="text-align:center;padding:40px;color:#475569">Cargando...</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ══ EMPRESAS ════════════════════════════════════════════ -->
+        <div id="sec-empresas" class="section">
+            <div class="page-header">
+                <div>
+                    <h2>🏢 Gestión de Empresas</h2>
+                    <p>Crear y administrar empresas cliente</p>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">➕ Nueva Empresa</div>
+                <form id="formEmpresa">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Nombre de la Empresa *</label>
+                            <input type="text" id="empresaNombre" required placeholder="Transportes del Pacífico SpA">
+                        </div>
+                        <div class="form-group">
+                            <label>RUT Empresa</label>
+                            <input type="text" id="empresaRut" placeholder="76.123.456-7">
+                        </div>
+                        <div class="form-group">
+                            <label>Plan *</label>
+                            <select id="empresaPlan" required>
+                                <option value="starter">Starter - CLP $29.990/mes (3 vehículos)</option>
+                                <option value="professional" selected>Professional - CLP $59.990/mes (10 vehículos)</option>
+                                <option value="enterprise">Enterprise - CLP $99.990/mes (ilimitado)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Teléfono de contacto</label>
+                            <input type="text" id="empresaTelefono" placeholder="+56 9 1234 5678">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary" id="btnCrearEmpresa">➕ Crear Empresa</button>
+                </form>
+            </div>
+
+            <div class="card">
+                <div class="card-title">📋 Empresas Registradas
+                    <span id="badgeEmpresas" style="background:#334155;color:#94a3b8;padding:2px 10px;border-radius:10px;font-size:11px;font-weight:400">0</span>
+                    <button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="exportAdminCSV()">📥 Exportar CSV</button>
+                </div>
+                <div style="margin-bottom:14px">
+                    <input type="text" id="buscaEmpresa" placeholder="🔍 Buscar empresa..." oninput="filtrarEmpresasAdmin()"
+                        style="padding:8px 14px;border:1px solid #334155;border-radius:8px;background:#0f172a;color:#e2e8f0;font-size:13px;width:300px">
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Empresa</th>
+                            <th>RUT</th>
+                            <th>Plan</th>
+                            <th>Facturación</th>
+                            <th>Estado</th>
+                            <th>Creada</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableEmpresas">
+                        <tr><td colspan="7" style="text-align:center;padding:40px;color:#475569"><div class="loading" style="margin:0 auto 10px"></div>Cargando empresas...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ══ USUARIOS ════════════════════════════════════════════ -->
+        <div id="sec-usuarios" class="section">
+            <div class="page-header">
+                <div>
+                    <h2>👥 Gestión de Usuarios</h2>
+                    <p>Crear y administrar usuarios por empresa</p>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">➕ Nuevo Usuario</div>
+                <form id="formUsuario">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Empresa *</label>
+                            <select id="usuarioEmpresaRut" required>
+                                <option value="">Seleccionar empresa...</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Nombre Completo *</label>
+                            <input type="text" id="usuarioNombre" required placeholder="Juan Pérez González">
+                        </div>
+                        <div class="form-group">
+                            <label>Email *</label>
+                            <input type="email" id="usuarioEmail" required placeholder="juan@empresa.cl">
+                        </div>
+                        <div class="form-group">
+                            <label>Contraseña *</label>
+                            <input type="password" id="usuarioPassword" required placeholder="Mínimo 6 caracteres" minlength="6">
+                        </div>
+                        <div class="form-group">
+                            <label>Rol *</label>
+                            <select id="usuarioRol" required>
+                                <option value="operador">Operador — Solo registra viajes</option>
+                                <option value="contador">Contador — Ve reportes y facturas</option>
+                                <option value="admin">Admin — Control total</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary" id="btnCrearUsuario">➕ Crear Usuario</button>
+                </form>
+
+                <div id="credentialsBox" style="display:none">
+                    <div class="credential-box">
+                        <h4 style="color:#6ee7b7;margin-bottom:10px">✅ Credenciales creadas — Envíalas al cliente</h4>
+                        <div class="credential-row">
+                            <span class="credential-label">Email:</span>
+                            <span class="credential-value" id="createdEmail">-</span>
+                        </div>
+                        <div class="credential-row">
+                            <span class="credential-label">Password:</span>
+                            <span class="credential-value" id="createdPassword">-</span>
+                        </div>
+                        <p style="color:#94a3b8;font-size:11px;margin-top:10px">⚠️ Copia estas credenciales antes de cerrar esta sección. No se vuelven a mostrar.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">📋 Usuarios del Sistema
+                    <span id="badgeUsuarios" style="background:#334155;color:#94a3b8;padding:2px 10px;border-radius:10px;font-size:11px;font-weight:400">0</span>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Email</th>
+                            <th>Empresa</th>
+                            <th>Rol</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableUsuarios">
+                        <tr><td colspan="6" style="text-align:center;padding:40px;color:#475569"><div class="loading" style="margin:0 auto 10px"></div>Cargando usuarios...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ══ SUSCRIPCIONES ═══════════════════════════════════════ -->
+        <div id="sec-suscripciones" class="section">
+            <div class="page-header">
+                <div>
+                    <h2>💳 Suscripciones</h2>
+                    <p>Gestión de planes y pagos de empresas cliente</p>
+                </div>
+            </div>
+
+            <div class="stats">
+                <div class="stat-card stat-card-green">
+                    <div class="stat-label">MRR Total</div>
+                    <div class="stat-value" id="sMrr">-</div>
+                    <div class="stat-sub">ingresos recurrentes/mes</div>
+                </div>
+                <div class="stat-card stat-card-blue">
+                    <div class="stat-label">ARR Proyectado</div>
+                    <div class="stat-value" id="sArr">-</div>
+                    <div class="stat-sub">ingresos anuales</div>
+                </div>
+                <div class="stat-card stat-card-red">
+                    <div class="stat-label">Activas</div>
+                    <div class="stat-value" id="sActivas">-</div>
+                    <div class="stat-sub">empresas con plan activo</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">💳 Administrar Planes</div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Empresa</th>
+                            <th>Plan Actual</th>
+                            <th>Precio/Mes</th>
+                            <th>Estado</th>
+                            <th>Creada</th>
+                            <th>Cambiar Plan</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableSuscripciones">
+                        <tr><td colspan="6" style="text-align:center;padding:40px;color:#475569">Cargando...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ══ REPORTES ════════════════════════════════════════════ -->
+        <div id="sec-reportes" class="section">
+            <div class="page-header">
+                <div>
+                    <h2>📈 Reportes y Exportación</h2>
+                    <p>Descargar datos del sistema en CSV</p>
+                </div>
+            </div>
+
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:24px">
+                <div class="card" style="text-align:center">
+                    <div style="font-size:36px;margin-bottom:12px">🏢</div>
+                    <div class="card-title" style="justify-content:center;margin-bottom:8px">Empresas</div>
+                    <p style="font-size:12px;color:#94a3b8;margin-bottom:16px">Lista completa de empresas, planes y estado</p>
+                    <button class="btn btn-ghost" onclick="exportReporteEmpresas()">📥 Descargar CSV</button>
+                </div>
+                <div class="card" style="text-align:center">
+                    <div style="font-size:36px;margin-bottom:12px">👥</div>
+                    <div class="card-title" style="justify-content:center;margin-bottom:8px">Usuarios</div>
+                    <p style="font-size:12px;color:#94a3b8;margin-bottom:16px">Lista de usuarios con empresa y rol asignado</p>
+                    <button class="btn btn-ghost" onclick="exportReporteUsuarios()">📥 Descargar CSV</button>
+                </div>
+                <div class="card" style="text-align:center">
+                    <div style="font-size:36px;margin-bottom:12px">💰</div>
+                    <div class="card-title" style="justify-content:center;margin-bottom:8px">Suscripciones</div>
+                    <p style="font-size:12px;color:#94a3b8;margin-bottom:16px">Ingresos por empresa y plan (MRR/ARR)</p>
+                    <button class="btn btn-ghost" onclick="exportReporteSuscripciones()">📥 Descargar CSV</button>
+                </div>
+            </div>
+
+            <!-- Stats de actividad por empresa -->
+            <div class="card">
+                <div class="card-title">📊 Actividad por Empresa</div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Empresa</th>
+                            <th>Plan</th>
+                            <th>Viajes</th>
+                            <th>Clientes</th>
+                            <th>Facturas</th>
+                            <th>Vehículos</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tActividad">
+                        <tr><td colspan="6" style="text-align:center;padding:40px;color:#475569"><div class="loading" style="margin:0 auto 10px"></div>Calculando...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div><!-- /main -->
+
+    <!-- Modal editar empresa -->
+    <div id="modalEditEmpresa" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3>✏️ Editar Empresa</h3>
+                <button class="modal-close" onclick="document.getElementById('modalEditEmpresa').classList.remove('open')">&times;</button>
+            </div>
+            <div class="form-group" style="margin-bottom:14px">
+                <label>Nombre</label>
+                <input id="editEmpNombre" type="text">
+            </div>
+            <div class="form-group" style="margin-bottom:14px">
+                <label>RUT</label>
+                <input id="editEmpRut" type="text">
+            </div>
+            <div class="form-group" style="margin-bottom:14px">
+                <label>Plan</label>
+                <select id="editEmpPlan">
+                    <option value="starter">Starter - $29.990/mes</option>
+                    <option value="professional">Professional - $59.990/mes</option>
+                    <option value="enterprise">Enterprise - $99.990/mes</option>
+                </select>
+            </div>
+            <div class="form-group" style="margin-bottom:20px">
+                <label>Estado</label>
+                <select id="editEmpActiva">
+                    <option value="true">Activa</option>
+                    <option value="false">Inactiva (suspendida)</option>
+                </select>
+            </div>
+            <input id="editEmpId" type="hidden">
+            <div style="display:flex;gap:10px">
+                <button class="btn btn-primary" onclick="guardarEditEmpresa()">💾 Guardar cambios</button>
+                <button class="btn btn-ghost" onclick="document.getElementById('modalEditEmpresa').classList.remove('open')">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal reset password -->
+    <div id="modalResetPass" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3>🔑 Cambiar Contraseña</h3>
+                <button class="modal-close" onclick="document.getElementById('modalResetPass').classList.remove('open')">&times;</button>
+            </div>
+            <p style="font-size:13px;color:#94a3b8;margin-bottom:16px">Usuario: <strong id="resetUserEmail" style="color:#f1f5f9"></strong></p>
+            <div class="form-group" style="margin-bottom:20px">
+                <label>Nueva contraseña *</label>
+                <input id="resetPassInput" type="password" placeholder="Mínimo 6 caracteres" minlength="6">
+            </div>
+            <input id="resetUserId" type="hidden">
+            <div style="display:flex;gap:10px">
+                <button class="btn btn-primary" onclick="ejecutarResetPass()">🔑 Cambiar contraseña</button>
+                <button class="btn btn-ghost" onclick="document.getElementById('modalResetPass').classList.remove('open')">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://ozmnfdndauyzcsxunxig.supabase.co';
+        const SERVICE_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im96bW5mZG5kYXV5emNzeHVueGlnIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NDEwMzA2MywiZXhwIjoyMDg5Njc5MDYzfQ.f-y2qxuiMQyc5Iuu8vYZorM_XbH3V1oVR9fHG8LX7c8';
+        const ADMIN_PASS   = 'Admin2026tp';
+        const AUTH_KEY     = 'tp_admin_ok';
+        const PLANES_PRECIO = { starter: 29990, professional: 59990, enterprise: 99990 };
+
+        let sbAdmin;
+        let _empresasCache = [];
+        let _usuariosCache = [];
+        let _emailMap      = {};
+
+        function cerrarSesion() {
+            localStorage.removeItem(AUTH_KEY);
+            location.reload();
+        }
+
+        // ── Auth ──────────────────────────────────────────────────
+        function checkAuth() {
+            if (localStorage.getItem(AUTH_KEY) === ADMIN_PASS) { initAdmin(); return; }
+            document.body.innerHTML = `
+                <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0f172a">
+                    <div style="background:#1e293b;padding:40px;border-radius:16px;width:360px;border:1px solid #334155;box-shadow:0 20px 60px rgba(0,0,0,0.5)">
+                        <div style="text-align:center;margin-bottom:28px">
+                            <div style="font-size:40px;margin-bottom:8px">🔐</div>
+                            <h2 style="color:#fff;font-size:20px">Admin TransportPro</h2>
+                            <p style="color:#94a3b8;font-size:13px;margin-top:4px">Acceso restringido</p>
+                        </div>
+                        <input id="adminPassInput" type="password" placeholder="Contraseña de administrador"
+                            style="width:100%;padding:12px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:#fff;font-size:14px;box-sizing:border-box;margin-bottom:12px">
+                        <button onclick="submitAdminPass()"
+                            style="width:100%;padding:12px;background:linear-gradient(135deg,#dc2626,#991b1b);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">
+                            Entrar al Panel
+                        </button>
+                        <p id="adminErr" style="color:#ef4444;text-align:center;font-size:12px;margin-top:10px;display:none">❌ Contraseña incorrecta</p>
+                    </div>
+                </div>`;
+            const inp = document.getElementById('adminPassInput');
+            if (inp) inp.addEventListener('keydown', e => { if (e.key === 'Enter') submitAdminPass(); });
+        }
+
+        function submitAdminPass() {
+            const val = document.getElementById('adminPassInput').value;
+            if (val === ADMIN_PASS) { localStorage.setItem(AUTH_KEY, ADMIN_PASS); location.reload(); }
+            else { document.getElementById('adminErr').style.display = 'block'; }
+        }
+
+        function initAdmin() {
+            sbAdmin = window.supabase.createClient(SUPABASE_URL, SERVICE_KEY, {
+                auth: { autoRefreshToken: false, persistSession: false }
+            });
+            document.getElementById('dashFecha').textContent = new Date().toLocaleDateString('es-CL', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+            loadStats();
+            loadEmpresas();
+        }
+
+        checkAuth();
+
+        // ── Navegación ────────────────────────────────────────────
+        function showSection(section, event) {
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            document.getElementById('sec-' + section).classList.add('active');
+            if (event) event.currentTarget.classList.add('active');
+            if (section === 'usuarios')       loadUsuarios();
+            if (section === 'suscripciones')  loadSuscripciones();
+            if (section === 'reportes')       loadActividad();
+        }
+
+        // ── Stats ─────────────────────────────────────────────────
+        async function loadStats() {
+            try {
+                const [{ data: empresas }, { count: totalUsuarios }] = await Promise.all([
+                    sbAdmin.from('empresas').select('*').order('created_at', { ascending: false }),
+                    sbAdmin.from('usuarios').select('*', { count: 'exact', head: true })
+                ]);
+                _empresasCache = empresas || [];
+                const activas  = _empresasCache.filter(e => e.activa).length;
+                const conApiKey = _empresasCache.filter(e => e.haulmer_api_key).length;
+                const mrr = _empresasCache.filter(e => e.activa)
+                    .reduce((s, e) => s + (PLANES_PRECIO[e.plan] || 0), 0);
+
+                document.getElementById('statEmpresas').textContent  = _empresasCache.length;
+                document.getElementById('statEmpresasSub').textContent = `${activas} activas`;
+                document.getElementById('statUsuarios').textContent   = totalUsuarios || 0;
+                document.getElementById('statUsuariosSub').textContent = 'en total';
+                document.getElementById('statActivas').textContent    = activas;
+                document.getElementById('statApiKey').textContent     = conApiKey;
+                document.getElementById('statMRR').textContent        = `$${(mrr/1000).toFixed(0)}K`;
+
+                // Plan distribution
+                const dist = { starter: 0, professional: 0, enterprise: 0 };
+                _empresasCache.forEach(e => { if (e.activa && e.plan) dist[e.plan] = (dist[e.plan]||0) + 1; });
+                document.getElementById('planStarter').textContent      = dist.starter + ' empresa' + (dist.starter !== 1 ? 's' : '');
+                document.getElementById('planProfessional').textContent = dist.professional + ' empresa' + (dist.professional !== 1 ? 's' : '');
+                document.getElementById('planEnterprise').textContent   = dist.enterprise + ' empresa' + (dist.enterprise !== 1 ? 's' : '');
+
+                // Dashboard table (top 5 recientes)
+                const badges = { starter: 'badge-info', professional: 'badge-success', enterprise: 'badge-purple' };
+                const recent = _empresasCache.slice(0, 5);
+                document.getElementById('tDashEmpresas').innerHTML = recent.map(e => `
+                    <tr>
+                        <td><strong>${e.nombre}</strong></td>
+                        <td>${e.rut || '—'}</td>
+                        <td><span class="badge ${badges[e.plan] || 'badge-info'}">${e.plan || '—'}</span></td>
+                        <td><span class="badge ${e.activa ? 'badge-success' : 'badge-danger'}">${e.activa ? 'Activa' : 'Inactiva'}</span></td>
+                        <td>${new Date(e.created_at).toLocaleDateString('es-CL')}</td>
+                    </tr>`).join('') || '<tr><td colspan="5" style="text-align:center;padding:40px">No hay empresas</td></tr>';
+            } catch(err) { console.error('loadStats:', err); }
+        }
+
+        // ── Empresas ──────────────────────────────────────────────
+        async function loadEmpresas() {
+            try {
+                if (!_empresasCache.length) {
+                    const { data } = await sbAdmin.from('empresas').select('*').order('created_at', { ascending: false });
+                    _empresasCache = data || [];
+                }
+                renderTablaEmpresas(_empresasCache);
+                // Poblar select de usuarios
+                const sel = document.getElementById('usuarioEmpresaRut');
+                if (sel) {
+                    sel.innerHTML = '<option value="">Seleccionar empresa...</option>' +
+                        _empresasCache.map(e => `<option value="${e.id}">${e.nombre}</option>`).join('');
+                }
+                document.getElementById('badgeEmpresas').textContent = _empresasCache.length;
+            } catch(err) { console.error('loadEmpresas:', err); }
+        }
+
+        function renderTablaEmpresas(list) {
+            const badges = { starter:'badge-info', professional:'badge-success', enterprise:'badge-purple' };
+            const tbody = document.getElementById('tableEmpresas');
+            tbody.innerHTML = list.map(e => `
+                <tr>
+                    <td><strong>${e.nombre}</strong></td>
+                    <td style="color:#94a3b8">${e.rut || '—'}</td>
+                    <td><span class="badge ${badges[e.plan] || 'badge-info'}">${e.plan || '—'}</span></td>
+                    <td>${e.haulmer_api_key ? '<span style="color:#6ee7b7;font-size:12px">✅ API configurada</span>' : '<span style="color:#94a3b8;font-size:12px">— Sin API</span>'}</td>
+                    <td><span class="badge ${e.activa ? 'badge-success' : 'badge-danger'}">${e.activa ? 'Activa' : 'Suspendida'}</span></td>
+                    <td style="color:#94a3b8">${new Date(e.created_at).toLocaleDateString('es-CL')}</td>
+                    <td>
+                        <button class="btn btn-ghost btn-sm" onclick="abrirEditEmpresa('${e.id}')">✏️ Editar</button>
+                        <button class="btn btn-sm ${e.activa ? 'btn-danger' : 'btn-success'}" style="margin-left:4px"
+                            onclick="toggleEmpresa('${e.id}',${e.activa})">${e.activa ? '⏸ Suspender' : '▶ Activar'}</button>
+                    </td>
+                </tr>`).join('') || '<tr><td colspan="7" style="text-align:center;padding:40px">No hay empresas</td></tr>';
+        }
+
+        function filtrarEmpresasAdmin() {
+            const q = document.getElementById('buscaEmpresa').value.toLowerCase();
+            renderTablaEmpresas(_empresasCache.filter(e => e.nombre.toLowerCase().includes(q) || (e.rut||'').includes(q)));
+        }
+
+        function abrirEditEmpresa(id) {
+            const e = _empresasCache.find(x => x.id === id);
+            if (!e) return;
+            document.getElementById('editEmpId').value      = e.id;
+            document.getElementById('editEmpNombre').value  = e.nombre || '';
+            document.getElementById('editEmpRut').value     = e.rut    || '';
+            document.getElementById('editEmpPlan').value    = e.plan   || 'starter';
+            document.getElementById('editEmpActiva').value  = String(e.activa !== false);
+            document.getElementById('modalEditEmpresa').classList.add('open');
+        }
+
+        async function guardarEditEmpresa() {
+            const id     = document.getElementById('editEmpId').value;
+            const nombre = document.getElementById('editEmpNombre').value.trim();
+            const rut    = document.getElementById('editEmpRut').value.trim();
+            const plan   = document.getElementById('editEmpPlan').value;
+            const activa = document.getElementById('editEmpActiva').value === 'true';
+            if (!nombre) { showAlert('❌ El nombre es obligatorio', 'error'); return; }
+            const { error } = await sbAdmin.from('empresas').update({ nombre, rut, plan, activa }).eq('id', id);
+            if (error) { showAlert('❌ ' + error.message, 'error'); return; }
+            showAlert('✅ Empresa actualizada', 'success');
+            document.getElementById('modalEditEmpresa').classList.remove('open');
+            _empresasCache = [];
+            await loadStats();
+            await loadEmpresas();
+        }
+
+        async function toggleEmpresa(id, activa) {
+            const accion = activa ? 'suspender' : 'activar';
+            if (!confirm(`¿Deseas ${accion} esta empresa?`)) return;
+            const { error } = await sbAdmin.from('empresas').update({ activa: !activa }).eq('id', id);
+            if (error) { showAlert('❌ ' + error.message, 'error'); return; }
+            showAlert(`✅ Empresa ${accion === 'suspender' ? 'suspendida' : 'activada'}`, 'success');
+            _empresasCache = [];
+            await loadStats();
+            await loadEmpresas();
+        }
+
+        document.getElementById('formEmpresa').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('btnCrearEmpresa');
+            btn.disabled = true; btn.innerHTML = '<span class="loading"></span> Creando...';
+            try {
+                const { error } = await sbAdmin.from('empresas').insert([{
+                    nombre: document.getElementById('empresaNombre').value,
+                    rut:    document.getElementById('empresaRut').value     || null,
+                    plan:   document.getElementById('empresaPlan').value,
+                    activa: true
+                }]);
+                if (error) throw error;
+                showAlert('✅ Empresa creada exitosamente', 'success');
+                document.getElementById('formEmpresa').reset();
+                _empresasCache = [];
+                await loadStats();
+                await loadEmpresas();
+            } catch (err) { showAlert('❌ Error: ' + err.message, 'error'); }
+            finally { btn.disabled = false; btn.textContent = '➕ Crear Empresa'; }
+        });
+
+        // ── Usuarios ──────────────────────────────────────────────
+        async function loadUsuarios() {
+            try {
+                const { data } = await sbAdmin.from('usuarios').select('*, empresas(nombre)').order('created_at', { ascending: false });
+                _usuariosCache = data || [];
+                const { data: authList } = await sbAdmin.auth.admin.listUsers({ perPage: 500 });
+                _emailMap = {};
+                (authList?.users || []).forEach(u => { _emailMap[u.id] = u.email; });
+
+                document.getElementById('badgeUsuarios').textContent = _usuariosCache.length;
+                const rolBadges = { admin:'badge-danger', contador:'badge-warning', operador:'badge-info' };
+                document.getElementById('tableUsuarios').innerHTML = _usuariosCache.map(u => `
+                    <tr>
+                        <td><strong>${u.nombre || '—'}</strong></td>
+                        <td style="color:#94a3b8">${_emailMap[u.id] || '—'}</td>
+                        <td>${u.empresas?.nombre || '—'}</td>
+                        <td><span class="badge ${rolBadges[u.rol] || 'badge-info'}">${u.rol || '—'}</span></td>
+                        <td><span class="badge ${u.activo ? 'badge-success' : 'badge-danger'}">${u.activo ? 'Activo' : 'Inactivo'}</span></td>
+                        <td>
+                            <button class="btn btn-ghost btn-sm" onclick="abrirResetPass('${u.id}','${_emailMap[u.id] || ''}')">🔑 Reset</button>
+                            <button class="btn btn-sm ${u.activo ? 'btn-danger' : 'btn-success'}" style="margin-left:4px"
+                                onclick="toggleUsuario('${u.id}',${u.activo})">${u.activo ? '⏸' : '▶'}</button>
+                        </td>
+                    </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;padding:40px">No hay usuarios</td></tr>';
+            } catch(err) { console.error('loadUsuarios:', err); }
+        }
+
+        function abrirResetPass(uid, email) {
+            document.getElementById('resetUserId').value     = uid;
+            document.getElementById('resetUserEmail').textContent = email;
+            document.getElementById('resetPassInput').value  = '';
+            document.getElementById('modalResetPass').classList.add('open');
+        }
+
+        async function ejecutarResetPass() {
+            const uid   = document.getElementById('resetUserId').value;
+            const pass  = document.getElementById('resetPassInput').value;
+            if (pass.length < 6) { showAlert('❌ Mínimo 6 caracteres', 'error'); return; }
+            const { error } = await sbAdmin.auth.admin.updateUserById(uid, { password: pass });
+            if (error) { showAlert('❌ ' + error.message, 'error'); return; }
+            showAlert('✅ Contraseña cambiada exitosamente', 'success');
+            document.getElementById('modalResetPass').classList.remove('open');
+        }
+
+        async function toggleUsuario(uid, activo) {
+            const { error } = await sbAdmin.from('usuarios').update({ activo: !activo }).eq('id', uid);
+            if (error) { showAlert('❌ ' + error.message, 'error'); return; }
+            showAlert(`✅ Usuario ${activo ? 'desactivado' : 'activado'}`, 'success');
+            await loadUsuarios();
+        }
+
+        document.getElementById('formUsuario').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('btnCrearUsuario');
+            btn.disabled = true; btn.innerHTML = '<span class="loading"></span> Creando...';
+            const email      = document.getElementById('usuarioEmail').value;
+            const password   = document.getElementById('usuarioPassword').value;
+            const nombre     = document.getElementById('usuarioNombre').value;
+            const empresa_id = document.getElementById('usuarioEmpresaRut').value;
+            const rol        = document.getElementById('usuarioRol').value;
+            try {
+                const { data: authData, error: authErr } = await sbAdmin.auth.admin.createUser({ email, password, email_confirm: true });
+                if (authErr) throw authErr;
+                const { error: profileErr } = await sbAdmin.from('usuarios').insert([{ auth_uid: authData.user.id, empresa_id, email, nombre, rol, activo: true }]);
+                if (profileErr) throw profileErr;
+                document.getElementById('createdEmail').textContent    = email;
+                document.getElementById('createdPassword').textContent = password;
+                document.getElementById('credentialsBox').style.display = 'block';
+                showAlert('✅ Usuario creado exitosamente', 'success');
+                document.getElementById('formUsuario').reset();
+                await loadStats();
+            } catch (err) { showAlert('❌ Error: ' + err.message, 'error'); }
+            finally { btn.disabled = false; btn.textContent = '➕ Crear Usuario'; }
+        });
+
+        // ── Suscripciones ─────────────────────────────────────────
+        async function loadSuscripciones() {
+            if (!_empresasCache.length) await loadStats();
+            const mrr    = _empresasCache.filter(e => e.activa).reduce((s,e) => s + (PLANES_PRECIO[e.plan]||0), 0);
+            const activas = _empresasCache.filter(e => e.activa).length;
+            document.getElementById('sMrr').textContent    = `$${(mrr/1000).toFixed(0)}K`;
+            document.getElementById('sArr').textContent    = `$${(mrr*12/1000000).toFixed(1)}M`;
+            document.getElementById('sActivas').textContent = activas;
+
+            const badges = { starter:'badge-info', professional:'badge-success', enterprise:'badge-purple' };
+            document.getElementById('tableSuscripciones').innerHTML = _empresasCache.map(e => `
+                <tr>
+                    <td><strong>${e.nombre}</strong></td>
+                    <td><span class="badge ${badges[e.plan] || 'badge-info'}">${e.plan || '—'}</span></td>
+                    <td style="color:${e.activa ? '#6ee7b7' : '#94a3b8'}">
+                        ${e.activa ? '$' + (PLANES_PRECIO[e.plan]||0).toLocaleString('es-CL') : '—'}
+                    </td>
+                    <td><span class="badge ${e.activa ? 'badge-success' : 'badge-danger'}">${e.activa ? 'Activa' : 'Suspendida'}</span></td>
+                    <td>${new Date(e.created_at).toLocaleDateString('es-CL')}</td>
+                    <td>
+                        <select onchange="cambiarPlan('${e.id}',this.value)"
+                            style="padding:5px 10px;border-radius:6px;background:#0f172a;color:#e2e8f0;border:1px solid #334155;font-size:12px">
+                            <option value="starter"       ${e.plan==='starter'?'selected':''}>Starter</option>
+                            <option value="professional"  ${e.plan==='professional'?'selected':''}>Professional</option>
+                            <option value="enterprise"    ${e.plan==='enterprise'?'selected':''}>Enterprise</option>
+                        </select>
+                    </td>
+                </tr>`).join('');
+        }
+
+        async function cambiarPlan(empresaId, nuevoPlan) {
+            const { error } = await sbAdmin.from('empresas').update({ plan: nuevoPlan }).eq('id', empresaId);
+            if (error) { showAlert('❌ ' + error.message, 'error'); return; }
+            showAlert(`✅ Plan cambiado a ${nuevoPlan}`, 'success');
+            _empresasCache = [];
+            await loadStats();
+            await loadSuscripciones();
+        }
+
+        // ── Reportes / Actividad ──────────────────────────────────
+        async function loadActividad() {
+            if (!_empresasCache.length) await loadStats();
+            const tbody = document.getElementById('tActividad');
+            const badges = { starter:'badge-info', professional:'badge-success', enterprise:'badge-purple' };
+            const rows = await Promise.all(_empresasCache.map(async e => {
+                const [{ count: nViajes }, { count: nClientes }, { count: nFacturas }, { count: nVehiculos }] = await Promise.all([
+                    sbAdmin.from('viajes').select('*',{count:'exact',head:true}).eq('empresa_id',e.id),
+                    sbAdmin.from('clientes').select('*',{count:'exact',head:true}).eq('empresa_id',e.id),
+                    sbAdmin.from('facturas').select('*',{count:'exact',head:true}).eq('empresa_id',e.id),
+                    sbAdmin.from('vehiculos').select('*',{count:'exact',head:true}).eq('empresa_id',e.id),
+                ]);
+                return `<tr>
+                    <td><strong>${e.nombre}</strong></td>
+                    <td><span class="badge ${badges[e.plan]||'badge-info'}">${e.plan||'—'}</span></td>
+                    <td>${nViajes||0}</td>
+                    <td>${nClientes||0}</td>
+                    <td>${nFacturas||0}</td>
+                    <td>${nVehiculos||0}</td>
+                </tr>`;
+            }));
+            tbody.innerHTML = rows.join('') || '<tr><td colspan="6" style="text-align:center;padding:40px">Sin datos</td></tr>';
+        }
+
+        // ── Exports CSV ───────────────────────────────────────────
+        function _csvAdmin(filas, cols, nombre) {
+            if (!filas.length) { showAlert('⚠️ Sin datos para exportar', 'error'); return; }
+            const enc  = cols.map(c => `"${c.label}"`).join(',');
+            const body = filas.map(f => cols.map(c => `"${String((typeof c.val==='function'?c.val(f):(f[c.key]??''))).replace(/"/g,'""')}"`).join(',')).join('\n');
+            const blob = new Blob(['\ufeff'+enc+'\n'+body], {type:'text/csv;charset=utf-8;'});
+            const a = Object.assign(document.createElement('a'), {href:URL.createObjectURL(blob), download:nombre});
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
+            showAlert('✅ Archivo descargado: ' + nombre, 'success');
+        }
+
+        function exportAdminCSV() { exportReporteEmpresas(); }
+
+        function exportReporteEmpresas() {
+            _csvAdmin(_empresasCache, [
+                { label:'Nombre',    key:'nombre' },
+                { label:'RUT',       key:'rut' },
+                { label:'Plan',      key:'plan' },
+                { label:'Activa',    val:e => e.activa ? 'Sí' : 'No' },
+                { label:'API Key',   val:e => e.haulmer_api_key ? 'Configurada' : 'Sin configurar' },
+                { label:'Creada',    val:e => new Date(e.created_at).toLocaleDateString('es-CL') },
+                { label:'Precio/Mes',val:e => PLANES_PRECIO[e.plan]||0 },
+            ], `TransportPro_empresas_${new Date().toISOString().slice(0,7)}.csv`);
+        }
+
+        function exportReporteUsuarios() {
+            _csvAdmin(_usuariosCache, [
+                { label:'Nombre',   key:'nombre' },
+                { label:'Email',    val:u => _emailMap[u.id]||'' },
+                { label:'Empresa',  val:u => u.empresas?.nombre||'' },
+                { label:'Rol',      key:'rol' },
+                { label:'Activo',   val:u => u.activo ? 'Sí':'No' },
+            ], `TransportPro_usuarios_${new Date().toISOString().slice(0,7)}.csv`);
+        }
+
+        function exportReporteSuscripciones() {
+            const mrr = _empresasCache.filter(e=>e.activa).reduce((s,e)=>s+(PLANES_PRECIO[e.plan]||0),0);
+            _csvAdmin(_empresasCache, [
+                { label:'Empresa',      key:'nombre' },
+                { label:'Plan',         key:'plan' },
+                { label:'Estado',       val:e=>e.activa?'Activa':'Suspendida' },
+                { label:'Precio/Mes',   val:e=>e.activa?(PLANES_PRECIO[e.plan]||0):0 },
+                { label:'Precio/Año',   val:e=>e.activa?((PLANES_PRECIO[e.plan]||0)*12):0 },
+                { label:'Creada',       val:e=>new Date(e.created_at).toLocaleDateString('es-CL') },
+            ], `TransportPro_suscripciones_${new Date().toISOString().slice(0,7)}.csv`);
+            showAlert(`MRR Total: $${mrr.toLocaleString('es-CL')} · ARR: $${(mrr*12).toLocaleString('es-CL')}`, 'success');
+        }
+
+        // ── Alertas ───────────────────────────────────────────────
+        function showAlert(msg, type) {
+            const cont  = document.getElementById('alertContainer');
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.textContent = msg;
+            cont.appendChild(alert);
+            setTimeout(() => alert.remove(), 5000);
+        }
+    </script>
+</body>
+</html>

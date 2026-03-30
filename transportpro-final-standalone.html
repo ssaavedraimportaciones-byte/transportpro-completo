@@ -1,0 +1,1087 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TransportPro - Sistema Profesional de Gestión</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary: #2563eb; --success: #10b981; --danger: #ef4444;
+            --warning: #f59e0b; --dark: #1f2937; --light: #f9fafb;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh; padding: 15px;
+        }
+        .container { max-width: 1600px; margin: 0 auto; }
+        .header {
+            background: white; padding: 20px 30px; border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2); margin-bottom: 20px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .logo { display: flex; align-items: center; gap: 15px; }
+        .logo h1 {
+            font-size: 28px;
+            background: linear-gradient(135deg, var(--primary), #764ba2);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .version {
+            background: #10b981; color: white; padding: 5px 15px;
+            border-radius: 20px; font-size: 12px; font-weight: bold;
+        }
+        .stats-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px; margin-bottom: 20px;
+        }
+        .stat-card {
+            background: white; padding: 20px; border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        .stat-label { font-size: 11px; color: #666; text-transform: uppercase; }
+        .stat-value { font-size: 28px; font-weight: bold; color: var(--primary); margin-top: 5px; }
+        .tabs {
+            background: white; border-radius: 15px; padding: 10px;
+            margin-bottom: 15px; display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px;
+        }
+        .tab-btn {
+            padding: 12px; border: none; background: var(--light);
+            border-radius: 8px; cursor: pointer; font-weight: 600;
+            transition: all 0.3s; font-size: 12px;
+        }
+        .tab-btn:hover { background: var(--primary); color: white; }
+        .tab-btn.active {
+            background: var(--primary); color: white;
+            box-shadow: 0 5px 15px rgba(37, 99, 235, 0.3);
+        }
+        .content {
+            background: white; border-radius: 15px; padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        .section { display: none; }
+        .section.active { display: block; }
+        .section-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 25px;
+        }
+        .btn {
+            padding: 10px 20px; border: none; border-radius: 8px;
+            cursor: pointer; font-weight: 600; font-size: 13px;
+            transition: all 0.3s;
+        }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-success { background: var(--success); color: white; }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-sm { padding: 6px 12px; font-size: 11px; }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
+        .form-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px; margin-bottom: 20px;
+        }
+        .form-group { display: flex; flex-direction: column; }
+        label { font-weight: 600; margin-bottom: 8px; font-size: 13px; }
+        input, select, textarea {
+            padding: 10px; border: 2px solid #d1d5db; border-radius: 6px;
+            font-size: 14px;
+        }
+        input:focus, select:focus { outline: none; border-color: var(--primary); }
+        textarea { resize: vertical; min-height: 80px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th {
+            background: var(--dark); color: white; padding: 12px;
+            text-align: left; font-size: 11px;
+        }
+        td { padding: 10px; border-bottom: 1px solid #e5e7eb; font-size: 13px; }
+        tr:hover { background: var(--light); }
+        .badge {
+            display: inline-block; padding: 4px 10px; border-radius: 12px;
+            font-size: 10px; font-weight: 600;
+        }
+        .badge-success { background: #d1fae5; color: #065f46; }
+        .badge-danger { background: #fee2e2; color: #991b1b; }
+        .badge-warning { background: #fef3c7; color: #92400e; }
+        .badge-info { background: #dbeafe; color: #1e40af; }
+        .modal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5); z-index: 1000; padding: 20px;
+            overflow-y: auto;
+        }
+        .modal.active { display: flex; align-items: center; justify-content: center; }
+        .modal-content {
+            background: white; border-radius: 15px; padding: 30px;
+            max-width: 700px; width: 100%; max-height: 90vh; overflow-y: auto;
+        }
+        .modal-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #e5e7eb;
+        }
+        .close-modal {
+            background: none; border: none; font-size: 28px;
+            cursor: pointer; color: #999;
+        }
+        .kpi-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px; margin-bottom: 25px;
+        }
+        .kpi-card {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white; padding: 20px; border-radius: 12px;
+        }
+        .kpi-label { font-size: 11px; opacity: 0.9; }
+        .kpi-value { font-size: 28px; font-weight: bold; margin: 5px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">
+                <h1>🚚 TransportPro</h1>
+                <span class="version">PREMIUM</span>
+            </div>
+            <div style="text-align: right;">
+                <div style="font-size: 12px; color: #666;">Sistema Demo</div>
+                <div style="font-size: 14px; font-weight: 600; color: #333;">Empresa Demo</div>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">Viajes Mes</div>
+                <div class="stat-value" id="sViajes">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Ingresos</div>
+                <div class="stat-value" id="sIngresos">$0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Gastos</div>
+                <div class="stat-value" id="sGastos">$0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Utilidad</div>
+                <div class="stat-value" id="sUtilidad">$0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Por Cobrar</div>
+                <div class="stat-value" id="sCobrar">$0</div>
+            </div>
+        </div>
+
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('dashboard')">📊 Dashboard</button>
+            <button class="tab-btn" onclick="switchTab('viajes')">📍 Viajes</button>
+            <button class="tab-btn" onclick="switchTab('clientes')">👥 Clientes</button>
+            <button class="tab-btn" onclick="switchTab('facturacion')">💰 Facturación</button>
+            <button class="tab-btn" onclick="switchTab('combustible')">⛽ Combustible</button>
+            <button class="tab-btn" onclick="switchTab('neumaticos')">🛞 Neumáticos</button>
+            <button class="tab-btn" onclick="switchTab('mantenimiento')">🔧 Mantenimiento</button>
+            <button class="tab-btn" onclick="switchTab('gastos')">💸 Gastos</button>
+            <button class="tab-btn" onclick="switchTab('vehiculos')">🚛 Flota</button>
+            <button class="tab-btn" onclick="switchTab('conductores')">👤 Conductores</button>
+            <button class="tab-btn" onclick="switchTab('rentabilidad')">📈 Rentabilidad</button>
+        </div>
+
+        <div class="content">
+            <!-- DASHBOARD -->
+            <div id="sec-dashboard" class="section active">
+                <h2>Dashboard Ejecutivo</h2>
+                <div class="kpi-grid" style="margin-top: 25px;">
+                    <div class="kpi-card">
+                        <div class="kpi-label">Vehículos Activos</div>
+                        <div class="kpi-value" id="kpiVeh">0</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-label">Conductores</div>
+                        <div class="kpi-value" id="kpiCond">0</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-label">Clientes</div>
+                        <div class="kpi-value" id="kpiCli">0</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-label">Rendimiento Promedio</div>
+                        <div class="kpi-value" id="kpiRend">0 km/L</div>
+                    </div>
+                </div>
+                <div style="margin-top: 30px;">
+                    <h3>Actividad Reciente</h3>
+                    <div id="dashActivity" style="margin-top: 15px; color: #666;">
+                        Sistema inicializado. Comienza registrando vehículos y conductores.
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIAJES -->
+            <div id="sec-viajes" class="section">
+                <div class="section-header">
+                    <h2>Gestión de Viajes</h2>
+                    <button class="btn btn-primary" onclick="openModal('mViaje')">+ Nuevo Viaje</button>
+                </div>
+                <table><thead><tr>
+                    <th>N° Viaje</th><th>Fecha</th><th>Cliente</th><th>Ruta</th>
+                    <th>Vehículo</th><th>KM</th><th>Tarifa</th><th>Estado</th><th>Acciones</th>
+                </tr></thead><tbody id="tViajes"></tbody></table>
+            </div>
+
+            <!-- CLIENTES -->
+            <div id="sec-clientes" class="section">
+                <div class="section-header">
+                    <h2>Clientes</h2>
+                    <button class="btn btn-primary" onclick="openModal('mCliente')">+ Nuevo Cliente</button>
+                </div>
+                <table><thead><tr>
+                    <th>RUT</th><th>Razón Social</th><th>Contacto</th>
+                    <th>Teléfono</th><th>Email</th><th>Acciones</th>
+                </tr></thead><tbody id="tClientes"></tbody></table>
+            </div>
+
+            <!-- FACTURACIÓN -->
+            <div id="sec-facturacion" class="section">
+                <div class="section-header">
+                    <h2>Facturación y Cobranza</h2>
+                    <button class="btn btn-primary" onclick="openModal('mFactura')">+ Nueva Factura</button>
+                </div>
+                <div class="kpi-grid">
+                    <div class="kpi-card">
+                        <div class="kpi-label">Facturado Mes</div>
+                        <div class="kpi-value" id="kpiFact1">$0</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-label">Por Cobrar</div>
+                        <div class="kpi-value" id="kpiFact2">$0</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-label">Cobrado Mes</div>
+                        <div class="kpi-value" id="kpiFact3">$0</div>
+                    </div>
+                </div>
+                <table><thead><tr>
+                    <th>N° Factura</th><th>Fecha</th><th>Cliente</th>
+                    <th>Monto</th><th>Vencimiento</th><th>Estado</th><th>Acciones</th>
+                </tr></thead><tbody id="tFacturas"></tbody></table>
+            </div>
+
+            <!-- COMBUSTIBLE -->
+            <div id="sec-combustible" class="section">
+                <div class="section-header">
+                    <h2>Control de Combustible</h2>
+                    <button class="btn btn-primary" onclick="openModal('mComb')">+ Registrar Carga</button>
+                </div>
+                <table><thead><tr>
+                    <th>Fecha</th><th>Vehículo</th><th>Litros</th>
+                    <th>Precio/L</th><th>Total</th><th>Odómetro</th><th>Acciones</th>
+                </tr></thead><tbody id="tComb"></tbody></table>
+            </div>
+
+            <!-- NEUMÁTICOS -->
+            <div id="sec-neumaticos" class="section">
+                <div class="section-header">
+                    <h2>Control de Neumáticos</h2>
+                    <button class="btn btn-primary" onclick="openModal('mNeum')">+ Nuevo Neumático</button>
+                </div>
+                <table><thead><tr>
+                    <th>Serie</th><th>Vehículo</th><th>Posición</th>
+                    <th>Marca</th><th>KM Uso</th><th>Profundidad</th><th>Estado</th><th>Acciones</th>
+                </tr></thead><tbody id="tNeum"></tbody></table>
+            </div>
+
+            <!-- MANTENIMIENTO -->
+            <div id="sec-mantenimiento" class="section">
+                <div class="section-header">
+                    <h2>Mantenimiento Preventivo</h2>
+                    <button class="btn btn-primary" onclick="openModal('mMant')">+ Programar</button>
+                </div>
+                <table><thead><tr>
+                    <th>Vehículo</th><th>Tipo</th><th>Descripción</th>
+                    <th>KM Programado</th><th>Estado</th><th>Acciones</th>
+                </tr></thead><tbody id="tMant"></tbody></table>
+            </div>
+
+            <!-- GASTOS -->
+            <div id="sec-gastos" class="section">
+                <div class="section-header">
+                    <h2>Gastos Operacionales</h2>
+                    <button class="btn btn-primary" onclick="openModal('mGasto')">+ Registrar Gasto</button>
+                </div>
+                <table><thead><tr>
+                    <th>Fecha</th><th>Categoría</th><th>Descripción</th>
+                    <th>Monto</th><th>Vehículo</th><th>Acciones</th>
+                </tr></thead><tbody id="tGastos"></tbody></table>
+            </div>
+
+            <!-- VEHÍCULOS -->
+            <div id="sec-vehiculos" class="section">
+                <div class="section-header">
+                    <h2>Flota de Vehículos</h2>
+                    <button class="btn btn-primary" onclick="openModal('mVeh')">+ Nuevo Vehículo</button>
+                </div>
+                <table><thead><tr>
+                    <th>Patente</th><th>Marca/Modelo</th><th>Año</th>
+                    <th>KM Actual</th><th>Estado</th><th>Acciones</th>
+                </tr></thead><tbody id="tVeh"></tbody></table>
+            </div>
+
+            <!-- CONDUCTORES -->
+            <div id="sec-conductores" class="section">
+                <div class="section-header">
+                    <h2>Conductores</h2>
+                    <button class="btn btn-primary" onclick="openModal('mCond')">+ Nuevo Conductor</button>
+                </div>
+                <table><thead><tr>
+                    <th>RUT</th><th>Nombre</th><th>Teléfono</th>
+                    <th>Licencia</th><th>Vencimiento</th><th>Estado</th><th>Acciones</th>
+                </tr></thead><tbody id="tCond"></tbody></table>
+            </div>
+
+            <!-- RENTABILIDAD -->
+            <div id="sec-rentabilidad" class="section">
+                <h2>Análisis de Rentabilidad</h2>
+                <div style="margin-top: 25px;">
+                    <h3>Por Ruta</h3>
+                    <table><thead><tr>
+                        <th>Ruta</th><th>Viajes</th><th>Ingresos</th>
+                        <th>Costos</th><th>Utilidad</th><th>Margen %</th>
+                    </tr></thead><tbody id="tRentRutas"></tbody></table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALS -->
+    <div id="mViaje" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Nuevo Viaje</h2>
+                <button class="close-modal" onclick="closeModal('mViaje')">&times;</button>
+            </div>
+            <form onsubmit="saveViaje(event)">
+                <div class="form-grid">
+                    <div class="form-group"><label>Cliente *</label><select id="iVCli" required></select></div>
+                    <div class="form-group"><label>Vehículo *</label><select id="iVVeh" required></select></div>
+                    <div class="form-group"><label>Conductor *</label><select id="iVCond" required></select></div>
+                    <div class="form-group"><label>Fecha *</label><input type="date" id="iVFecha" required></div>
+                    <div class="form-group"><label>Origen *</label><input type="text" id="iVOrigen" required></div>
+                    <div class="form-group"><label>Destino *</label><input type="text" id="iVDest" required></div>
+                    <div class="form-group"><label>KM Inicial *</label><input type="number" id="iVKmI" required></div>
+                    <div class="form-group"><label>KM Final</label><input type="number" id="iVKmF"></div>
+                    <div class="form-group"><label>Tarifa (CLP) *</label><input type="number" id="iVTar" required></div>
+                    <div class="form-group">
+                        <label>Estado *</label>
+                        <select id="iVEst" required>
+                            <option value="planificado">Planificado</option>
+                            <option value="en_ruta">En Ruta</option>
+                            <option value="completado">Completado</option>
+                        </select>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-success">Guardar Viaje</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="mCliente" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Nuevo Cliente</h2>
+                <button class="close-modal" onclick="closeModal('mCliente')">&times;</button>
+            </div>
+            <form onsubmit="saveCliente(event)">
+                <div class="form-grid">
+                    <div class="form-group"><label>RUT *</label><input type="text" id="iCRut" required></div>
+                    <div class="form-group"><label>Razón Social *</label><input type="text" id="iCRazon" required></div>
+                    <div class="form-group"><label>Contacto</label><input type="text" id="iCCont"></div>
+                    <div class="form-group"><label>Teléfono *</label><input type="tel" id="iCTel" required></div>
+                    <div class="form-group"><label>Email</label><input type="email" id="iCEmail"></div>
+                </div>
+                <button type="submit" class="btn btn-success">Guardar Cliente</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="mFactura" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Nueva Factura</h2>
+                <button class="close-modal" onclick="closeModal('mFactura')">&times;</button>
+            </div>
+            <form onsubmit="saveFactura(event)">
+                <div class="form-grid">
+                    <div class="form-group"><label>Cliente *</label><select id="iFCli" required></select></div>
+                    <div class="form-group"><label>Fecha *</label><input type="date" id="iFFecha" required></div>
+                    <div class="form-group"><label>Vencimiento *</label><input type="date" id="iFVenc" required></div>
+                    <div class="form-group"><label>Monto (CLP) *</label><input type="number" id="iFMonto" required></div>
+                </div>
+                <button type="submit" class="btn btn-success">Generar Factura</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="mComb" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Registrar Carga de Combustible</h2>
+                <button class="close-modal" onclick="closeModal('mComb')">&times;</button>
+            </div>
+            <form onsubmit="saveCombustible(event)">
+                <div class="form-grid">
+                    <div class="form-group"><label>Vehículo *</label><select id="iCoVeh" required></select></div>
+                    <div class="form-group"><label>Fecha *</label><input type="date" id="iCoFecha" required></div>
+                    <div class="form-group"><label>Litros *</label><input type="number" step="0.1" id="iCoLit" required></div>
+                    <div class="form-group"><label>Precio/L *</label><input type="number" id="iCoPrecio" required></div>
+                    <div class="form-group"><label>Odómetro *</label><input type="number" id="iCoOdo" required></div>
+                </div>
+                <button type="submit" class="btn btn-success">Guardar Carga</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="mNeum" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Registrar Neumático</h2>
+                <button class="close-modal" onclick="closeModal('mNeum')">&times;</button>
+            </div>
+            <form onsubmit="saveNeumatico(event)">
+                <div class="form-grid">
+                    <div class="form-group"><label>N° Serie *</label><input type="text" id="iNSerie" required></div>
+                    <div class="form-group"><label>Vehículo *</label><select id="iNVeh" required></select></div>
+                    <div class="form-group"><label>Posición *</label><input type="text" id="iNPos" required placeholder="Ej: Delantero Izq"></div>
+                    <div class="form-group"><label>Marca *</label><input type="text" id="iNMarca" required></div>
+                    <div class="form-group"><label>KM Instalación *</label><input type="number" id="iNKm" required></div>
+                    <div class="form-group"><label>Profundidad (mm) *</label><input type="number" step="0.1" id="iNProf" required value="10"></div>
+                </div>
+                <button type="submit" class="btn btn-success">Guardar Neumático</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="mMant" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Programar Mantenimiento</h2>
+                <button class="close-modal" onclick="closeModal('mMant')">&times;</button>
+            </div>
+            <form onsubmit="saveMantenimiento(event)">
+                <div class="form-grid">
+                    <div class="form-group"><label>Vehículo *</label><select id="iMVeh" required></select></div>
+                    <div class="form-group">
+                        <label>Tipo *</label>
+                        <select id="iMTipo" required>
+                            <option value="cambio_aceite">Cambio Aceite</option>
+                            <option value="revision_frenos">Revisión Frenos</option>
+                            <option value="revision_tecnica">Revisión Técnica</option>
+                            <option value="otro">Otro</option>
+                        </select>
+                    </div>
+                    <div class="form-group"><label>Descripción *</label><input type="text" id="iMDesc" required></div>
+                    <div class="form-group"><label>KM Programado *</label><input type="number" id="iMKm" required></div>
+                </div>
+                <button type="submit" class="btn btn-success">Programar</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="mGasto" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Registrar Gasto</h2>
+                <button class="close-modal" onclick="closeModal('mGasto')">&times;</button>
+            </div>
+            <form onsubmit="saveGasto(event)">
+                <div class="form-grid">
+                    <div class="form-group"><label>Fecha *</label><input type="date" id="iGFecha" required></div>
+                    <div class="form-group">
+                        <label>Categoría *</label>
+                        <select id="iGCat" required>
+                            <option value="mantenimiento">Mantenimiento</option>
+                            <option value="reparacion">Reparación</option>
+                            <option value="peaje">Peaje</option>
+                            <option value="multa">Multa</option>
+                            <option value="otro">Otro</option>
+                        </select>
+                    </div>
+                    <div class="form-group"><label>Vehículo</label><select id="iGVeh"><option value="">N/A</option></select></div>
+                    <div class="form-group"><label>Monto (CLP) *</label><input type="number" id="iGMonto" required></div>
+                </div>
+                <div class="form-group"><label>Descripción *</label><textarea id="iGDesc" required></textarea></div>
+                <button type="submit" class="btn btn-success">Guardar Gasto</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="mVeh" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Nuevo Vehículo</h2>
+                <button class="close-modal" onclick="closeModal('mVeh')">&times;</button>
+            </div>
+            <form onsubmit="saveVehiculo(event)">
+                <div class="form-grid">
+                    <div class="form-group"><label>Patente *</label><input type="text" id="iVhPat" required style="text-transform: uppercase;"></div>
+                    <div class="form-group"><label>Marca *</label><input type="text" id="iVhMarca" required></div>
+                    <div class="form-group"><label>Modelo *</label><input type="text" id="iVhMod" required></div>
+                    <div class="form-group"><label>Año *</label><input type="number" id="iVhAno" required></div>
+                    <div class="form-group"><label>KM Actual</label><input type="number" id="iVhKm" value="0"></div>
+                </div>
+                <button type="submit" class="btn btn-success">Guardar Vehículo</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="mCond" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Nuevo Conductor</h2>
+                <button class="close-modal" onclick="closeModal('mCond')">&times;</button>
+            </div>
+            <form onsubmit="saveConductor(event)">
+                <div class="form-grid">
+                    <div class="form-group"><label>RUT *</label><input type="text" id="iCdRut" required></div>
+                    <div class="form-group"><label>Nombre *</label><input type="text" id="iCdNom" required></div>
+                    <div class="form-group"><label>Teléfono *</label><input type="tel" id="iCdTel" required></div>
+                    <div class="form-group">
+                        <label>Licencia *</label>
+                        <select id="iCdLic" required>
+                            <option value="A2">A2</option>
+                            <option value="A3">A3</option>
+                            <option value="A4">A4</option>
+                            <option value="A5">A5</option>
+                        </select>
+                    </div>
+                    <div class="form-group"><label>Vencimiento *</label><input type="date" id="iCdVenc" required></div>
+                </div>
+                <button type="submit" class="btn btn-success">Guardar Conductor</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // ── Supabase ──────────────────────────────────────────────
+        const SUPABASE_URL = 'https://wylmxqjpkdqxtqjkuqqn.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind5bG14cWpwa2RxeHRxamt1cXFuIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjYyMzU2MiwiZXhwIjoyMDg4MTk5NTYyfQ.2z0ExceaUfUXoj-XocTeO8l1EhUszzc5E3Rr8PqgCCE';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // ── Facturación ───────────────────────────────────────────
+        async function emitirFactura(viajeId) {
+            const viaje = get('viajes').find(v => v.id === viajeId);
+            const cliente = get('clientes').find(c => c.id === viaje?.clienteId);
+
+            if (!viaje || !cliente) {
+                alert('❌ No se encontraron datos del viaje o cliente.');
+                return;
+            }
+            if (!cliente.rut) {
+                alert('❌ El cliente no tiene RUT registrado. Agrégalo en la sección Clientes.');
+                return;
+            }
+
+            const btn = document.getElementById('btn-fac-' + viajeId);
+            btn.disabled = true;
+            btn.textContent = '⏳ Emitiendo...';
+
+            try {
+                const { data, error } = await supabase.functions.invoke('emitir-factura', {
+                    body: {
+                        rutCliente: cliente.rut,
+                        montoTotal: viaje.tarifa,
+                        detalleViaje: `Flete ${viaje.origen} → ${viaje.destino}`,
+                        tipoDte: 33
+                    }
+                });
+
+                if (error) throw error;
+
+                if (data && data.exito) {
+                    alert(`✅ Factura emitida!\nFolio: ${data.folio}\n\nPDF: ${data.pdfUrl}`);
+                } else {
+                    alert(`❌ Error: ${data?.error || 'Respuesta inesperada del servidor'}`);
+                }
+            } catch (err) {
+                alert(`❌ Error técnico: ${err.message}`);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🧾 Facturar';
+            }
+        }
+
+        // ── LocalStorage ──────────────────────────────────────────
+        const save = (k, d) => localStorage.setItem(k, JSON.stringify(d));
+        const get = k => { try { return JSON.parse(localStorage.getItem(k)) || []; } catch { return []; } };
+        
+        function switchTab(t) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.getElementById('sec-' + t).classList.add('active');
+            loadTab(t);
+        }
+
+        function loadTab(t) {
+            const map = {
+                'dashboard': renderDashboard, 'viajes': renderViajes,
+                'clientes': renderClientes, 'facturacion': renderFacturacion,
+                'combustible': renderCombustible, 'neumaticos': renderNeumaticos,
+                'mantenimiento': renderMantenimiento, 'gastos': renderGastos,
+                'vehiculos': renderVehiculos, 'conductores': renderConductores,
+                'rentabilidad': renderRentabilidad
+            };
+            if (map[t]) map[t]();
+            updateStats();
+        }
+
+        function openModal(m) {
+            document.getElementById(m).classList.add('active');
+            populateSelects();
+        }
+
+        function closeModal(m) {
+            document.getElementById(m).classList.remove('active');
+            document.querySelector(`#${m} form`).reset();
+        }
+
+        function populateSelects() {
+            const cls = get('clientes'), veh = get('vehiculos'), cond = get('conductores');
+            ['iVCli', 'iFCli'].forEach(id => {
+                const s = document.getElementById(id);
+                if (!s) return;
+                s.innerHTML = '';
+                cls.forEach(c => s.innerHTML += `<option value="${c.id}">${c.razonSocial}</option>`);
+            });
+            ['iVVeh', 'iCoVeh', 'iNVeh', 'iMVeh', 'iGVeh'].forEach(id => {
+                const s = document.getElementById(id);
+                if (!s) return;
+                const v = s.value;
+                s.innerHTML = id === 'iGVeh' ? '<option value="">N/A</option>' : '';
+                veh.forEach(vh => s.innerHTML += `<option value="${vh.id}">${vh.patente}</option>`);
+                s.value = v;
+            });
+            const sc = document.getElementById('iVCond');
+            if (sc) {
+                sc.innerHTML = '';
+                cond.forEach(c => sc.innerHTML += `<option value="${c.id}">${c.nombre}</option>`);
+            }
+        }
+
+        function saveViaje(e) {
+            e.preventDefault();
+            const d = get('viajes');
+            d.push({
+                id: 'V-' + Date.now(),
+                numero: `VJ-${new Date().getFullYear()}-${String(d.length + 1).padStart(6, '0')}`,
+                clienteId: document.getElementById('iVCli').value,
+                vehiculoId: document.getElementById('iVVeh').value,
+                conductorId: document.getElementById('iVCond').value,
+                fecha: document.getElementById('iVFecha').value,
+                origen: document.getElementById('iVOrigen').value,
+                destino: document.getElementById('iVDest').value,
+                kmInicial: +document.getElementById('iVKmI').value,
+                kmFinal: document.getElementById('iVKmF').value ? +document.getElementById('iVKmF').value : null,
+                tarifa: +document.getElementById('iVTar').value,
+                estado: document.getElementById('iVEst').value,
+                created: new Date().toISOString()
+            });
+            save('viajes', d);
+            closeModal('mViaje');
+            renderViajes();
+            alert('✅ Viaje guardado');
+        }
+
+        function saveCliente(e) {
+            e.preventDefault();
+            const d = get('clientes');
+            d.push({
+                id: 'CL-' + Date.now(),
+                rut: document.getElementById('iCRut').value,
+                razonSocial: document.getElementById('iCRazon').value,
+                contacto: document.getElementById('iCCont').value,
+                telefono: document.getElementById('iCTel').value,
+                email: document.getElementById('iCEmail').value,
+                created: new Date().toISOString()
+            });
+            save('clientes', d);
+            closeModal('mCliente');
+            renderClientes();
+            alert('✅ Cliente guardado');
+        }
+
+        function saveFactura(e) {
+            e.preventDefault();
+            const d = get('facturas');
+            d.push({
+                id: 'F-' + Date.now(),
+                numero: `FC-${new Date().getFullYear()}-${String(d.length + 1).padStart(6, '0')}`,
+                clienteId: document.getElementById('iFCli').value,
+                fecha: document.getElementById('iFFecha').value,
+                vencimiento: document.getElementById('iFVenc').value,
+                monto: +document.getElementById('iFMonto').value,
+                estado: 'pendiente',
+                created: new Date().toISOString()
+            });
+            save('facturas', d);
+            closeModal('mFactura');
+            renderFacturacion();
+            alert('✅ Factura generada');
+        }
+
+        function saveCombustible(e) {
+            e.preventDefault();
+            const d = get('combustible');
+            const lit = +document.getElementById('iCoLit').value;
+            const precio = +document.getElementById('iCoPrecio').value;
+            d.push({
+                id: 'C-' + Date.now(),
+                vehiculoId: document.getElementById('iCoVeh').value,
+                fecha: document.getElementById('iCoFecha').value,
+                litros: lit,
+                precioLitro: precio,
+                total: lit * precio,
+                odometro: +document.getElementById('iCoOdo').value,
+                created: new Date().toISOString()
+            });
+            save('combustible', d);
+            closeModal('mComb');
+            renderCombustible();
+            alert('✅ Carga registrada');
+        }
+
+        function saveNeumatico(e) {
+            e.preventDefault();
+            const d = get('neumaticos');
+            d.push({
+                id: 'N-' + Date.now(),
+                serie: document.getElementById('iNSerie').value,
+                vehiculoId: document.getElementById('iNVeh').value,
+                posicion: document.getElementById('iNPos').value,
+                marca: document.getElementById('iNMarca').value,
+                kmInstalacion: +document.getElementById('iNKm').value,
+                profundidad: +document.getElementById('iNProf').value,
+                created: new Date().toISOString()
+            });
+            save('neumaticos', d);
+            closeModal('mNeum');
+            renderNeumaticos();
+            alert('✅ Neumático registrado');
+        }
+
+        function saveMantenimiento(e) {
+            e.preventDefault();
+            const d = get('mantenimiento');
+            d.push({
+                id: 'M-' + Date.now(),
+                vehiculoId: document.getElementById('iMVeh').value,
+                tipo: document.getElementById('iMTipo').value,
+                descripcion: document.getElementById('iMDesc').value,
+                kmProgramado: +document.getElementById('iMKm').value,
+                estado: 'pendiente',
+                created: new Date().toISOString()
+            });
+            save('mantenimiento', d);
+            closeModal('mMant');
+            renderMantenimiento();
+            alert('✅ Mantenimiento programado');
+        }
+
+        function saveGasto(e) {
+            e.preventDefault();
+            const d = get('gastos');
+            d.push({
+                id: 'G-' + Date.now(),
+                fecha: document.getElementById('iGFecha').value,
+                categoria: document.getElementById('iGCat').value,
+                vehiculoId: document.getElementById('iGVeh').value,
+                monto: +document.getElementById('iGMonto').value,
+                descripcion: document.getElementById('iGDesc').value,
+                created: new Date().toISOString()
+            });
+            save('gastos', d);
+            closeModal('mGasto');
+            renderGastos();
+            alert('✅ Gasto registrado');
+        }
+
+        function saveVehiculo(e) {
+            e.preventDefault();
+            const d = get('vehiculos');
+            d.push({
+                id: 'VH-' + Date.now(),
+                patente: document.getElementById('iVhPat').value.toUpperCase(),
+                marca: document.getElementById('iVhMarca').value,
+                modelo: document.getElementById('iVhMod').value,
+                ano: +document.getElementById('iVhAno').value,
+                km: +document.getElementById('iVhKm').value,
+                estado: 'operativo',
+                created: new Date().toISOString()
+            });
+            save('vehiculos', d);
+            closeModal('mVeh');
+            renderVehiculos();
+            alert('✅ Vehículo guardado');
+        }
+
+        function saveConductor(e) {
+            e.preventDefault();
+            const d = get('conductores');
+            d.push({
+                id: 'CD-' + Date.now(),
+                rut: document.getElementById('iCdRut').value,
+                nombre: document.getElementById('iCdNom').value,
+                telefono: document.getElementById('iCdTel').value,
+                licencia: document.getElementById('iCdLic').value,
+                vencimiento: document.getElementById('iCdVenc').value,
+                estado: 'activo',
+                created: new Date().toISOString()
+            });
+            save('conductores', d);
+            closeModal('mCond');
+            renderConductores();
+            alert('✅ Conductor guardado');
+        }
+
+        function del(key, id) {
+            if (!confirm('¿Eliminar registro?')) return;
+            const d = get(key).filter(x => x.id !== id);
+            save(key, d);
+            loadTab(key);
+        }
+
+        function renderViajes() {
+            const v = get('viajes'), cls = get('clientes'), veh = get('vehiculos');
+            const t = document.getElementById('tViajes');
+            t.innerHTML = v.length ? v.slice().reverse().map(x => {
+                const c = cls.find(y => y.id === x.clienteId);
+                const vh = veh.find(y => y.id === x.vehiculoId);
+                const km = x.kmFinal ? x.kmFinal - x.kmInicial : '-';
+                const badges = {planificado: 'badge-info', en_ruta: 'badge-warning', completado: 'badge-success'};
+                return `<tr>
+                    <td><strong>${x.numero}</strong></td>
+                    <td>${new Date(x.fecha).toLocaleDateString('es-CL')}</td>
+                    <td>${c?.razonSocial || 'N/A'}</td>
+                    <td>${x.origen} → ${x.destino}</td>
+                    <td>${vh?.patente || 'N/A'}</td>
+                    <td>${km} km</td>
+                    <td>$${x.tarifa.toLocaleString('es-CL')}</td>
+                    <td><span class="badge ${badges[x.estado]}">${x.estado}</span></td>
+                    <td>
+                        <button id="btn-fac-${x.id}" class="btn btn-sm" style="background:#0056b3;color:white;margin-right:4px" onclick="emitirFactura('${x.id}')">🧾 Facturar</button>
+                        <button class="btn btn-danger btn-sm" onclick="del('viajes','${x.id}')">✕</button>
+                    </td>
+                </tr>`;
+            }).join('') : '<tr><td colspan="9" style="text-align:center;padding:40px;color:#999">Sin viajes registrados</td></tr>';
+        }
+
+        function renderClientes() {
+            const c = get('clientes');
+            const t = document.getElementById('tClientes');
+            t.innerHTML = c.length ? c.map(x => `<tr>
+                <td>${x.rut}</td>
+                <td><strong>${x.razonSocial}</strong></td>
+                <td>${x.contacto || '-'}</td>
+                <td>${x.telefono}</td>
+                <td>${x.email || '-'}</td>
+                <td><button class="btn btn-danger btn-sm" onclick="del('clientes','${x.id}')">✕</button></td>
+            </tr>`).join('') : '<tr><td colspan="6" style="text-align:center;padding:40px;color:#999">Sin clientes registrados</td></tr>';
+        }
+
+        function renderFacturacion() {
+            const f = get('facturas'), c = get('clientes');
+            const mes = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+            const factMes = f.filter(x => new Date(x.fecha) >= mes).reduce((s, x) => s + x.monto, 0);
+            const porCobrar = f.filter(x => x.estado === 'pendiente').reduce((s, x) => s + x.monto, 0);
+            const cobrado = f.filter(x => x.estado === 'pagada' && new Date(x.fecha) >= mes).reduce((s, x) => s + x.monto, 0);
+            
+            document.getElementById('kpiFact1').textContent = `$${Math.round(factMes/1000)}k`;
+            document.getElementById('kpiFact2').textContent = `$${Math.round(porCobrar/1000)}k`;
+            document.getElementById('kpiFact3').textContent = `$${Math.round(cobrado/1000)}k`;
+            
+            const t = document.getElementById('tFacturas');
+            t.innerHTML = f.length ? f.slice().reverse().map(x => {
+                const cl = c.find(y => y.id === x.clienteId);
+                const badges = {pendiente: 'badge-warning', pagada: 'badge-success'};
+                return `<tr>
+                    <td><strong>${x.numero}</strong></td>
+                    <td>${new Date(x.fecha).toLocaleDateString('es-CL')}</td>
+                    <td>${cl?.razonSocial || 'N/A'}</td>
+                    <td>$${x.monto.toLocaleString('es-CL')}</td>
+                    <td>${new Date(x.vencimiento).toLocaleDateString('es-CL')}</td>
+                    <td><span class="badge ${badges[x.estado]}">${x.estado}</span></td>
+                    <td><button class="btn btn-danger btn-sm" onclick="del('facturas','${x.id}')">✕</button></td>
+                </tr>`;
+            }).join('') : '<tr><td colspan="7" style="text-align:center;padding:40px;color:#999">Sin facturas generadas</td></tr>';
+        }
+
+        function renderCombustible() {
+            const c = get('combustible'), v = get('vehiculos');
+            const t = document.getElementById('tComb');
+            t.innerHTML = c.length ? c.slice().reverse().map(x => {
+                const vh = v.find(y => y.id === x.vehiculoId);
+                return `<tr>
+                    <td>${new Date(x.fecha).toLocaleDateString('es-CL')}</td>
+                    <td>${vh?.patente || 'N/A'}</td>
+                    <td>${x.litros.toFixed(1)} L</td>
+                    <td>$${x.precioLitro.toLocaleString('es-CL')}</td>
+                    <td><strong>$${x.total.toLocaleString('es-CL')}</strong></td>
+                    <td>${x.odometro.toLocaleString('es-CL')} km</td>
+                    <td><button class="btn btn-danger btn-sm" onclick="del('combustible','${x.id}')">✕</button></td>
+                </tr>`;
+            }).join('') : '<tr><td colspan="7" style="text-align:center;padding:40px;color:#999">Sin cargas registradas</td></tr>';
+        }
+
+        function renderNeumaticos() {
+            const n = get('neumaticos'), v = get('vehiculos');
+            const t = document.getElementById('tNeum');
+            t.innerHTML = n.length ? n.map(x => {
+                const vh = v.find(y => y.id === x.vehiculoId);
+                const km = vh ? vh.km - x.kmInstalacion : 0;
+                const est = x.profundidad <= 2 ? 'badge-danger' : 'badge-success';
+                return `<tr>
+                    <td><strong>${x.serie}</strong></td>
+                    <td>${vh?.patente || 'N/A'}</td>
+                    <td>${x.posicion}</td>
+                    <td>${x.marca}</td>
+                    <td>${km.toLocaleString('es-CL')} km</td>
+                    <td>${x.profundidad} mm</td>
+                    <td><span class="badge ${est}">${x.profundidad <= 2 ? 'Cambiar' : 'OK'}</span></td>
+                    <td><button class="btn btn-danger btn-sm" onclick="del('neumaticos','${x.id}')">✕</button></td>
+                </tr>`;
+            }).join('') : '<tr><td colspan="8" style="text-align:center;padding:40px;color:#999">Sin neumáticos registrados</td></tr>';
+        }
+
+        function renderMantenimiento() {
+            const m = get('mantenimiento'), v = get('vehiculos');
+            const t = document.getElementById('tMant');
+            t.innerHTML = m.length ? m.map(x => {
+                const vh = v.find(y => y.id === x.vehiculoId);
+                const badges = {pendiente: 'badge-warning', completado: 'badge-success'};
+                return `<tr>
+                    <td><strong>${vh?.patente || 'N/A'}</strong></td>
+                    <td>${x.tipo.replace('_', ' ')}</td>
+                    <td>${x.descripcion}</td>
+                    <td>${x.kmProgramado.toLocaleString('es-CL')}</td>
+                    <td><span class="badge ${badges[x.estado]}">${x.estado}</span></td>
+                    <td><button class="btn btn-danger btn-sm" onclick="del('mantenimiento','${x.id}')">✕</button></td>
+                </tr>`;
+            }).join('') : '<tr><td colspan="6" style="text-align:center;padding:40px;color:#999">Sin mantenimientos programados</td></tr>';
+        }
+
+        function renderGastos() {
+            const g = get('gastos'), v = get('vehiculos');
+            const t = document.getElementById('tGastos');
+            t.innerHTML = g.length ? g.slice().reverse().map(x => {
+                const vh = v.find(y => y.id === x.vehiculoId);
+                return `<tr>
+                    <td>${new Date(x.fecha).toLocaleDateString('es-CL')}</td>
+                    <td><span class="badge badge-info">${x.categoria}</span></td>
+                    <td>${x.descripcion}</td>
+                    <td><strong>$${x.monto.toLocaleString('es-CL')}</strong></td>
+                    <td>${vh?.patente || '-'}</td>
+                    <td><button class="btn btn-danger btn-sm" onclick="del('gastos','${x.id}')">✕</button></td>
+                </tr>`;
+            }).join('') : '<tr><td colspan="6" style="text-align:center;padding:40px;color:#999">Sin gastos registrados</td></tr>';
+        }
+
+        function renderVehiculos() {
+            const v = get('vehiculos');
+            const t = document.getElementById('tVeh');
+            t.innerHTML = v.length ? v.map(x => {
+                const badges = {operativo: 'badge-success', mantenimiento: 'badge-warning'};
+                return `<tr>
+                    <td><strong>${x.patente}</strong></td>
+                    <td>${x.marca} ${x.modelo}</td>
+                    <td>${x.ano}</td>
+                    <td>${x.km.toLocaleString('es-CL')} km</td>
+                    <td><span class="badge ${badges[x.estado]}">${x.estado}</span></td>
+                    <td><button class="btn btn-danger btn-sm" onclick="del('vehiculos','${x.id}')">✕</button></td>
+                </tr>`;
+            }).join('') : '<tr><td colspan="6" style="text-align:center;padding:40px;color:#999">Sin vehículos registrados</td></tr>';
+        }
+
+        function renderConductores() {
+            const c = get('conductores');
+            const t = document.getElementById('tCond');
+            t.innerHTML = c.length ? c.map(x => {
+                const badges = {activo: 'badge-success', inactivo: 'badge-danger'};
+                return `<tr>
+                    <td>${x.rut}</td>
+                    <td><strong>${x.nombre}</strong></td>
+                    <td>${x.telefono}</td>
+                    <td>${x.licencia}</td>
+                    <td>${new Date(x.vencimiento).toLocaleDateString('es-CL')}</td>
+                    <td><span class="badge ${badges[x.estado]}">${x.estado}</span></td>
+                    <td><button class="btn btn-danger btn-sm" onclick="del('conductores','${x.id}')">✕</button></td>
+                </tr>`;
+            }).join('') : '<tr><td colspan="7" style="text-align:center;padding:40px;color:#999">Sin conductores registrados</td></tr>';
+        }
+
+        function renderRentabilidad() {
+            const v = get('viajes');
+            const mes = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+            const vMes = v.filter(x => new Date(x.fecha) >= mes);
+            
+            const rutas = {};
+            vMes.forEach(x => {
+                const r = `${x.origen} → ${x.destino}`;
+                if (!rutas[r]) rutas[r] = {viajes: 0, ingresos: 0};
+                rutas[r].viajes++;
+                rutas[r].ingresos += x.tarifa || 0;
+            });
+            
+            const tR = document.getElementById('tRentRutas');
+            tR.innerHTML = Object.keys(rutas).length ? Object.entries(rutas).map(([r, d]) => {
+                const costos = Math.round(d.ingresos * 0.7);
+                const util = d.ingresos - costos;
+                const margen = d.ingresos > 0 ? ((util / d.ingresos) * 100).toFixed(1) : 0;
+                return `<tr>
+                    <td><strong>${r}</strong></td>
+                    <td>${d.viajes}</td>
+                    <td>$${Math.round(d.ingresos/1000)}k</td>
+                    <td>$${Math.round(costos/1000)}k</td>
+                    <td>$${Math.round(util/1000)}k</td>
+                    <td>${margen}%</td>
+                </tr>`;
+            }).join('') : '<tr><td colspan="6" style="text-align:center;padding:30px;color:#999">Sin datos de rentabilidad</td></tr>';
+        }
+
+        function renderDashboard() {
+            const v = get('vehiculos'), c = get('conductores'), cli = get('clientes');
+            document.getElementById('kpiVeh').textContent = v.length;
+            document.getElementById('kpiCond').textContent = c.length;
+            document.getElementById('kpiCli').textContent = cli.length;
+            document.getElementById('kpiRend').textContent = '0 km/L';
+        }
+
+        function updateStats() {
+            const mes = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+            const v = get('viajes').filter(x => new Date(x.fecha) >= mes);
+            const c = get('combustible').filter(x => new Date(x.fecha) >= mes);
+            const g = get('gastos').filter(x => new Date(x.fecha) >= mes);
+            const f = get('facturas');
+            
+            const ing = v.reduce((s, x) => s + (x.tarifa || 0), 0);
+            const gComb = c.reduce((s, x) => s + x.total, 0);
+            const gOtros = g.reduce((s, x) => s + x.monto, 0);
+            const totalG = gComb + gOtros;
+            const util = ing - totalG;
+            const cobrar = f.filter(x => x.estado === 'pendiente').reduce((s, x) => s + x.monto, 0);
+            
+            document.getElementById('sViajes').textContent = v.length;
+            document.getElementById('sIngresos').textContent = `$${Math.round(ing/1000)}k`;
+            document.getElementById('sGastos').textContent = `$${Math.round(totalG/1000)}k`;
+            document.getElementById('sUtilidad').textContent = `$${Math.round(util/1000)}k`;
+            document.getElementById('sCobrar').textContent = `$${Math.round(cobrar/1000)}k`;
+        }
+
+        window.onload = () => {
+            updateStats();
+            renderDashboard();
+            const today = new Date().toISOString().split('T')[0];
+            ['iVFecha', 'iFFecha', 'iCoFecha', 'iGFecha'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = today;
+            });
+        };
+    </script>
+</body>
+</html>

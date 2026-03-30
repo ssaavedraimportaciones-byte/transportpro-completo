@@ -1,0 +1,401 @@
+═══════════════════════════════════════════════════════════
+PROMPT PARA IMPLEMENTAR CONTABILIDAD COMPLETA — TransportPro
+Usar en nueva sesión de Claude Code
+═══════════════════════════════════════════════════════════
+
+Eres mi asistente de desarrollo para TransportPro, un SaaS de gestión
+de flotas para empresas de transporte en Chile.
+
+## CONTEXTO TÉCNICO
+
+- App web HTML/JS vanilla + Supabase backend
+- Archivo principal: index.html (login + todos los módulos)
+- Supabase URL: https://wylmxqjpkdqxtqjkuqqn.supabase.co
+- CRÍTICO: siempre usar `const sb = window.supabase.createClient(URL, KEY)`
+  NUNCA usar `const supabase` (causa SyntaxError silencioso)
+- RLS habilitada: cada empresa solo ve sus datos (filtrar por empresa_id)
+- Formato moneda: toLocaleString('es-CL') — pesos chilenos sin decimales
+- Fechas mostrar: DD/MM/YYYY — guardar: ISO 8601
+
+## BASE DE DATOS ACTUAL
+
+- empresas: id, nombre
+- usuarios: id, empresa_id, rol
+- vehiculos: id, empresa_id, patente, marca, modelo
+- conductores: id, empresa_id, nombre, rut
+- clientes: id, empresa_id, nombre, rut
+- viajes: id, empresa_id, vehiculo_id, conductor_id, cliente_id,
+          monto, descripcion, fecha, estado
+- combustible: id, empresa_id, vehiculo_id, litros, costo, fecha
+- neumaticos: id, empresa_id, vehiculo_id, descripcion, costo, fecha
+- mantenimiento: id, empresa_id, vehiculo_id, descripcion, costo, fecha
+- gastos: id, empresa_id, descripcion, monto, fecha, categoria
+- facturas: id, empresa_id, viaje_id, numero_dte, pdf_url, estado
+
+═══════════════════════════════════════════════════════════
+PASO 1 — MIGRACIÓN SQL COMPLETA
+(entregar lista para copiar/pegar en Supabase SQL Editor)
+═══════════════════════════════════════════════════════════
+
+-- 1. Tipos de gasto
+CREATE TABLE IF NOT EXISTS tipos_gasto (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  empresa_id UUID REFERENCES empresas(id),
+  nombre TEXT NOT NULL,
+  categoria TEXT CHECK (categoria IN (
+    'operacional','administrativo','personal',
+    'vehiculo','financiero','otro'
+  )),
+  afecta_patente BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+INSERT INTO tipos_gasto (nombre, categoria, afecta_patente) VALUES
+('Combustible','vehiculo',true),
+('Neumáticos','vehiculo',true),
+('Mantención','vehiculo',true),
+('Peajes','operacional',true),
+('Permiso de circulación','vehiculo',false),
+('Revisión técnica','vehiculo',true),
+('Seguro vehicular','vehiculo',false),
+('Multas de tránsito','operacional',true),
+('Lavado y limpieza','vehiculo',true),
+('Repuestos','vehiculo',true),
+('Sueldo conductor','personal',false),
+('Anticipo conductor','personal',false),
+('Arriendo oficina','administrativo',false),
+('Servicios básicos','administrativo',false),
+('Contabilidad','administrativo',false),
+('Otro','otro',false);
+
+-- 2. Mejorar tabla gastos
+ALTER TABLE gastos
+ADD COLUMN IF NOT EXISTS tipo_gasto_id UUID REFERENCES tipos_gasto(id),
+ADD COLUMN IF NOT EXISTS vehiculo_id UUID REFERENCES vehiculos(id),
+ADD COLUMN IF NOT EXISTS conductor_id UUID REFERENCES conductores(id),
+ADD COLUMN IF NOT EXISTS proveedor_rut TEXT,
+ADD COLUMN IF NOT EXISTS proveedor_nombre TEXT,
+ADD COLUMN IF NOT EXISTS numero_documento TEXT,
+ADD COLUMN IF NOT EXISTS tipo_documento TEXT CHECK (tipo_documento IN (
+  'factura','boleta','ticket','otro'
+)) DEFAULT 'factura',
+ADD COLUMN IF NOT EXISTS monto_neto INTEGER DEFAULT 0,
+ADD COLUMN IF NOT EXISTS monto_iva INTEGER DEFAULT 0,
+ADD COLUMN IF NOT EXISTS monto_total INTEGER DEFAULT 0,
+ADD COLUMN IF NOT EXISTS imagen_url TEXT,
+ADD COLUMN IF NOT EXISTS observaciones TEXT,
+ADD COLUMN IF NOT EXISTS viaje_id UUID REFERENCES viajes(id);
+
+-- 3. Mejorar tabla facturas (cuentas por cobrar)
+ALTER TABLE facturas
+ADD COLUMN IF NOT EXISTS fecha_emision DATE,
+ADD COLUMN IF NOT EXISTS fecha_vencimiento DATE,
+ADD COLUMN IF NOT EXISTS monto_neto INTEGER DEFAULT 0,
+ADD COLUMN IF NOT EXISTS monto_iva INTEGER DEFAULT 0,
+ADD COLUMN IF NOT EXISTS monto_total INTEGER DEFAULT 0,
+ADD COLUMN IF NOT EXISTS estado_cobro TEXT CHECK (estado_cobro IN (
+  'pendiente','pagada','vencida','anulada'
+)) DEFAULT 'pendiente',
+ADD COLUMN IF NOT EXISTS fecha_pago DATE,
+ADD COLUMN IF NOT EXISTS forma_pago TEXT CHECK (forma_pago IN (
+  'transferencia','cheque','efectivo','otro'
+)),
+ADD COLUMN IF NOT EXISTS observaciones_cobro TEXT,
+ADD COLUMN IF NOT EXISTS dias_credito INTEGER DEFAULT 30;
+
+-- 4. Liquidaciones
+CREATE TABLE IF NOT EXISTS liquidaciones (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  empresa_id UUID REFERENCES empresas(id),
+  conductor_id UUID REFERENCES conductores(id),
+  fecha_inicio DATE NOT NULL,
+  fecha_fin DATE NOT NULL,
+  total_bruto INTEGER DEFAULT 0,
+  total_descuentos INTEGER DEFAULT 0,
+  total_neto INTEGER DEFAULT 0,
+  estado TEXT CHECK (estado IN (
+    'borrador','emitida','pagada'
+  )) DEFAULT 'borrador',
+  observaciones TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS liquidacion_items (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  liquidacion_id UUID REFERENCES liquidaciones(id) ON DELETE CASCADE,
+  tipo TEXT CHECK (tipo IN ('ingreso','descuento')),
+  concepto TEXT NOT NULL,
+  referencia_id UUID,
+  monto INTEGER NOT NULL,
+  fecha DATE
+);
+
+-- 5. RLS nuevas tablas
+ALTER TABLE liquidaciones ENABLE ROW LEVEL SECURITY;
+ALTER TABLE liquidacion_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE tipos_gasto ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "empresa_liquidaciones" ON liquidaciones
+  FOR ALL USING (empresa_id = (
+    SELECT empresa_id FROM usuarios WHERE id = auth.uid()
+  ));
+
+CREATE POLICY "empresa_liquidacion_items" ON liquidacion_items
+  FOR ALL USING (liquidacion_id IN (
+    SELECT id FROM liquidaciones WHERE empresa_id = (
+      SELECT empresa_id FROM usuarios WHERE id = auth.uid()
+    )
+  ));
+
+CREATE POLICY "tipos_gasto_publicos" ON tipos_gasto
+  FOR SELECT USING (
+    empresa_id IS NULL OR empresa_id = (
+      SELECT empresa_id FROM usuarios WHERE id = auth.uid()
+    )
+  );
+
+-- 6. Vista facturas vencidas
+CREATE OR REPLACE VIEW facturas_vencidas AS
+SELECT f.*, c.nombre as cliente_nombre, c.rut as cliente_rut,
+       CURRENT_DATE - f.fecha_vencimiento as dias_mora
+FROM facturas f
+JOIN clientes c ON c.id = f.viaje_id
+WHERE f.estado_cobro = 'pendiente'
+  AND f.fecha_vencimiento < CURRENT_DATE;
+
+═══════════════════════════════════════════════════════════
+PASO 2 — MÓDULO GASTOS (reemplazar el actual)
+═══════════════════════════════════════════════════════════
+
+### Formulario nuevo gasto:
+- Fecha (date, default hoy)
+- Tipo de gasto (select desde tipos_gasto)
+- Vehículo (select, opcional, solo si afecta_patente = true)
+- Conductor (select, opcional)
+- Tipo documento: Factura / Boleta / Ticket / Otro
+- RUT Proveedor (input formateado XX.XXX.XXX-X)
+- Nombre Proveedor
+- Número documento
+- Monto neto (input)
+- IVA (calculado automático 19%, mostrar en gris, editable)
+- Total (calculado automático, mostrar destacado)
+- Imagen factura (input file → Supabase Storage bucket 'facturas')
+- Observaciones
+
+### Tabla gastos:
+Fecha | Tipo | Vehículo | Proveedor | N° Doc | Neto | IVA | Total | 📄 | Acciones
+
+### Filtros:
+- Mes/año selector
+- Por tipo de gasto
+- Por vehículo
+- Por conductor
+- Por tipo documento
+
+### Totales al pie de tabla:
+- Total documentos del período
+- Total neto | Total IVA | Total bruto
+- Crédito fiscal IVA del período (suma IVA facturas de compra)
+
+═══════════════════════════════════════════════════════════
+PASO 3 — DASHBOARD FINANCIERO COMPLETO
+═══════════════════════════════════════════════════════════
+
+### Selector período (mes/año, default mes actual)
+
+### Fila 1 — Tarjetas resumen:
+┌──────────────┬──────────────┬──────────────┬──────────────┐
+│ 💰 INGRESOS  │ 📉 EGRESOS   │ 📊 MARGEN    │ 🚛 VIAJES    │
+│ $X.XXX.XXX   │ $X.XXX.XXX   │ XX%          │ XX viajes    │
+│ ↑ vs ant.    │ ↑ vs ant.    │ $X.XXX.XXX   │ $XXX prom.   │
+└──────────────┴──────────────┴──────────────┴──────────────┘
+
+### Fila 2 — Alertas:
+┌──────────────┬──────────────┬──────────────┐
+│ ⚠️ POR COBRAR│ 🔴 VENCIDAS  │ 📋 SIN LIQ.  │
+│ $X.XXX.XXX   │ X facturas   │ X conductores│
+│ X facturas   │ $X.XXX.XXX   │ mes anterior │
+└──────────────┴──────────────┴──────────────┘
+
+### Gráfico barras (últimos 6 meses) con Chart.js CDN:
+- Barras azules: Ingresos
+- Barras rojas: Egresos
+- Línea verde: Margen
+
+### Tabla: Margen por patente
+┌──────────┬──────────┬──────────┬──────────┬────────┬─────┐
+│ Patente  │ Modelo   │ Ingresos │ Egresos  │ Margen │  %  │
+├──────────┼──────────┼──────────┼──────────┼────────┼─────┤
+│ ABC-1234 │ Volvo FH │ $800.000 │ $320.000 │$480.000│ 60% │
+└──────────┴──────────┴──────────┴──────────┴────────┴─────┘
+Ingresos: viajes.vehiculo_id = patente
+Egresos: gastos donde afecta_patente = true y vehiculo_id = patente
+
+### Tabla: Egresos por categoría con barra visual
+- Vehículo: $XXX (XX%)  ████████░░
+- Operacional: $XXX (XX%) ██████░░░░
+- Personal: $XXX (XX%)  ████░░░░░░
+- Administrativo: $XXX  ███░░░░░░░
+
+### IVA del período:
+- IVA débito fiscal (ventas/facturas emitidas): $XXX
+- IVA crédito fiscal (compras/facturas recibidas): $XXX
+- IVA a pagar al SII: $XXX (diferencia)
+
+═══════════════════════════════════════════════════════════
+PASO 4 — MÓDULO CUENTAS POR COBRAR
+═══════════════════════════════════════════════════════════
+
+### Tabla principal:
+┌───────────┬─────────┬──────────┬───────────┬──────────┬────────┬────────────┐
+│ N° Factura│ Cliente │ Emisión  │Vencimiento│  Total   │ Estado │  Acciones  │
+├───────────┼─────────┼──────────┼───────────┼──────────┼────────┼────────────┤
+│ 001234    │Falabella│15/03/26  │ 14/04/26  │ $350.000 │PENDIENT│[Pagar][Ver]│
+│ 001235    │ Ripley  │10/03/26  │ 09/03/26  │ $180.000 │VENCIDA │[Pagar][Ver]│
+└───────────┴─────────┴──────────┴───────────┴──────────┴────────┴────────────┘
+
+Estados con colores:
+- PENDIENTE → azul
+- VENCIDA → rojo (con días mora: "5 días")
+- PAGADA → verde
+- ANULADA → gris
+
+### Filtros:
+- Por estado
+- Por cliente
+- Por mes de emisión/vencimiento
+
+### Modal "Registrar Pago":
+- Fecha de pago (date)
+- Forma de pago: Transferencia / Cheque / Efectivo / Otro
+- Monto recibido
+- N° transferencia o cheque
+- Observaciones
+- Botón: Confirmar pago → actualiza estado a 'pagada'
+
+### Resumen al pie:
+- Total pendiente de cobro: $X.XXX.XXX
+- Total vencido: $X.XXX.XXX (en rojo)
+- Total cobrado este mes: $X.XXX.XXX
+
+### Desde módulo Viajes al emitir factura:
+- Pedir días de crédito: 0 / 30 / 60 / 90 días
+- Calcular fecha_vencimiento automáticamente
+- Crear registro en facturas con estado_cobro = 'pendiente'
+
+═══════════════════════════════════════════════════════════
+PASO 5 — MÓDULO LIQUIDACIÓN TRANSPORTISTAS
+═══════════════════════════════════════════════════════════
+
+Para conductores/transportistas independientes (dueños de su camión).
+
+### Crear liquidación:
+1. Seleccionar conductor
+2. Seleccionar período (fecha_inicio — fecha_fin)
+3. Sistema carga automáticamente:
+   - Viajes del conductor en el período (como ingresos)
+   - Gastos asociados a ese conductor (como descuentos)
+4. Tabla editable con checkbox para incluir/excluir ítems
+5. Campo para agregar ítems manuales (anticipos, bonos, etc.)
+
+### Vista de liquidación:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+LIQUIDACIÓN N° 001 — Juan Pérez — Marzo 2026
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+INGRESOS (viajes):
+  15/03 Stgo → Valpo              $120.000
+  18/03 Valpo → Stgo              $135.000
+  22/03 Stgo → La Serena          $280.000
+  ─────────────────────────────── ─────────
+  TOTAL BRUTO                     $535.000
+
+DESCUENTOS:
+  Combustible (Fact. N° 1234)      $45.000
+  Peajes                           $12.000
+  Anticipo 01/03                   $50.000
+  ─────────────────────────────── ─────────
+  TOTAL DESCUENTOS                $107.000
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TOTAL A PAGAR                     $428.000
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Botones: [Guardar Borrador] [Emitir] [Imprimir] [Exportar Excel]
+
+### Lista liquidaciones:
+- Por conductor y mes
+- Estados: Borrador / Emitida / Pagada
+- Botón "Marcar como pagada" con registro de fecha
+
+═══════════════════════════════════════════════════════════
+PASO 6 — EXPORTAR A EXCEL
+═══════════════════════════════════════════════════════════
+
+Usar SheetJS desde CDN:
+<script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+
+Implementar botón "Exportar Excel" en:
+
+### Libro de Ventas (Viajes/Facturas):
+Columnas: N° Factura | Fecha | Cliente | RUT Cliente |
+          Neto | IVA | Total | Estado Cobro | Fecha Vencimiento
+
+### Libro de Compras (Gastos):
+Columnas: Fecha | N° Documento | Tipo | Proveedor | RUT Proveedor |
+          Neto | IVA | Total | Tipo Gasto | Vehículo
+
+### Reporte Financiero (Dashboard):
+Hoja 1: Resumen mensual (ingresos, egresos, margen)
+Hoja 2: Detalle ingresos
+Hoja 3: Detalle egresos
+Hoja 4: Margen por patente
+
+### Liquidación Transportista:
+Exportar liquidación individual con formato completo.
+
+### Cuentas por Cobrar:
+Columnas: N° Factura | Cliente | RUT | Emisión | Vencimiento |
+          Total | Estado | Días Mora | Fecha Pago
+
+Función genérica reutilizable:
+function exportarExcel(datos, nombreArchivo, nombreHoja) {
+  const ws = XLSX.utils.json_to_sheet(datos);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, nombreHoja);
+  const mes = new Date().toISOString().slice(0,7);
+  XLSX.writeFile(wb, nombreArchivo + '_' + mes + '.xlsx');
+}
+
+═══════════════════════════════════════════════════════════
+PASO 7 — SUPABASE STORAGE
+═══════════════════════════════════════════════════════════
+
+Crear bucket 'facturas' (privado con acceso autenticado).
+Path: {empresa_id}/{año}/{mes}/{uuid}_{nombre_original}
+
+En tabla gastos: ícono 📄 clickeable abre imagen en modal.
+
+═══════════════════════════════════════════════════════════
+ORDEN DE IMPLEMENTACIÓN
+═══════════════════════════════════════════════════════════
+
+1. Leer index.html completo (entender estructura actual)
+2. Entregar SQL completo listo para copiar/pegar
+3. Módulo Gastos mejorado
+4. Dashboard financiero con Chart.js
+5. Módulo Cuentas por Cobrar
+6. Módulo Liquidaciones
+7. Exportar Excel con SheetJS en todos los módulos
+8. Storage para imágenes de facturas
+
+═══════════════════════════════════════════════════════════
+REGLAS CRÍTICAS — LEER ANTES DE ESCRIBIR CÓDIGO
+═══════════════════════════════════════════════════════════
+
+✅ Usar siempre `sb` para Supabase (nunca `const supabase`)
+✅ Filtrar siempre por empresa_id (respetar RLS)
+✅ Montos en pesos CLP enteros (sin decimales)
+✅ toLocaleString('es-CL') para mostrar montos
+✅ No romper módulos existentes al agregar nuevos
+✅ Chart.js y SheetJS desde CDN (no npm)
+✅ Un solo archivo index.html (no crear archivos separados)
+✅ Código comentado en español

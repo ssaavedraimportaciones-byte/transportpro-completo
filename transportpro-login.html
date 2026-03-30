@@ -1,0 +1,1524 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TransportPro - Sistema de Gestión</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary: #2563eb; --success: #10b981; --danger: #ef4444;
+            --warning: #f59e0b; --dark: #1f2937; --light: #f9fafb;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        /* ── Login ─────────────────────────── */
+        #login {
+            min-height: 100vh;
+            display: flex; align-items: center; justify-content: center;
+            padding: 20px;
+        }
+        .login-box {
+            background: white; padding: 40px; border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3); max-width: 400px; width: 100%;
+        }
+        .login-logo { text-align: center; margin-bottom: 30px; }
+        .login-logo h1 {
+            font-size: 32px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            margin-bottom: 5px;
+        }
+
+        /* ── App ───────────────────────────── */
+        #app { display: none; padding: 15px; }
+        .container { max-width: 1600px; margin: 0 auto; }
+
+        .header {
+            background: white; padding: 14px 22px; border-radius: 12px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.12); margin-bottom: 14px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .header h1 { font-size: 20px; color: #333; }
+        .header-right { display: flex; align-items: center; gap: 10px; }
+        .empresa-badge {
+            background: #dbeafe; color: #1e40af;
+            padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;
+        }
+
+        /* ── Stats ──────────────────────────── */
+        .stats-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+            gap: 12px; margin-bottom: 14px;
+        }
+        .stat-card {
+            background: white; padding: 16px; border-radius: 10px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+        }
+        .stat-label { font-size: 10px; color: #666; text-transform: uppercase; letter-spacing: 0.5px; }
+        .stat-value { font-size: 22px; font-weight: bold; color: var(--primary); margin-top: 4px; }
+
+        /* ── Tabs ───────────────────────────── */
+        .tabs {
+            background: white; border-radius: 10px; padding: 8px;
+            margin-bottom: 12px; display: flex; flex-wrap: wrap; gap: 5px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+        }
+        .tab-btn {
+            padding: 8px 13px; border: none; background: var(--light);
+            border-radius: 7px; cursor: pointer; font-size: 12px; font-weight: 500;
+            color: #555; transition: all 0.2s;
+        }
+        .tab-btn:hover { background: #e0e7ff; color: var(--primary); }
+        .tab-btn.active { background: var(--primary); color: white; }
+
+        /* ── Section ────────────────────────── */
+        .section { display: none; }
+        .section.active { display: block; }
+        .section-card {
+            background: white; border-radius: 12px; padding: 22px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        }
+        .section-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 18px;
+        }
+        .section-header h2 { font-size: 17px; color: #333; }
+
+        /* ── Table ──────────────────────────── */
+        table { width: 100%; border-collapse: collapse; }
+        th {
+            background: var(--dark); color: white; padding: 10px 12px;
+            text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        td { padding: 9px 12px; border-bottom: 1px solid #f0f0f0; font-size: 13px; }
+        tr:hover td { background: #f8f9ff; }
+
+        /* ── Buttons ────────────────────────── */
+        .btn {
+            padding: 8px 16px; border: none; border-radius: 7px;
+            cursor: pointer; font-size: 13px; font-weight: 600; transition: opacity 0.2s;
+        }
+        .btn:hover { opacity: 0.85; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-success { background: var(--success); color: white; }
+        .btn-danger  { background: var(--danger);  color: white; }
+        .btn-sm { padding: 4px 9px; font-size: 11px; }
+        .btn-facturar { background: #0056b3; color: white; }
+        .btn-logout {
+            background: var(--danger); color: white; padding: 7px 13px;
+            border: none; border-radius: 6px; cursor: pointer; font-size: 12px;
+        }
+
+        /* ── Badge ──────────────────────────── */
+        .badge {
+            display: inline-block; padding: 3px 9px;
+            border-radius: 10px; font-size: 10px; font-weight: 600;
+        }
+        .badge-success { background: #d1fae5; color: #065f46; }
+        .badge-warning { background: #fef3c7; color: #92400e; }
+        .badge-info    { background: #dbeafe; color: #1e40af; }
+        .badge-danger  { background: #fee2e2; color: #991b1b; }
+
+        /* ── Forms ──────────────────────────── */
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(195px, 1fr)); gap: 14px; margin-bottom: 18px; }
+        .form-group label { display: block; margin-bottom: 5px; font-size: 12px; font-weight: 600; color: #555; }
+        .form-group input, .form-group select {
+            width: 100%; padding: 9px 12px; border: 2px solid #e5e7eb;
+            border-radius: 7px; font-size: 13px; transition: border 0.2s;
+        }
+        .form-group input:focus, .form-group select:focus { outline: none; border-color: var(--primary); }
+
+        /* ── Modal ──────────────────────────── */
+        .modal {
+            display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5); z-index: 1000;
+            align-items: center; justify-content: center; padding: 20px;
+        }
+        .modal.open { display: flex; }
+        .modal-content {
+            background: white; border-radius: 15px; padding: 28px;
+            max-width: 620px; width: 100%; max-height: 88vh; overflow-y: auto;
+        }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 22px; }
+        .modal-header h2 { font-size: 17px; }
+        .close-modal { background: none; border: none; font-size: 24px; cursor: pointer; color: #666; }
+
+        /* ── KPI cards ──────────────────────── */
+        .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(135px, 1fr)); gap: 11px; margin-bottom: 18px; }
+        .kpi-card { background: #f8f9ff; border-radius: 8px; padding: 14px; border-left: 3px solid var(--primary); }
+        .kpi-label { font-size: 11px; color: #666; }
+        .kpi-value { font-size: 19px; font-weight: bold; color: var(--primary); margin-top: 3px; }
+
+        /* ── Alert login ────────────────────── */
+        .alert { padding: 11px; border-radius: 8px; margin-bottom: 14px; font-size: 13px; }
+        .alert-error { background: #fee2e2; color: #991b1b; border-left: 4px solid #ef4444; }
+        .hidden { display: none; }
+
+        /* ── Toast ──────────────────────────── */
+        #toast {
+            position: fixed; bottom: 20px; right: 20px;
+            background: #1f2937; color: white; padding: 11px 18px;
+            border-radius: 8px; font-size: 13px; display: none;
+            z-index: 9999; box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        .empty-row td, .loading-row td { text-align: center; padding: 40px; color: #999; font-style: italic; }
+    </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════
+     LOGIN
+══════════════════════════════════════════ -->
+<div id="login">
+    <div class="login-box">
+        <div class="login-logo">
+            <h1>🚚 TransportPro</h1>
+            <p style="color:#666;font-size:13px">Sistema Profesional de Gestión de Flota</p>
+        </div>
+        <div id="loginAlert" class="hidden"></div>
+       <div id="loginFormContainer">
+    <form id="loginForm">
+    <div class="form-group" style="margin-bottom:16px">
+        <label>Email</label>
+        <input type="email" id="loginEmail" placeholder="tu@empresa.cl" required>
+    </div>
+    <div class="form-group" style="margin-bottom:22px">
+        <label>Contraseña</label>
+        <input type="password" id="loginPass" placeholder="••••••••" required>
+    </div>
+    <button type="submit" class="btn btn-primary" id="btnLogin"
+        style="width:100%;padding:13px;font-size:15px">Iniciar Sesión</button>
+</form>
+</div>
+        <p style="text-align:center;margin-top:18px;font-size:11px;color:#aaa">
+            TransportPro © 2026 · Gestión profesional de flotas
+        </p>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     APP
+══════════════════════════════════════════ -->
+<div id="app">
+<div class="container">
+
+    <!-- Header -->
+    <div class="header">
+        <h1>🚚 TransportPro</h1>
+        <div class="header-right">
+            <span class="empresa-badge" id="hdrEmpresa"></span>
+            <span style="font-size:13px;font-weight:600;color:#444" id="hdrUser"></span>
+            <button class="btn-logout" onclick="logout()">Cerrar Sesión</button>
+        </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-label">Viajes del Mes</div>
+            <div class="stat-value" id="stViajes">—</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Ingresos del Mes</div>
+            <div class="stat-value" id="stIngresos">—</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Vehículos Activos</div>
+            <div class="stat-value" id="stVehiculos">—</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Por Cobrar</div>
+            <div class="stat-value" id="stCobrar">—</div>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('viajes',this)">📍 Viajes</button>
+        <button class="tab-btn" onclick="switchTab('clientes',this)">👥 Clientes</button>
+        <button class="tab-btn" onclick="switchTab('facturacion',this)">💰 Facturación</button>
+        <button class="tab-btn" onclick="switchTab('vehiculos',this)">🚛 Flota</button>
+        <button class="tab-btn" onclick="switchTab('conductores',this)">👤 Conductores</button>
+        <button class="tab-btn" onclick="switchTab('combustible',this)">⛽ Combustible</button>
+        <button class="tab-btn" onclick="switchTab('gastos',this)">💸 Gastos</button>
+        <button class="tab-btn" onclick="switchTab('mantenimiento',this)">🔧 Mantenimiento</button>
+        <button class="tab-btn" onclick="switchTab('rentabilidad',this)">📈 Rentabilidad</button>
+    </div>
+
+    <!-- ── VIAJES ───────────────────────────────── -->
+    <div id="sec-viajes" class="section active">
+        <div class="section-card">
+            <div class="section-header">
+                <h2>Gestión de Viajes</h2>
+                <button class="btn btn-primary" onclick="openModal('mViaje')">+ Nuevo Viaje</button>
+            </div>
+            <!-- Filtros -->
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+                <input type="text" id="fVBuscar" placeholder="🔍 Buscar cliente, ruta, guía, contenedor..."
+                    style="flex:1;min-width:200px;padding:7px 10px;border:2px solid #e5e7eb;border-radius:7px;font-size:13px"
+                    oninput="filtrarViajes()">
+                <select id="fVTipoCarga" onchange="filtrarViajes()"
+                    style="padding:7px 10px;border:2px solid #e5e7eb;border-radius:7px;font-size:13px">
+                    <option value="">Todos los tipos</option>
+                    <option value="general">General</option>
+                    <option value="contenedor">Contenedor</option>
+                    <option value="refrigerado">Refrigerado</option>
+                    <option value="peligroso">Peligroso</option>
+                    <option value="granel">Granel</option>
+                    <option value="sobredimensionado">Sobredimensionado</option>
+                    <option value="liquidos">Líquidos</option>
+                    <option value="vehiculos">Vehículos</option>
+                </select>
+                <select id="fVEstado" onchange="filtrarViajes()"
+                    style="padding:7px 10px;border:2px solid #e5e7eb;border-radius:7px;font-size:13px">
+                    <option value="">Todos los estados</option>
+                    <option value="planificado">Planificado</option>
+                    <option value="en_ruta">En Ruta</option>
+                    <option value="completado">Completado</option>
+                </select>
+            </div>
+            <table>
+                <thead><tr>
+                    <th>N° Viaje</th><th>Fecha</th><th>Cliente</th><th>Ruta</th>
+                    <th>Tipo Carga</th><th>N° Guía</th><th>Tarifa</th><th>Estado</th><th>Acciones</th>
+                </tr></thead>
+                <tbody id="tViajes">
+                    <tr class="loading-row"><td colspan="9">Cargando viajes...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ── CLIENTES ─────────────────────────────── -->
+    <div id="sec-clientes" class="section">
+        <div class="section-card">
+            <div class="section-header">
+                <h2>Clientes</h2>
+                <button class="btn btn-primary" onclick="openModal('mCliente')">+ Nuevo Cliente</button>
+            </div>
+            <table>
+                <thead><tr>
+                    <th>RUT</th><th>Razón Social</th><th>Contacto</th>
+                    <th>Teléfono</th><th>Email</th><th>Acciones</th>
+                </tr></thead>
+                <tbody id="tClientes">
+                    <tr class="loading-row"><td colspan="6">Cargando clientes...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ── FACTURACIÓN ──────────────────────────── -->
+    <div id="sec-facturacion" class="section">
+        <div class="section-card">
+            <div class="section-header">
+                <h2>Facturación y Cobranza</h2>
+                <button class="btn btn-primary" onclick="openModal('mFactura')">+ Nueva Factura</button>
+            </div>
+            <div class="kpi-grid">
+                <div class="kpi-card"><div class="kpi-label">Facturado Mes</div><div class="kpi-value" id="kFact1">$0</div></div>
+                <div class="kpi-card"><div class="kpi-label">Por Cobrar</div><div class="kpi-value" id="kFact2">$0</div></div>
+                <div class="kpi-card"><div class="kpi-label">Cobrado Mes</div><div class="kpi-value" id="kFact3">$0</div></div>
+            </div>
+            <table>
+                <thead><tr>
+                    <th>N° Factura</th><th>Fecha</th><th>Cliente</th>
+                    <th>Monto</th><th>Vencimiento</th><th>Estado</th><th>Acciones</th>
+                </tr></thead>
+                <tbody id="tFacturas">
+                    <tr class="loading-row"><td colspan="7">Cargando facturas...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ── FLOTA ────────────────────────────────── -->
+    <div id="sec-vehiculos" class="section">
+        <div class="section-card">
+            <div class="section-header">
+                <h2>Flota de Vehículos</h2>
+                <button class="btn btn-primary" onclick="openModal('mVehiculo')">+ Nuevo Vehículo</button>
+            </div>
+            <table>
+                <thead><tr>
+                    <th>Patente</th><th>Marca / Modelo</th><th>Año</th>
+                    <th>KM</th><th>Estado</th><th>Acciones</th>
+                </tr></thead>
+                <tbody id="tVehiculos">
+                    <tr class="loading-row"><td colspan="6">Cargando flota...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ── CONDUCTORES ──────────────────────────── -->
+    <div id="sec-conductores" class="section">
+        <div class="section-card">
+            <div class="section-header">
+                <h2>Conductores</h2>
+                <button class="btn btn-primary" onclick="openModal('mConductor')">+ Nuevo Conductor</button>
+            </div>
+            <table>
+                <thead><tr>
+                    <th>RUT</th><th>Nombre</th><th>Teléfono</th>
+                    <th>Licencia</th><th>Venc. Licencia</th><th>Acciones</th>
+                </tr></thead>
+                <tbody id="tConductores">
+                    <tr class="loading-row"><td colspan="6">Cargando conductores...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ── COMBUSTIBLE ──────────────────────────── -->
+    <div id="sec-combustible" class="section">
+        <div class="section-card">
+            <div class="section-header">
+                <h2>Control de Combustible</h2>
+                <button class="btn btn-primary" onclick="openModal('mCombustible')">+ Registrar Carga</button>
+            </div>
+            <table>
+                <thead><tr>
+                    <th>Fecha</th><th>Vehículo</th><th>Litros</th>
+                    <th>Precio/L</th><th>Total</th><th>Odómetro</th><th>Acciones</th>
+                </tr></thead>
+                <tbody id="tCombustible">
+                    <tr class="loading-row"><td colspan="7">Cargando combustible...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ── GASTOS ───────────────────────────────── -->
+    <div id="sec-gastos" class="section">
+        <div class="section-card">
+            <div class="section-header">
+                <h2>Gastos Operacionales</h2>
+                <button class="btn btn-primary" onclick="openModal('mGasto')">+ Nuevo Gasto</button>
+            </div>
+            <table>
+                <thead><tr>
+                    <th>Fecha</th><th>Vehículo</th><th>Categoría</th>
+                    <th>Descripción</th><th>Monto</th><th>Acciones</th>
+                </tr></thead>
+                <tbody id="tGastos">
+                    <tr class="loading-row"><td colspan="6">Cargando gastos...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ── MANTENIMIENTO ────────────────────────── -->
+    <div id="sec-mantenimiento" class="section">
+        <div class="section-card">
+            <div class="section-header">
+                <h2>Mantenimiento Preventivo</h2>
+                <button class="btn btn-primary" onclick="openModal('mMantenimiento')">+ Programar</button>
+            </div>
+            <table>
+                <thead><tr>
+                    <th>Vehículo</th><th>Tipo</th><th>Descripción</th>
+                    <th>KM Prog.</th><th>Fecha Prog.</th><th>Estado</th><th>Acciones</th>
+                </tr></thead>
+                <tbody id="tMantenimiento">
+                    <tr class="loading-row"><td colspan="7">Cargando mantenciones...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ── RENTABILIDAD ─────────────────────────── -->
+    <div id="sec-rentabilidad" class="section">
+        <div class="section-card">
+            <div class="section-header"><h2>Análisis de Rentabilidad</h2></div>
+            <div class="kpi-grid" id="kpiRent"></div>
+            <h3 style="margin:18px 0 10px;font-size:14px;color:#555">TOP RUTAS POR INGRESO</h3>
+            <table>
+                <thead><tr>
+                    <th>Ruta</th><th>Viajes</th><th>Ingresos</th><th>Promedio/Viaje</th>
+                </tr></thead>
+                <tbody id="tRentabilidad">
+                    <tr class="loading-row"><td colspan="4">Calculando...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div><!-- /container -->
+</div><!-- /app -->
+
+<!-- ══════════════════════════════════════════
+     MODALS
+══════════════════════════════════════════ -->
+
+<!-- Modal Viaje -->
+<div id="mViaje" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Nuevo Viaje</h2>
+            <button class="close-modal" onclick="closeModal('mViaje')">&times;</button>
+        </div>
+        <form onsubmit="saveViaje(event)">
+            <div class="form-grid">
+                <div class="form-group"><label>Fecha *</label><input type="date" id="iVFecha" required></div>
+                <div class="form-group"><label>Cliente *</label><select id="iVCliente" required><option value="">Seleccionar...</option></select></div>
+                <div class="form-group"><label>Vehículo</label><select id="iVVehiculo"><option value="">Sin vehículo</option></select></div>
+                <div class="form-group"><label>Conductor</label><select id="iVConductor"><option value="">Sin conductor</option></select></div>
+                <div class="form-group"><label>Origen *</label><input type="text" id="iVOrigen" required placeholder="Ciudad origen"></div>
+                <div class="form-group"><label>Destino *</label><input type="text" id="iVDestino" required placeholder="Ciudad destino"></div>
+                <div class="form-group"><label>KM Inicial</label><input type="number" id="iVKmI" placeholder="0"></div>
+                <div class="form-group"><label>Tarifa ($) *</label><input type="number" id="iVTarifa" required placeholder="0"></div>
+                <div class="form-group"><label>Tipo de Carga</label>
+                    <select id="iVTipoCarga">
+                        <option value="">Sin especificar</option>
+                        <option value="general">General</option>
+                        <option value="contenedor">Contenedor</option>
+                        <option value="refrigerado">Refrigerado</option>
+                        <option value="peligroso">Peligroso / ADR</option>
+                        <option value="granel">Granel</option>
+                        <option value="sobredimensionado">Sobredimensionado</option>
+                        <option value="liquidos">Líquidos / Cisterna</option>
+                        <option value="vehiculos">Vehículos</option>
+                        <option value="otro">Otro</option>
+                    </select>
+                </div>
+                <div class="form-group"><label>N° Guía de Despacho</label><input type="text" id="iVNumGuia" placeholder="GD-000000"></div>
+                <div class="form-group"><label>N° Contenedor</label><input type="text" id="iVNumContenedor" placeholder="ABCD1234567"></div>
+                <div class="form-group"><label>Estado</label>
+                    <select id="iVEstado">
+                        <option value="planificado">Planificado</option>
+                        <option value="en_ruta">En Ruta</option>
+                        <option value="completado">Completado</option>
+                    </select>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-success">Guardar Viaje</button>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Cliente -->
+<div id="mCliente" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Nuevo Cliente</h2>
+            <button class="close-modal" onclick="closeModal('mCliente')">&times;</button>
+        </div>
+        <form onsubmit="saveCliente(event)">
+            <div class="form-grid">
+                <div class="form-group"><label>RUT *</label><input type="text" id="iCRut" required placeholder="12345678-9"></div>
+                <div class="form-group"><label>Razón Social *</label><input type="text" id="iCRazon" required></div>
+                <div class="form-group"><label>Contacto</label><input type="text" id="iCContacto"></div>
+                <div class="form-group"><label>Teléfono</label><input type="tel" id="iCTel" placeholder="+56 9 XXXX XXXX"></div>
+                <div class="form-group"><label>Email</label><input type="email" id="iCEmail"></div>
+                <div class="form-group"><label>Tarifa Base ($)</label><input type="number" id="iCTarifa" placeholder="0"></div>
+            </div>
+            <button type="submit" class="btn btn-success">Guardar Cliente</button>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Factura -->
+<div id="mFactura" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Nueva Factura</h2>
+            <button class="close-modal" onclick="closeModal('mFactura')">&times;</button>
+        </div>
+        <form onsubmit="saveFactura(event)">
+            <div class="form-grid">
+                <div class="form-group"><label>Cliente *</label><select id="iFCliente" required><option value="">Seleccionar...</option></select></div>
+                <div class="form-group"><label>Fecha *</label><input type="date" id="iFFecha" required></div>
+                <div class="form-group"><label>Vencimiento *</label><input type="date" id="iFVenc" required></div>
+                <div class="form-group"><label>Monto ($) *</label><input type="number" id="iFMonto" required placeholder="0"></div>
+            </div>
+            <button type="submit" class="btn btn-success">Generar Factura</button>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Vehículo -->
+<div id="mVehiculo" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Nuevo Vehículo</h2>
+            <button class="close-modal" onclick="closeModal('mVehiculo')">&times;</button>
+        </div>
+        <form onsubmit="saveVehiculo(event)">
+            <div class="form-grid">
+                <div class="form-group"><label>Patente *</label><input type="text" id="iVhPatente" required placeholder="XXXX-XX"></div>
+                <div class="form-group"><label>Marca *</label><input type="text" id="iVhMarca" required></div>
+                <div class="form-group"><label>Modelo *</label><input type="text" id="iVhModelo" required></div>
+                <div class="form-group"><label>Año *</label><input type="number" id="iVhAno" required placeholder="2024"></div>
+                <div class="form-group"><label>KM Actual</label><input type="number" id="iVhKm" placeholder="0"></div>
+                <div class="form-group"><label>Estado</label>
+                    <select id="iVhEstado">
+                        <option value="operativo">Operativo</option>
+                        <option value="mantenimiento">En Mantenimiento</option>
+                        <option value="baja">Baja</option>
+                    </select>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-success">Guardar Vehículo</button>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Conductor -->
+<div id="mConductor" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Nuevo Conductor</h2>
+            <button class="close-modal" onclick="closeModal('mConductor')">&times;</button>
+        </div>
+        <form onsubmit="saveConductor(event)">
+            <div class="form-grid">
+                <div class="form-group"><label>RUT *</label><input type="text" id="iCdRut" required placeholder="12345678-9"></div>
+                <div class="form-group"><label>Nombre *</label><input type="text" id="iCdNombre" required></div>
+                <div class="form-group"><label>Teléfono *</label><input type="tel" id="iCdTel" required placeholder="+56 9 XXXX XXXX"></div>
+                <div class="form-group"><label>N° Licencia *</label><input type="text" id="iCdLic" required></div>
+                <div class="form-group"><label>Venc. Licencia *</label><input type="date" id="iCdVenc" required></div>
+                <div class="form-group"><label>Estado</label>
+                    <select id="iCdEstado">
+                        <option value="activo">Activo</option>
+                        <option value="inactivo">Inactivo</option>
+                    </select>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-success">Guardar Conductor</button>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Combustible -->
+<div id="mCombustible" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Registrar Carga de Combustible</h2>
+            <button class="close-modal" onclick="closeModal('mCombustible')">&times;</button>
+        </div>
+        <form onsubmit="saveCombustible(event)">
+            <div class="form-grid">
+                <div class="form-group"><label>Vehículo *</label><select id="iCoVeh" required><option value="">Seleccionar...</option></select></div>
+                <div class="form-group"><label>Fecha *</label><input type="date" id="iCoFecha" required></div>
+                <div class="form-group"><label>Litros *</label><input type="number" step="0.1" id="iCoLit" required placeholder="0.0"></div>
+                <div class="form-group"><label>Precio/L ($) *</label><input type="number" id="iCoPrecio" required placeholder="0"></div>
+                <div class="form-group"><label>Odómetro (km)</label><input type="number" id="iCoOdo" placeholder="0"></div>
+            </div>
+            <button type="submit" class="btn btn-success">Guardar Carga</button>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Gasto -->
+<div id="mGasto" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Registrar Gasto</h2>
+            <button class="close-modal" onclick="closeModal('mGasto')">&times;</button>
+        </div>
+        <form onsubmit="saveGasto(event)">
+            <div class="form-grid">
+                <div class="form-group"><label>Vehículo</label><select id="iGVeh"><option value="">Sin vehículo</option></select></div>
+                <div class="form-group"><label>Fecha *</label><input type="date" id="iGFecha" required></div>
+                <div class="form-group"><label>Categoría *</label>
+                    <select id="iGCat" required>
+                        <option value="">Seleccionar...</option>
+                        <option value="repuesto">Repuesto</option>
+                        <option value="lubricante">Lubricante</option>
+                        <option value="lavado">Lavado</option>
+                        <option value="peaje">Peaje</option>
+                        <option value="multa">Multa</option>
+                        <option value="seguro">Seguro</option>
+                        <option value="otro">Otro</option>
+                    </select>
+                </div>
+                <div class="form-group"><label>Descripción *</label><input type="text" id="iGDesc" required></div>
+                <div class="form-group"><label>Monto ($) *</label><input type="number" id="iGMonto" required placeholder="0"></div>
+            </div>
+            <button type="submit" class="btn btn-success">Guardar Gasto</button>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Mantenimiento -->
+<div id="mMantenimiento" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Programar Mantención</h2>
+            <button class="close-modal" onclick="closeModal('mMantenimiento')">&times;</button>
+        </div>
+        <form onsubmit="saveMantenimiento(event)">
+            <div class="form-grid">
+                <div class="form-group"><label>Vehículo *</label><select id="iMVeh" required><option value="">Seleccionar...</option></select></div>
+                <div class="form-group"><label>Tipo *</label>
+                    <select id="iMTipo" required>
+                        <option value="preventivo">Preventivo</option>
+                        <option value="correctivo">Correctivo</option>
+                        <option value="revision">Revisión</option>
+                    </select>
+                </div>
+                <div class="form-group"><label>Descripción *</label><input type="text" id="iMDesc" required></div>
+                <div class="form-group"><label>KM Programado</label><input type="number" id="iMKm" placeholder="0"></div>
+                <div class="form-group"><label>Fecha Programada</label><input type="date" id="iMFecha"></div>
+            </div>
+            <button type="submit" class="btn btn-success">Programar Mantención</button>
+        </form>
+    </div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<!-- ══════════════════════════════════════════
+     SCRIPT
+══════════════════════════════════════════ -->
+<script>
+// ═══════════════════════════════════════════════════════════
+// CONFIGURACIÓN
+// ═══════════════════════════════════════════════════════════
+const SUPABASE_URL      = 'https://wylmxqjpkdqxtqjkuqqn.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind5bG14cWpwa2RxeHRxamt1cXFuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI2MjM1NjIsImV4cCI6MjA4ODE5OTU2Mn0.w48iwlUoXw1dQVm_j58vBElTWTSN57Vym8T1Wy-Osy4';
+
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let currentUser    = null;
+let currentEmpresa = null;
+// ═══════════════════════════════════════════════════════════
+// UTILIDADES
+// ═══════════════════════════════════════════════════════════
+function toast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.style.display = 'block';
+    setTimeout(() => t.style.display = 'none', 3200);
+}
+
+function fmt(n)      { return (n || 0).toLocaleString('es-CL'); }
+function fmtDate(d)  { return d ? new Date(d + 'T12:00:00').toLocaleDateString('es-CL') : '-'; }
+function today()     { return new Date().toISOString().split('T')[0]; }
+function shortId(id) { return id ? id.slice(-6).toUpperCase() : '???'; }
+
+const colorEstado = {
+    planificado: 'badge-info',  en_ruta: 'badge-warning', completado: 'badge-success',
+    pendiente:   'badge-warning', pagada: 'badge-success',  vencida:    'badge-danger',
+    operativo:   'badge-success', mantenimiento: 'badge-warning', baja: 'badge-danger',
+    activo:      'badge-success', inactivo: 'badge-danger',
+    realizado:   'badge-success', preventivo: 'badge-info', correctivo: 'badge-danger'
+};
+
+// ═══════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
+// AUTH
+// ═══════════════════════════════════════════════════════════
+
+document.getElementById("loginForm").addEventListener("submit", async function(e) {
+
+  e.preventDefault();
+
+  const btn = document.getElementById("btnLogin");
+  btn.disabled = true;
+  btn.textContent = "Ingresando...";
+
+  const email = document.getElementById("loginEmail").value;
+  const pass  = document.getElementById("loginPass").value;
+
+  try {
+
+    const { data, error } = await sb.auth.signInWithPassword({
+      email: email,
+      password: pass
+    });
+
+    if (error) throw error;
+
+    // cargar usuario del sistema
+    await cargarSesion(data.user.id);
+
+  } catch (err) {
+
+    alert("Error de login: " + err.message);
+
+    btn.disabled = false;
+    btn.textContent = "Iniciar Sesión";
+
+  }
+
+});
+
+async function cargarSesion(userId) {
+    const { data, error } = await sb
+        .from('usuarios')
+        .select('*, empresas(*)')
+        .eq('id', userId)
+        .single();
+
+    if (error) throw new Error('Usuario no encontrado en el sistema');
+
+    currentUser    = data;
+    currentEmpresa = data.empresas;
+    
+    iniciarApp();
+
+}
+
+function iniciarApp() {
+    document.getElementById('login').style.display = 'none';
+    document.getElementById('app').style.display   = 'block';
+    document.getElementById('hdrEmpresa').textContent = currentEmpresa.nombre;
+    document.getElementById('hdrUser').textContent    = currentUser.nombre;
+    renderViajes();
+    updateStats();
+}
+
+async function logout() {
+    await sb.auth.signOut();
+    location.reload();
+}
+
+function mostrarErrorLogin(msg) {
+    const el = document.getElementById('loginAlert');
+    el.className = 'alert alert-error';
+    el.textContent = msg;
+    el.classList.remove('hidden');
+}
+
+// Sesión existente al cargar la página
+(async () => {
+    const { data: { session } } = await sb.auth.getSession();
+    if (session) {
+        try { await cargarSesion(session.user.id); }
+        catch (e) { console.error('Sesión inválida:', e); }
+    }
+})();
+
+// ═══════════════════════════════════════════════════════════
+// NAVEGACIÓN
+// ═══════════════════════════════════════════════════════════
+const moduloRender = {
+    viajes: renderViajes,  clientes: renderClientes,
+    facturacion: renderFacturacion, vehiculos: renderVehiculos,
+    conductores: renderConductores, combustible: renderCombustible,
+    gastos: renderGastos, mantenimiento: renderMantenimiento,
+    rentabilidad: renderRentabilidad
+};
+
+function switchTab(tab, btn) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('sec-' + tab).classList.add('active');
+    btn.classList.add('active');
+    if (moduloRender[tab]) moduloRender[tab]();
+}
+
+// ═══════════════════════════════════════════════════════════
+// MODALS
+// ═══════════════════════════════════════════════════════════
+function openModal(id) {
+    document.getElementById(id).classList.add('open');
+    const t = today();
+    if (id === 'mViaje')       { cargarSelectsViaje(); document.getElementById('iVFecha').value = t; }
+    if (id === 'mFactura')     { cargarSelectsFactura(); document.getElementById('iFFecha').value = t; }
+    if (id === 'mCombustible') { cargarSelectVehiculo('iCoVeh', false); document.getElementById('iCoFecha').value = t; }
+    if (id === 'mGasto')       { cargarSelectVehiculo('iGVeh', true);  document.getElementById('iGFecha').value  = t; }
+    if (id === 'mMantenimiento') { cargarSelectVehiculo('iMVeh', false); }
+}
+
+function closeModal(id) {
+    document.getElementById(id).classList.remove('open');
+    document.querySelector(`#${id} form`)?.reset();
+    if (id === 'mViaje') {
+        _editingViajeId = null;
+        document.querySelector('#mViaje .modal-header h2').textContent = 'Nuevo Viaje';
+    }
+}
+
+document.addEventListener('click', e => {
+    if (e.target.classList.contains('modal')) closeModal(e.target.id);
+});
+
+// ═══════════════════════════════════════════════════════════
+// STATS (KPIs header)
+// ═══════════════════════════════════════════════════════════
+async function updateStats() {
+    if (!currentEmpresa) return;
+    const eid = currentEmpresa.id;
+    const mesInicio = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+        .toISOString().split('T')[0];
+
+    const [{ count: nViajes }, { data: vMes }, { count: nVeh }, { data: fPend }] = await Promise.all([
+        sb.from('viajes').select('*',{count:'exact',head:true}).eq('empresa_id',eid).gte('fecha',mesInicio),
+        sb.from('viajes').select('tarifa').eq('empresa_id',eid).gte('fecha',mesInicio),
+        sb.from('vehiculos').select('*',{count:'exact',head:true}).eq('empresa_id',eid).eq('estado','operativo'),
+        sb.from('facturas').select('monto').eq('empresa_id',eid).eq('estado','pendiente')
+    ]);
+
+    const ingresos = (vMes||[]).reduce((s,v) => s+(v.tarifa||0), 0);
+    const cobrar   = (fPend||[]).reduce((s,f) => s+(f.monto||0), 0);
+
+    document.getElementById('stViajes').textContent   = nViajes || 0;
+    document.getElementById('stIngresos').textContent = '$' + fmt(ingresos);
+    document.getElementById('stVehiculos').textContent = nVeh || 0;
+    document.getElementById('stCobrar').textContent   = '$' + fmt(cobrar);
+}
+
+// ═══════════════════════════════════════════════════════════
+// MÓDULO: VIAJES
+// ═══════════════════════════════════════════════════════════
+let _viajesData = [];
+let _editingViajeId = null;
+
+async function renderViajes() {
+    if (!currentEmpresa) return;
+    const t = document.getElementById('tViajes');
+    t.innerHTML = '<tr class="loading-row"><td colspan="9">Cargando...</td></tr>';
+
+    const { data, error } = await sb
+        .from('viajes')
+        .select('*, clientes(rut, razon_social, email), vehiculos(patente)')
+        .eq('empresa_id', currentEmpresa.id)
+        .order('fecha', { ascending: false });
+
+    if (error) { t.innerHTML = `<tr class="empty-row"><td colspan="9">⚠️ ${error.message}</td></tr>`; return; }
+
+    _viajesData = data || [];
+    filtrarViajes();
+}
+
+function filtrarViajes() {
+    const t = document.getElementById('tViajes');
+    if (!t) return;
+    const buscar    = (document.getElementById('fVBuscar')?.value    || '').toLowerCase();
+    const tipoCarga = (document.getElementById('fVTipoCarga')?.value || '');
+    const estado    = (document.getElementById('fVEstado')?.value    || '');
+
+    const filtrados = _viajesData.filter(v => {
+        const txt = [
+            v.clientes?.razon_social, v.origen, v.destino,
+            v.numero_guia, v.numero_contenedor, v.clientes?.rut
+        ].join(' ').toLowerCase();
+        return (!buscar    || txt.includes(buscar))
+            && (!tipoCarga || v.tipo_carga === tipoCarga)
+            && (!estado    || v.estado === estado);
+    });
+
+    t.innerHTML = filtrados.length ? filtrados.map(v => {
+        const rut       = (v.clientes?.rut         || '').replace(/'/g,"");
+        const nombre    = (v.clientes?.razon_social || '').replace(/'/g,"");
+        const email     = (v.clientes?.email        || '').replace(/'/g,"");
+        const ruta      = ((v.origen||'') + ' - ' + (v.destino||'')).replace(/'/g,"");
+        const clienteId = v.cliente_id || '';
+        const tipoBadge = v.tipo_carga
+            ? `<span class="badge badge-info" style="font-size:10px">${v.tipo_carga}</span>`
+            : '—';
+        return `<tr>
+        <td><strong>VJ-${shortId(v.id)}</strong></td>
+        <td>${fmtDate(v.fecha)}</td>
+        <td>${v.clientes?.razon_social || '—'}</td>
+        <td>${v.origen || '—'} → ${v.destino || '—'}</td>
+        <td>${tipoBadge}</td>
+        <td style="font-size:11px">${v.numero_guia || v.numero_contenedor || '—'}</td>
+        <td><strong>$${fmt(v.tarifa)}</strong></td>
+        <td><span class="badge ${colorEstado[v.estado] || 'badge-info'}">${v.estado}</span></td>
+        <td style="white-space:nowrap">
+            <button class="btn btn-sm" style="margin-right:4px;background:#6c757d;color:#fff"
+                onclick="editarViaje('${v.id}')">✏️</button>
+            <button class="btn btn-facturar btn-sm" style="margin-right:4px"
+                onclick="emitirFactura('${v.id}','${rut}',${v.tarifa||0},'${ruta}','${nombre}','${email}','${clienteId}',this)">
+                🧾
+            </button>
+            <button class="btn btn-danger btn-sm" onclick="eliminarRegistro('viajes','${v.id}',renderViajes)">✕</button>
+        </td>
+    </tr>`;}).join('') : '<tr class="empty-row"><td colspan="9">Sin viajes registrados</td></tr>';
+}
+
+function editarViaje(id) {
+    const v = _viajesData.find(x => x.id === id);
+    if (!v) return;
+    _editingViajeId = id;
+    document.querySelector('#mViaje .modal-header h2').textContent = 'Editar Viaje';
+    document.getElementById('iVFecha').value          = v.fecha || '';
+    document.getElementById('iVOrigen').value         = v.origen || '';
+    document.getElementById('iVDestino').value        = v.destino || '';
+    document.getElementById('iVKmI').value            = v.km_inicial || '';
+    document.getElementById('iVTarifa').value         = v.tarifa || '';
+    document.getElementById('iVEstado').value         = v.estado || 'planificado';
+    document.getElementById('iVTipoCarga').value      = v.tipo_carga || '';
+    document.getElementById('iVNumGuia').value        = v.numero_guia || '';
+    document.getElementById('iVNumContenedor').value  = v.numero_contenedor || '';
+    if (v.cliente_id)   document.getElementById('iVCliente').value   = v.cliente_id;
+    if (v.vehiculo_id)  document.getElementById('iVVehiculo').value   = v.vehiculo_id;
+    if (v.conductor_id) document.getElementById('iVConductor').value  = v.conductor_id;
+    openModal('mViaje');
+}
+
+async function saveViaje(e) {
+    e.preventDefault();
+    const btn = e.submitter; btn.disabled = true;
+    try {
+        const clienteId   = document.getElementById('iVCliente').value;
+        const vehiculoId  = document.getElementById('iVVehiculo').value;
+        const conductorId = document.getElementById('iVConductor').value;
+
+        const payload = {
+            fecha:               document.getElementById('iVFecha').value,
+            cliente_id:          clienteId   || null,
+            vehiculo_id:         vehiculoId  || null,
+            conductor_id:        conductorId || null,
+            origen:              document.getElementById('iVOrigen').value,
+            destino:             document.getElementById('iVDestino').value,
+            km_inicial:          parseInt(document.getElementById('iVKmI').value)    || 0,
+            tarifa:              parseInt(document.getElementById('iVTarifa').value)  || 0,
+            estado:              document.getElementById('iVEstado').value,
+            tipo_carga:          document.getElementById('iVTipoCarga').value    || null,
+            numero_guia:         document.getElementById('iVNumGuia').value      || null,
+            numero_contenedor:   document.getElementById('iVNumContenedor').value || null
+        };
+
+        let error;
+        if (_editingViajeId) {
+            ({ error } = await sb.from('viajes').update(payload).eq('id', _editingViajeId));
+        } else {
+            ({ error } = await sb.from('viajes').insert([{ empresa_id: currentEmpresa.id, ...payload }]));
+        }
+        if (error) throw error;
+        closeModal('mViaje');
+        toast(_editingViajeId ? '✅ Viaje actualizado' : '✅ Viaje registrado');
+        _editingViajeId = null;
+        document.querySelector('#mViaje .modal-header h2').textContent = 'Nuevo Viaje';
+        await renderViajes();
+        await updateStats();
+    } catch (err) {
+        toast('❌ Error: ' + err.message);
+    } finally { btn.disabled = false; }
+}
+
+async function cargarSelectsViaje() {
+    const eid = currentEmpresa.id;
+    const [{ data: cls }, { data: vehs }, { data: conds }] = await Promise.all([
+        sb.from('clientes').select('id, razon_social').eq('empresa_id', eid).order('razon_social'),
+        sb.from('vehiculos').select('id, patente').eq('empresa_id', eid).order('patente'),
+        sb.from('conductores').select('id, nombre').eq('empresa_id', eid).order('nombre')
+    ]);
+    document.getElementById('iVCliente').innerHTML =
+        '<option value="">Seleccionar cliente...</option>' +
+        (cls||[]).map(c => `<option value="${c.id}">${c.razon_social}</option>`).join('');
+    document.getElementById('iVVehiculo').innerHTML =
+        '<option value="">Sin vehículo</option>' +
+        (vehs||[]).map(v => `<option value="${v.id}">${v.patente}</option>`).join('');
+    document.getElementById('iVConductor').innerHTML =
+        '<option value="">Sin conductor</option>' +
+        (conds||[]).map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
+}
+
+// ═══════════════════════════════════════════════════════════
+// FACTURACIÓN ELECTRÓNICA (botón por viaje)
+// ═══════════════════════════════════════════════════════════
+async function emitirFactura(viajeId, rutCliente, monto, ruta, nombreCliente, emailCliente, clienteId, btn) {
+    if (!rutCliente) {
+        toast('❌ El cliente no tiene RUT. Agrégalo en la sección Clientes.');
+        return;
+    }
+    btn.disabled = true;
+    btn.textContent = '⏳...';
+    try {
+        const { data, error } = await sb.functions.invoke('emitir-factura', {
+            body: {
+                rutCliente:    rutCliente || '66666666-6',
+                montoTotal:    monto,
+                detalleViaje: `Flete ${ruta}`,
+                tipoDte:       39,
+                nombreCliente: nombreCliente || 'Consumidor Final',
+                emailCliente:  emailCliente  || ''
+            }
+        });
+        if (error) throw error;
+
+        if (data?.exito) {
+            // Guardar la boleta en la tabla facturas
+            const facturaRecord = {
+                empresa_id: currentEmpresa.id,
+                fecha:      new Date().toISOString().split('T')[0],
+                vencimiento:new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0],
+                monto:      monto,
+                estado:     'pendiente',
+                numero:     data.folio ? String(data.folio) : null
+            };
+            if (clienteId) facturaRecord.cliente_id = clienteId;
+            await sb.from('facturas').insert([facturaRecord]).then(() => {});  // no bloquear
+
+            // Si hay PDF base64, abrir en nueva pestaña
+            const pdfB64 = data.raw?.PDF;
+            if (pdfB64) {
+                const bytes = atob(pdfB64);
+                const ab = new Uint8Array(bytes.length);
+                for (let i=0; i<bytes.length; i++) ab[i] = bytes.charCodeAt(i);
+                const blob = new Blob([ab], { type: 'application/pdf' });
+                const url  = URL.createObjectURL(blob);
+                window.open(url, '_blank');
+            }
+
+            toast(`✅ Boleta emitida · Folio: ${data.folio || 'N/A'}${data.demo ? ' (DEMO)' : ''}`);
+        } else {
+            const errMsg = typeof data?.error === 'object'
+                ? JSON.stringify(data.error)
+                : (data?.error || 'Respuesta inesperada');
+            alert(`❌ Error del facturador:\n${errMsg}`);
+        }
+    } catch (err) {
+        toast('❌ ' + err.message);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '🧾 Facturar';
+    }
+}
+
+// ═══════════════════════════════════════════════════════════
+// MÓDULO: CLIENTES
+// ═══════════════════════════════════════════════════════════
+async function renderClientes() {
+    if (!currentEmpresa) return;
+    const t = document.getElementById('tClientes');
+    t.innerHTML = '<tr class="loading-row"><td colspan="6">Cargando...</td></tr>';
+
+    const { data, error } = await sb
+        .from('clientes').select('*')
+        .eq('empresa_id', currentEmpresa.id).order('razon_social');
+
+    if (error) { t.innerHTML = `<tr class="empty-row"><td colspan="6">⚠️ ${error.message}</td></tr>`; return; }
+
+    t.innerHTML = data.length ? data.map(c => `<tr>
+        <td>${c.rut}</td>
+        <td><strong>${c.razon_social}</strong></td>
+        <td>${c.contacto || '—'}</td>
+        <td>${c.telefono || '—'}</td>
+        <td>${c.email || '—'}</td>
+        <td><button class="btn btn-danger btn-sm" onclick="eliminarRegistro('clientes','${c.id}',renderClientes)">✕</button></td>
+    </tr>`).join('') : '<tr class="empty-row"><td colspan="6">Sin clientes registrados</td></tr>';
+}
+
+async function saveCliente(e) {
+    e.preventDefault();
+    const btn = e.submitter; btn.disabled = true;
+    try {
+        const { error } = await sb.from('clientes').insert([{
+            empresa_id:  currentEmpresa.id,
+            rut:         document.getElementById('iCRut').value,
+            razon_social:document.getElementById('iCRazon').value,
+            contacto:    document.getElementById('iCContacto').value || null,
+            telefono:    document.getElementById('iCTel').value      || null,
+            email:       document.getElementById('iCEmail').value    || null,
+            tarifa_base: parseInt(document.getElementById('iCTarifa').value) || 0
+        }]);
+        if (error) throw error;
+        closeModal('mCliente');
+        toast('✅ Cliente guardado');
+        await renderClientes();
+    } catch (err) {
+        toast('❌ Error: ' + err.message);
+    } finally { btn.disabled = false; }
+}
+
+// ═══════════════════════════════════════════════════════════
+// MÓDULO: FACTURACIÓN
+// ═══════════════════════════════════════════════════════════
+async function renderFacturacion() {
+    if (!currentEmpresa) return;
+    const t = document.getElementById('tFacturas');
+    t.innerHTML = '<tr class="loading-row"><td colspan="7">Cargando...</td></tr>';
+
+    const { data, error } = await sb
+        .from('facturas')
+        .select('*, clientes(razon_social)')
+        .eq('empresa_id', currentEmpresa.id)
+        .order('fecha', { ascending: false });
+
+    if (error) { t.innerHTML = `<tr class="empty-row"><td colspan="7">⚠️ ${error.message}</td></tr>`; return; }
+
+    const mes       = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    const factMes   = data.filter(f => new Date(f.fecha) >= mes).reduce((s,f) => s+(f.monto||0), 0);
+    const porCobrar = data.filter(f => f.estado === 'pendiente').reduce((s,f) => s+(f.monto||0), 0);
+    const cobrado   = data.filter(f => f.estado === 'pagada' && new Date(f.fecha) >= mes).reduce((s,f) => s+(f.monto||0), 0);
+
+    document.getElementById('kFact1').textContent = '$' + fmt(factMes);
+    document.getElementById('kFact2').textContent = '$' + fmt(porCobrar);
+    document.getElementById('kFact3').textContent = '$' + fmt(cobrado);
+
+    t.innerHTML = data.length ? data.map(f => `<tr>
+        <td><strong>${f.numero ? 'F-'+f.numero : 'FC-'+shortId(f.id)}</strong></td>
+        <td>${fmtDate(f.fecha)}</td>
+        <td>${f.clientes?.razon_social || '—'}</td>
+        <td><strong>$${fmt(f.monto)}</strong></td>
+        <td>${fmtDate(f.vencimiento)}</td>
+        <td><span class="badge ${colorEstado[f.estado] || 'badge-info'}">${f.estado}</span></td>
+        <td style="white-space:nowrap">
+            ${f.estado !== 'pagada' ? `<button class="btn btn-success btn-sm" style="margin-right:4px" onclick="marcarPagada('${f.id}')">✓ Pagada</button>` : ''}
+            <button class="btn btn-danger btn-sm" onclick="eliminarRegistro('facturas','${f.id}',renderFacturacion)">✕</button>
+        </td>
+    </tr>`).join('') : '<tr class="empty-row"><td colspan="7">Sin facturas registradas</td></tr>';
+}
+
+async function saveFactura(e) {
+    e.preventDefault();
+    const btn = e.submitter; btn.disabled = true;
+    try {
+        const { error } = await sb.from('facturas').insert([{
+            empresa_id: currentEmpresa.id,
+            cliente_id: document.getElementById('iFCliente').value  || null,
+            fecha:      document.getElementById('iFFecha').value,
+            vencimiento:document.getElementById('iFVenc').value,
+            monto:      parseInt(document.getElementById('iFMonto').value) || 0,
+            estado:     'pendiente'
+        }]);
+        if (error) throw error;
+        closeModal('mFactura');
+        toast('✅ Factura registrada');
+        await renderFacturacion();
+        await updateStats();
+    } catch (err) {
+        toast('❌ Error: ' + err.message);
+    } finally { btn.disabled = false; }
+}
+
+async function cargarSelectsFactura() {
+    const { data } = await sb.from('clientes').select('id, razon_social')
+        .eq('empresa_id', currentEmpresa.id).order('razon_social');
+    document.getElementById('iFCliente').innerHTML =
+        '<option value="">Seleccionar cliente...</option>' +
+        (data||[]).map(c => `<option value="${c.id}">${c.razon_social}</option>`).join('');
+}
+
+async function marcarPagada(facturaId) {
+    const { error } = await sb.from('facturas')
+        .update({ estado: 'pagada' })
+        .eq('id', facturaId)
+        .eq('empresa_id', currentEmpresa.id);
+    if (error) { toast('❌ ' + error.message); return; }
+    toast('✅ Factura marcada como pagada');
+    await renderFacturacion();
+    await updateStats();
+}
+
+// ═══════════════════════════════════════════════════════════
+// MÓDULO: FLOTA
+// ═══════════════════════════════════════════════════════════
+async function renderVehiculos() {
+    if (!currentEmpresa) return;
+    const t = document.getElementById('tVehiculos');
+    t.innerHTML = '<tr class="loading-row"><td colspan="6">Cargando...</td></tr>';
+
+    const { data, error } = await sb
+        .from('vehiculos').select('*')
+        .eq('empresa_id', currentEmpresa.id).order('patente');
+
+    if (error) { t.innerHTML = `<tr class="empty-row"><td colspan="6">⚠️ ${error.message}</td></tr>`; return; }
+
+    t.innerHTML = data.length ? data.map(v => `<tr>
+        <td><strong>${v.patente}</strong></td>
+        <td>${v.marca} ${v.modelo}</td>
+        <td>${v.ano}</td>
+        <td>${fmt(v.km)} km</td>
+        <td><span class="badge ${colorEstado[v.estado] || 'badge-info'}">${v.estado}</span></td>
+        <td><button class="btn btn-danger btn-sm" onclick="eliminarRegistro('vehiculos','${v.id}',renderVehiculos)">✕</button></td>
+    </tr>`).join('') : '<tr class="empty-row"><td colspan="6">Sin vehículos registrados</td></tr>';
+}
+
+async function saveVehiculo(e) {
+    e.preventDefault();
+    const btn = e.submitter; btn.disabled = true;
+    try {
+        const { error } = await sb.from('vehiculos').insert([{
+            empresa_id: currentEmpresa.id,
+            patente: document.getElementById('iVhPatente').value,
+            marca:   document.getElementById('iVhMarca').value,
+            modelo:  document.getElementById('iVhModelo').value,
+            ano:     parseInt(document.getElementById('iVhAno').value),
+            km:      parseInt(document.getElementById('iVhKm').value)  || 0,
+            estado:  document.getElementById('iVhEstado').value
+        }]);
+        if (error) throw error;
+        closeModal('mVehiculo');
+        toast('✅ Vehículo guardado');
+        await renderVehiculos();
+        await updateStats();
+    } catch (err) {
+        toast('❌ Error: ' + err.message);
+    } finally { btn.disabled = false; }
+}
+
+// ═══════════════════════════════════════════════════════════
+// MÓDULO: CONDUCTORES
+// ═══════════════════════════════════════════════════════════
+async function renderConductores() {
+    if (!currentEmpresa) return;
+    const t = document.getElementById('tConductores');
+    t.innerHTML = '<tr class="loading-row"><td colspan="6">Cargando...</td></tr>';
+
+    const { data, error } = await sb
+        .from('conductores').select('*')
+        .eq('empresa_id', currentEmpresa.id).order('nombre');
+
+    if (error) { t.innerHTML = `<tr class="empty-row"><td colspan="6">⚠️ ${error.message}</td></tr>`; return; }
+
+    t.innerHTML = data.length ? data.map(c => `<tr>
+        <td>${c.rut}</td>
+        <td><strong>${c.nombre}</strong></td>
+        <td>${c.telefono || '—'}</td>
+        <td>${c.licencia || '—'}</td>
+        <td>${fmtDate(c.vencimiento_licencia)}</td>
+        <td><button class="btn btn-danger btn-sm" onclick="eliminarRegistro('conductores','${c.id}',renderConductores)">✕</button></td>
+    </tr>`).join('') : '<tr class="empty-row"><td colspan="6">Sin conductores registrados</td></tr>';
+}
+
+async function saveConductor(e) {
+    e.preventDefault();
+    const btn = e.submitter; btn.disabled = true;
+    try {
+        const { error } = await sb.from('conductores').insert([{
+            empresa_id:          currentEmpresa.id,
+            rut:                 document.getElementById('iCdRut').value,
+            nombre:              document.getElementById('iCdNombre').value,
+            telefono:            document.getElementById('iCdTel').value,
+            licencia:            document.getElementById('iCdLic').value,
+            vencimiento_licencia:document.getElementById('iCdVenc').value,
+            estado:              document.getElementById('iCdEstado').value
+        }]);
+        if (error) throw error;
+        closeModal('mConductor');
+        toast('✅ Conductor guardado');
+        await renderConductores();
+    } catch (err) {
+        toast('❌ Error: ' + err.message);
+    } finally { btn.disabled = false; }
+}
+
+// ═══════════════════════════════════════════════════════════
+// MÓDULO: COMBUSTIBLE
+// ═══════════════════════════════════════════════════════════
+async function renderCombustible() {
+    if (!currentEmpresa) return;
+    const t = document.getElementById('tCombustible');
+    t.innerHTML = '<tr class="loading-row"><td colspan="7">Cargando...</td></tr>';
+
+    const { data, error } = await sb
+        .from('combustible')
+        .select('*, vehiculos(patente)')
+        .eq('empresa_id', currentEmpresa.id)
+        .order('fecha', { ascending: false });
+
+    if (error) { t.innerHTML = `<tr class="empty-row"><td colspan="7">⚠️ ${error.message}</td></tr>`; return; }
+
+    t.innerHTML = data.length ? data.map(c => `<tr>
+        <td>${fmtDate(c.fecha)}</td>
+        <td>${c.vehiculos?.patente || '—'}</td>
+        <td>${(c.litros || 0).toFixed(1)} L</td>
+        <td>$${fmt(c.precio_litro)}</td>
+        <td><strong>$${fmt(c.total)}</strong></td>
+        <td>${fmt(c.odometro)} km</td>
+        <td><button class="btn btn-danger btn-sm" onclick="eliminarRegistro('combustible','${c.id}',renderCombustible)">✕</button></td>
+    </tr>`).join('') : '<tr class="empty-row"><td colspan="7">Sin cargas registradas</td></tr>';
+}
+
+async function saveCombustible(e) {
+    e.preventDefault();
+    const btn = e.submitter; btn.disabled = true;
+    try {
+        const litros = parseFloat(document.getElementById('iCoLit').value)    || 0;
+        const precio = parseInt(document.getElementById('iCoPrecio').value) || 0;
+        const { error } = await sb.from('combustible').insert([{
+            empresa_id:   currentEmpresa.id,
+            vehiculo_id:  document.getElementById('iCoVeh').value || null,
+            fecha:        document.getElementById('iCoFecha').value,
+            litros,
+            precio_litro: precio,
+            total:        Math.round(litros * precio),
+            odometro:     parseInt(document.getElementById('iCoOdo').value) || 0
+        }]);
+        if (error) throw error;
+        closeModal('mCombustible');
+        toast('✅ Carga registrada');
+        await renderCombustible();
+    } catch (err) {
+        toast('❌ Error: ' + err.message);
+    } finally { btn.disabled = false; }
+}
+
+// ═══════════════════════════════════════════════════════════
+// MÓDULO: GASTOS
+// ═══════════════════════════════════════════════════════════
+async function renderGastos() {
+    if (!currentEmpresa) return;
+    const t = document.getElementById('tGastos');
+    t.innerHTML = '<tr class="loading-row"><td colspan="6">Cargando...</td></tr>';
+
+    const { data, error } = await sb
+        .from('gastos')
+        .select('*, vehiculos(patente)')
+        .eq('empresa_id', currentEmpresa.id)
+        .order('fecha', { ascending: false });
+
+    if (error) { t.innerHTML = `<tr class="empty-row"><td colspan="6">⚠️ ${error.message}</td></tr>`; return; }
+
+    t.innerHTML = data.length ? data.map(g => `<tr>
+        <td>${fmtDate(g.fecha)}</td>
+        <td>${g.vehiculos?.patente || '—'}</td>
+        <td><span class="badge badge-info">${g.categoria}</span></td>
+        <td>${g.descripcion}</td>
+        <td><strong>$${fmt(g.monto)}</strong></td>
+        <td><button class="btn btn-danger btn-sm" onclick="eliminarRegistro('gastos','${g.id}',renderGastos)">✕</button></td>
+    </tr>`).join('') : '<tr class="empty-row"><td colspan="6">Sin gastos registrados</td></tr>';
+}
+
+async function saveGasto(e) {
+    e.preventDefault();
+    const btn = e.submitter; btn.disabled = true;
+    try {
+        const { error } = await sb.from('gastos').insert([{
+            empresa_id:  currentEmpresa.id,
+            vehiculo_id: document.getElementById('iGVeh').value  || null,
+            fecha:       document.getElementById('iGFecha').value,
+            categoria:   document.getElementById('iGCat').value,
+            descripcion: document.getElementById('iGDesc').value,
+            monto:       parseInt(document.getElementById('iGMonto').value) || 0
+        }]);
+        if (error) throw error;
+        closeModal('mGasto');
+        toast('✅ Gasto registrado');
+        await renderGastos();
+    } catch (err) {
+        toast('❌ Error: ' + err.message);
+    } finally { btn.disabled = false; }
+}
+
+// ═══════════════════════════════════════════════════════════
+// MÓDULO: MANTENIMIENTO
+// ═══════════════════════════════════════════════════════════
+async function renderMantenimiento() {
+    if (!currentEmpresa) return;
+    const t = document.getElementById('tMantenimiento');
+    t.innerHTML = '<tr class="loading-row"><td colspan="7">Cargando...</td></tr>';
+
+    const { data, error } = await sb
+        .from('mantenimiento')
+        .select('*, vehiculos(patente)')
+        .eq('empresa_id', currentEmpresa.id)
+        .order('fecha_programada', { ascending: true });
+
+    if (error) { t.innerHTML = `<tr class="empty-row"><td colspan="7">⚠️ ${error.message}</td></tr>`; return; }
+
+    t.innerHTML = data.length ? data.map(m => `<tr>
+        <td>${m.vehiculos?.patente || '—'}</td>
+        <td>${m.tipo}</td>
+        <td>${m.descripcion}</td>
+        <td>${fmt(m.km_programado)} km</td>
+        <td>${fmtDate(m.fecha_programada)}</td>
+        <td><span class="badge ${m.estado === 'realizado' ? 'badge-success' : 'badge-warning'}">${m.estado || 'pendiente'}</span></td>
+        <td><button class="btn btn-danger btn-sm" onclick="eliminarRegistro('mantenimiento','${m.id}',renderMantenimiento)">✕</button></td>
+    </tr>`).join('') : '<tr class="empty-row"><td colspan="7">Sin mantenciones programadas</td></tr>';
+}
+
+async function saveMantenimiento(e) {
+    e.preventDefault();
+    const btn = e.submitter; btn.disabled = true;
+    try {
+        const { error } = await sb.from('mantenimiento').insert([{
+            empresa_id:        currentEmpresa.id,
+            vehiculo_id:       document.getElementById('iMVeh').value  || null,
+            tipo:              document.getElementById('iMTipo').value,
+            descripcion:       document.getElementById('iMDesc').value,
+            km_programado:     parseInt(document.getElementById('iMKm').value) || 0,
+            fecha_programada:  document.getElementById('iMFecha').value || null,
+            estado:            'pendiente'
+        }]);
+        if (error) throw error;
+        closeModal('mMantenimiento');
+        toast('✅ Mantención programada');
+        await renderMantenimiento();
+    } catch (err) {
+        toast('❌ Error: ' + err.message);
+    } finally { btn.disabled = false; }
+}
+
+// ═══════════════════════════════════════════════════════════
+// MÓDULO: RENTABILIDAD
+// ═══════════════════════════════════════════════════════════
+async function renderRentabilidad() {
+    if (!currentEmpresa) return;
+    const t = document.getElementById('tRentabilidad');
+    t.innerHTML = '<tr class="loading-row"><td colspan="4">Calculando...</td></tr>';
+
+    const eid = currentEmpresa.id;
+    const [{ data: viajes }, { data: gastos }, { data: combustible }] = await Promise.all([
+        sb.from('viajes').select('origen, destino, tarifa').eq('empresa_id', eid),
+        sb.from('gastos').select('monto').eq('empresa_id', eid),
+        sb.from('combustible').select('total').eq('empresa_id', eid)
+    ]);
+
+    const totalIngresos  = (viajes     ||[]).reduce((s,v) => s+(v.tarifa||0), 0);
+    const totalGastos    = (gastos     ||[]).reduce((s,g) => s+(g.monto ||0), 0);
+    const totalComb      = (combustible||[]).reduce((s,c) => s+(c.total ||0), 0);
+    const totalCostos    = totalGastos + totalComb;
+    const utilidad       = totalIngresos - totalCostos;
+    const margen         = totalIngresos ? Math.round((utilidad / totalIngresos) * 100) : 0;
+
+    document.getElementById('kpiRent').innerHTML = `
+        <div class="kpi-card"><div class="kpi-label">Ingresos Totales</div>
+            <div class="kpi-value" style="color:#10b981">$${fmt(totalIngresos)}</div></div>
+        <div class="kpi-card"><div class="kpi-label">Costos Totales</div>
+            <div class="kpi-value" style="color:#ef4444">$${fmt(totalCostos)}</div></div>
+        <div class="kpi-card"><div class="kpi-label">Utilidad Neta</div>
+            <div class="kpi-value" style="color:${utilidad>=0?'#10b981':'#ef4444'}">$${fmt(utilidad)}</div></div>
+        <div class="kpi-card"><div class="kpi-label">Margen %</div>
+            <div class="kpi-value" style="color:${margen>=0?'var(--primary)':'#ef4444'}">${margen}%</div></div>
+    `;
+
+    // Agrupar por ruta
+    const rutas = {};
+    (viajes||[]).forEach(v => {
+        const k = `${v.origen || '?'} → ${v.destino || '?'}`;
+        if (!rutas[k]) rutas[k] = { n: 0, ing: 0 };
+        rutas[k].n++;
+        rutas[k].ing += v.tarifa || 0;
+    });
+
+    const top = Object.entries(rutas).sort((a,b) => b[1].ing - a[1].ing).slice(0, 10);
+    t.innerHTML = top.length ? top.map(([ruta, d]) => `<tr>
+        <td>${ruta}</td>
+        <td>${d.n}</td>
+        <td><strong>$${fmt(d.ing)}</strong></td>
+        <td>$${fmt(Math.round(d.ing / d.n))}</td>
+    </tr>`).join('') : '<tr class="empty-row"><td colspan="4">Sin datos de viajes aún</td></tr>';
+}
+
+// ═══════════════════════════════════════════════════════════
+// UTILIDAD COMPARTIDA: eliminar registro
+// ═══════════════════════════════════════════════════════════
+async function eliminarRegistro(tabla, id, rerender) {
+    if (!confirm('¿Eliminar este registro? Esta acción no se puede deshacer.')) return;
+    const { error } = await sb.from(tabla).delete()
+        .eq('id', id).eq('empresa_id', currentEmpresa.id);
+    if (error) { toast('❌ Error: ' + error.message); return; }
+    toast('🗑 Registro eliminado');
+    await rerender();
+}
+
+// ═══════════════════════════════════════════════════════════
+// UTILIDAD COMPARTIDA: cargar select de vehículos
+// ═══════════════════════════════════════════════════════════
+async function cargarSelectVehiculo(selectId, opcional) {
+    const { data } = await sb.from('vehiculos').select('id, patente')
+        .eq('empresa_id', currentEmpresa.id).order('patente');
+    const first = opcional ? '<option value="">Sin vehículo</option>' : '<option value="">Seleccionar...</option>';
+    document.getElementById(selectId).innerHTML =
+        first + (data||[]).map(v => `<option value="${v.id}">${v.patente}</option>`).join('');
+}
+</script>
+</body>
+</html>

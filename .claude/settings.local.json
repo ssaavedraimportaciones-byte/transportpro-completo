@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -c \":*)",
+      "Bash(npx supabase snippets --help)",
+      "Bash(security find-generic-password -s \"supabase\" -w)",
+      "Bash(security find-internet-password -s \"supabase.com\" -w)",
+      "Bash(env)",
+      "Bash(security find-generic-password -s \"Supabase CLI\" -a \"supabase\" -w)",
+      "Bash(npx vercel env add NEXT_PUBLIC_SUPABASE_URL production --force)"
+    ]
+  }
+}
