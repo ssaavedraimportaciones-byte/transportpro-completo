@@ -4,9 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TransportPro - Sistema de Gestión</title>
+    <meta name="version" content="2.1.0-fix-datos-extra">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- SheetJS — exportar a Excel .xlsx real -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+    <!-- Chart.js — gráficos del dashboard -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
@@ -186,24 +189,92 @@
             <h1>🚚 TransportPro</h1>
             <p style="color:#666;font-size:13px">Sistema Profesional de Gestión de Flota</p>
         </div>
+
+        <!-- Tabs login / registro -->
+        <div style="display:flex;border-bottom:2px solid #e5e7eb;margin-bottom:20px">
+            <button id="tabLoginBtn" onclick="mostrarTabLogin()"
+                style="flex:1;padding:10px;border:none;background:none;font-size:13px;font-weight:700;color:#2563eb;border-bottom:2px solid #2563eb;margin-bottom:-2px;cursor:pointer">
+                Iniciar Sesión
+            </button>
+            <button id="tabRegBtn" onclick="mostrarTabRegistro()"
+                style="flex:1;padding:10px;border:none;background:none;font-size:13px;font-weight:600;color:#9ca3af;cursor:pointer">
+                Crear Cuenta
+            </button>
+        </div>
+
         <div id="loginAlert" class="hidden"></div>
-       <div id="loginFormContainer">
-    <form id="loginForm">
-    <div class="form-group" style="margin-bottom:16px">
-        <label>Email</label>
-        <input type="email" id="loginEmail" placeholder="tu@empresa.cl" required autocomplete="email">
-    </div>
-    <div class="form-group" style="margin-bottom:8px">
-        <label>Contraseña</label>
-        <input type="password" id="loginPass" placeholder="••••••••" required autocomplete="current-password">
-    </div>
-    <div style="text-align:right;margin-bottom:18px">
-        <button type="button" class="btn-link" onclick="recuperarContrasena()">¿Olvidaste tu contraseña?</button>
-    </div>
-    <button type="submit" class="btn btn-primary" id="btnLogin"
-        style="width:100%;padding:13px;font-size:15px">Iniciar Sesión</button>
-</form>
-</div>
+
+        <!-- FORM: Iniciar Sesión -->
+        <div id="loginFormContainer">
+            <form id="loginForm">
+                <div class="form-group" style="margin-bottom:16px">
+                    <label>Email</label>
+                    <input type="email" id="loginEmail" placeholder="tu@empresa.cl" required autocomplete="email">
+                </div>
+                <div class="form-group" style="margin-bottom:8px">
+                    <label>Contraseña</label>
+                    <input type="password" id="loginPass" placeholder="••••••••" required autocomplete="current-password">
+                </div>
+                <div style="text-align:right;margin-bottom:18px">
+                    <button type="button" class="btn-link" onclick="recuperarContrasena()">¿Olvidaste tu contraseña?</button>
+                </div>
+                <button type="submit" class="btn btn-primary" id="btnLogin"
+                    style="width:100%;padding:13px;font-size:15px">Iniciar Sesión</button>
+            </form>
+        </div>
+
+        <!-- FORM: Crear Cuenta nueva empresa -->
+        <div id="registroFormContainer" style="display:none">
+            <form id="registroForm" onsubmit="registrarEmpresa(event)">
+                <div class="form-group" style="margin-bottom:14px">
+                    <label style="font-size:12px;font-weight:600;color:#374151">Nombre de tu Empresa *</label>
+                    <input type="text" id="regEmpresa" placeholder="Transportes Ejemplo SpA" required
+                        style="width:100%;padding:10px;border:1.5px solid #d1d5db;border-radius:8px;font-size:14px">
+                </div>
+                <div class="form-group" style="margin-bottom:14px">
+                    <label style="font-size:12px;font-weight:600;color:#374151">Tu Nombre *</label>
+                    <input type="text" id="regNombre" placeholder="Juan Pérez" required
+                        style="width:100%;padding:10px;border:1.5px solid #d1d5db;border-radius:8px;font-size:14px">
+                </div>
+                <div class="form-group" style="margin-bottom:14px">
+                    <label style="font-size:12px;font-weight:600;color:#374151">Email *</label>
+                    <input type="email" id="regEmail" placeholder="tu@empresa.cl" required
+                        style="width:100%;padding:10px;border:1.5px solid #d1d5db;border-radius:8px;font-size:14px">
+                </div>
+                <div class="form-group" style="margin-bottom:6px">
+                    <label style="font-size:12px;font-weight:600;color:#374151">Contraseña * (mín. 8 caracteres)</label>
+                    <input type="password" id="regPass" placeholder="••••••••" required minlength="8"
+                        style="width:100%;padding:10px;border:1.5px solid #d1d5db;border-radius:8px;font-size:14px">
+                </div>
+                <!-- Plan selector -->
+                <div style="margin:14px 0;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+                    <label id="planBasicLbl" onclick="seleccionarPlanReg('BASIC')" style="border:2px solid #2563eb;border-radius:10px;padding:10px 6px;text-align:center;cursor:pointer;background:#eff6ff">
+                        <div style="font-size:11px;font-weight:700;color:#1e40af">BÁSICO</div>
+                        <div style="font-size:13px;font-weight:800;color:#2563eb">$55K</div>
+                        <div style="font-size:10px;color:#6b7280">3 veh · 300 ops</div>
+                    </label>
+                    <label id="planProLbl" onclick="seleccionarPlanReg('PRO')" style="border:2px solid #e5e7eb;border-radius:10px;padding:10px 6px;text-align:center;cursor:pointer;background:white">
+                        <div style="font-size:11px;font-weight:700;color:#374151">PRO</div>
+                        <div style="font-size:13px;font-weight:800;color:#374151">$70K</div>
+                        <div style="font-size:10px;color:#6b7280">6 veh · 700 ops</div>
+                    </label>
+                    <label id="planScaleLbl" onclick="seleccionarPlanReg('SCALE')" style="border:2px solid #e5e7eb;border-radius:10px;padding:10px 6px;text-align:center;cursor:pointer;background:white">
+                        <div style="font-size:11px;font-weight:700;color:#374151">SCALE</div>
+                        <div style="font-size:13px;font-weight:800;color:#374151">$105K</div>
+                        <div style="font-size:10px;color:#6b7280">10 veh · 1500 ops</div>
+                    </label>
+                </div>
+                <input type="hidden" id="regPlan" value="BASIC">
+                <button type="submit" class="btn btn-success" id="btnRegistro"
+                    style="width:100%;padding:13px;font-size:15px;margin-top:8px">
+                    🚀 Crear mi cuenta gratis (30 días)
+                </button>
+                <p style="text-align:center;font-size:11px;color:#9ca3af;margin-top:10px">
+                    Período de prueba de 30 días. Sin tarjeta requerida.
+                </p>
+            </form>
+        </div>
+
         <p style="text-align:center;margin-top:18px;font-size:11px;color:#aaa">
             TransportPro © 2026 · Gestión profesional de flotas
         </p>
@@ -251,22 +322,131 @@
 
     <!-- Tabs -->
     <div class="tabs">
-        <button class="tab-btn active" onclick="switchTab('viajes',this)">📍 Viajes</button>
+        <button class="tab-btn active" onclick="switchTab('dashboard',this)">🏠 Dashboard</button>
+        <button class="tab-btn" onclick="switchTab('viajes',this)">📍 Viajes</button>
         <button class="tab-btn" onclick="switchTab('clientes',this)">👥 Clientes</button>
         <button class="tab-btn" onclick="switchTab('facturacion',this)">💰 Facturación</button>
         <button class="tab-btn" onclick="switchTab('vehiculos',this)">🚛 Flota</button>
         <button class="tab-btn" onclick="switchTab('conductores',this)">👤 Conductores</button>
         <button class="tab-btn" onclick="switchTab('combustible',this)">⛽ Combustible</button>
         <button class="tab-btn" onclick="switchTab('gastos',this)">💸 Gastos</button>
+        <button class="tab-btn" onclick="switchTab('remuneraciones',this)">💵 Remuneraciones</button>
         <button class="tab-btn" onclick="switchTab('mantenimiento',this)">🔧 Mantenimiento</button>
+        <button class="tab-btn" onclick="switchTab('resumen',this)">📊 Resumen Mensual</button>
         <button class="tab-btn" onclick="switchTab('cotizaciones',this)">📋 Cotizaciones</button>
         <button class="tab-btn" onclick="switchTab('documentos',this)">🗂️ Documentos</button>
         <button class="tab-btn" onclick="switchTab('rentabilidad',this)">📈 Rentabilidad</button>
         <button class="tab-btn" onclick="switchTab('configuracion',this)">⚙️ Configuración</button>
+        <button class="tab-btn" id="tabUsuarios" onclick="switchTab('usuarios',this)">👥 Usuarios</button>
+        <button class="tab-btn" onclick="switchTab('miplan',this)">💎 Mi Plan</button>
+        <button class="tab-btn" id="tabSoporte" onclick="switchTab('soporte',this)">🎫 Soporte</button>
+        <button class="tab-btn" id="tabTpAdmin" style="display:none;background:linear-gradient(135deg,#1e3a5f,#2563eb);color:#fff" onclick="switchTab('tpadmin',this)">🔐 TP Admin</button>
+        <button class="tab-btn" id="btnAddModulo" style="background:linear-gradient(135deg,#10b981,#059669);color:#fff;font-weight:700" onclick="openCustomModuleManager()">+ Módulo</button>
+    </div>
+
+    <!-- ── DASHBOARD ──────────────────────────────── -->
+    <div id="sec-dashboard" class="section active">
+        <div class="section-card">
+            <div class="section-header">
+                <h2 id="dashBienvenida">📊 Dashboard</h2>
+                <button class="btn btn-success" onclick="exportarTodo()" style="font-weight:700">📥 Exportar Todo</button>
+            </div>
+
+            <!-- KPIs principales -->
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:12px;margin-bottom:22px">
+                <div style="background:linear-gradient(135deg,#6366f1,#8b5cf6);border-radius:12px;padding:16px 18px;color:white;box-shadow:0 4px 15px rgba(99,102,241,.3)">
+                    <div style="font-size:11px;opacity:.85;text-transform:uppercase;letter-spacing:.8px">Viajes este mes</div>
+                    <div style="font-size:30px;font-weight:800;margin:4px 0" id="dViajes">—</div>
+                    <div style="font-size:11px;opacity:.7" id="dViajesSub">—</div>
+                </div>
+                <div style="background:linear-gradient(135deg,#10b981,#059669);border-radius:12px;padding:16px 18px;color:white;box-shadow:0 4px 15px rgba(16,185,129,.3)">
+                    <div style="font-size:11px;opacity:.85;text-transform:uppercase;letter-spacing:.8px">Ingresos del mes</div>
+                    <div style="font-size:26px;font-weight:800;margin:4px 0" id="dIngresos">—</div>
+                    <div style="font-size:11px;opacity:.7">facturado este mes</div>
+                </div>
+                <div style="background:linear-gradient(135deg,#f59e0b,#d97706);border-radius:12px;padding:16px 18px;color:white;box-shadow:0 4px 15px rgba(245,158,11,.3)">
+                    <div style="font-size:11px;opacity:.85;text-transform:uppercase;letter-spacing:.8px">Por Cobrar</div>
+                    <div style="font-size:26px;font-weight:800;margin:4px 0" id="dCobrar">—</div>
+                    <div style="font-size:11px;opacity:.7">facturas pendientes</div>
+                </div>
+                <div style="background:linear-gradient(135deg,#ef4444,#dc2626);border-radius:12px;padding:16px 18px;color:white;box-shadow:0 4px 15px rgba(239,68,68,.3)">
+                    <div style="font-size:11px;opacity:.85;text-transform:uppercase;letter-spacing:.8px">Gastos del mes</div>
+                    <div style="font-size:26px;font-weight:800;margin:4px 0" id="dGastos">—</div>
+                    <div style="font-size:11px;opacity:.7">combustible + gastos</div>
+                </div>
+                <div style="background:linear-gradient(135deg,#2563eb,#1d4ed8);border-radius:12px;padding:16px 18px;color:white;box-shadow:0 4px 15px rgba(37,99,235,.3)">
+                    <div style="font-size:11px;opacity:.85;text-transform:uppercase;letter-spacing:.8px">Utilidad neta</div>
+                    <div style="font-size:26px;font-weight:800;margin:4px 0" id="dUtilidad">—</div>
+                    <div style="font-size:11px;opacity:.7">ingresos − gastos</div>
+                </div>
+                <div style="background:linear-gradient(135deg,#0ea5e9,#0284c7);border-radius:12px;padding:16px 18px;color:white;box-shadow:0 4px 15px rgba(14,165,233,.3)">
+                    <div style="font-size:11px;opacity:.85;text-transform:uppercase;letter-spacing:.8px">Vehículos activos</div>
+                    <div style="font-size:30px;font-weight:800;margin:4px 0" id="dVehiculos">—</div>
+                    <div style="font-size:11px;opacity:.7">operativos</div>
+                </div>
+                <div style="background:linear-gradient(135deg,#7c3aed,#6d28d9);border-radius:12px;padding:16px 18px;color:white;box-shadow:0 4px 15px rgba(124,58,237,.3)">
+                    <div style="font-size:11px;opacity:.85;text-transform:uppercase;letter-spacing:.8px">Remuneraciones mes</div>
+                    <div style="font-size:26px;font-weight:800;margin:4px 0" id="dRemuneraciones">—</div>
+                    <div style="font-size:11px;opacity:.7">sueldos + viáticos</div>
+                </div>
+            </div>
+
+            <!-- Gráficos principales -->
+            <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:20px">
+                <!-- Ingresos últimos 6 meses -->
+                <div style="background:#f8fafc;border-radius:12px;padding:18px;border:1px solid #e2e8f0">
+                    <div style="font-size:13px;font-weight:700;color:#374151;margin-bottom:14px">📈 Ingresos últimos 6 meses</div>
+                    <canvas id="chartIngresos" height="120"></canvas>
+                </div>
+                <!-- Estado de viajes donut -->
+                <div style="background:#f8fafc;border-radius:12px;padding:18px;border:1px solid #e2e8f0">
+                    <div style="font-size:13px;font-weight:700;color:#374151;margin-bottom:14px">🥧 Estado de viajes</div>
+                    <canvas id="chartEstados" height="160"></canvas>
+                </div>
+            </div>
+
+            <!-- Segundo row de gráficos -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+                <!-- Ingresos vs Gastos barchart -->
+                <div style="background:#f8fafc;border-radius:12px;padding:18px;border:1px solid #e2e8f0">
+                    <div style="font-size:13px;font-weight:700;color:#374151;margin-bottom:14px">📊 Ingresos vs Gastos (6 meses)</div>
+                    <canvas id="chartIngGas" height="130"></canvas>
+                </div>
+                <!-- Top vehículos -->
+                <div style="background:#f8fafc;border-radius:12px;padding:18px;border:1px solid #e2e8f0">
+                    <div style="font-size:13px;font-weight:700;color:#374151;margin-bottom:14px">🚛 Top vehículos por ingresos</div>
+                    <canvas id="chartVehiculos" height="130"></canvas>
+                </div>
+            </div>
+
+            <!-- Últimos viajes + Alertas -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+                <div>
+                    <h3 style="font-size:13px;font-weight:700;color:#374151;margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px">Últimos Viajes</h3>
+                    <table style="font-size:12px">
+                        <thead><tr><th>Fecha</th><th>Cliente</th><th>Ruta</th><th>Tarifa</th><th>Estado</th></tr></thead>
+                        <tbody id="dashUltViajes"><tr class="loading-row"><td colspan="5">Cargando...</td></tr></tbody>
+                    </table>
+                </div>
+                <div>
+                    <h3 style="font-size:13px;font-weight:700;color:#374151;margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px">⚠️ Alertas</h3>
+                    <div id="dashAlertas" style="display:flex;flex-direction:column;gap:8px">
+                        <div style="padding:10px;background:#f8f9ff;border-radius:8px;font-size:12px;color:#6b7280">Cargando alertas...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Rendimiento por vehículo -->
+            <h3 style="font-size:13px;font-weight:700;color:#374151;margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px">Rendimiento por Vehículo</h3>
+            <table style="font-size:12px">
+                <thead><tr><th>Patente</th><th>Viajes mes</th><th>Ingresos mes</th><th>Combustible</th><th>Utilidad</th></tr></thead>
+                <tbody id="dashPatentes"><tr class="loading-row"><td colspan="5">Cargando...</td></tr></tbody>
+            </table>
+        </div>
     </div>
 
     <!-- ── VIAJES ───────────────────────────────── -->
-    <div id="sec-viajes" class="section active">
+    <div id="sec-viajes" class="section">
         <div class="section-card">
             <div class="section-header">
                 <h2>Gestión de Viajes</h2>
@@ -275,6 +455,7 @@
                     <button class="btn btn-sm" style="background:#ecfdf5;color:#065f46" onclick="exportarModulo('viajes',true)"  title="Exportar con IVA, Neto y cálculos adicionales">📊 Excel+IVA</button>
                     <button class="btn btn-sm" style="background:#f0fdf4;color:#059669;font-weight:700;border:1px solid #86efac" onclick="openImportModal('viajes')">📤 Importar</button>
                     <button class="btn btn-sm" style="background:#fef3c7;color:#92400e;border:1px solid #fcd34d;font-weight:700" onclick="openCasillasModal()">⚙️ Casillas</button>
+                    <button class="btn btn-sm btn-danger" onclick="eliminarTodo('viajes',renderViajes,'Viajes')">🗑 Eliminar todo</button>
                     <button class="btn btn-primary" onclick="openModal('mViaje')">+ Nuevo Viaje</button>
                 </div>
             </div>
@@ -294,6 +475,7 @@
                     <option value="sobredimensionado">Sobredimensionado</option>
                     <option value="liquidos">Líquidos</option>
                     <option value="vehiculos">Vehículos</option>
+                    <option value="otro">Otro</option>
                 </select>
                 <select id="fVEstado" onchange="filtrarViajes()"
                     style="padding:7px 10px;border:2px solid #e5e7eb;border-radius:7px;font-size:13px">
@@ -304,7 +486,7 @@
                 </select>
             </div>
             <table>
-                <thead><tr>
+                <thead id="theadViajes"><tr>
                     <th>N° Viaje</th><th>Fecha</th><th>Cliente</th><th>Conductor</th><th>Ruta</th>
                     <th>Tipo Carga</th><th>N° Guía</th><th>Tarifa</th><th>Estado</th><th>Acciones</th>
                 </tr></thead>
@@ -323,6 +505,7 @@
                 <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
                     <button class="btn btn-sm" style="background:#f3f4f6;color:#374151" onclick="exportarModulo('clientes',false)">📥 Excel</button>
                     <button class="btn btn-sm" style="background:#ecfdf5;color:#059669;font-weight:700" onclick="openImportModal('clientes')">📤 Importar</button>
+                    <button class="btn btn-sm btn-danger" onclick="eliminarTodo('clientes',renderClientes,'Clientes')">🗑 Eliminar todo</button>
                     <button class="btn btn-primary" onclick="openModal('mCliente')">+ Nuevo Cliente</button>
                 </div>
             </div>
@@ -346,6 +529,7 @@
                 <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
                     <button class="btn btn-sm" style="background:#f3f4f6;color:#374151" onclick="exportarModulo('facturas',false)">📥 Excel</button>
                     <button class="btn btn-sm" style="background:#ecfdf5;color:#065f46" onclick="exportarModulo('facturas',true)" title="Con desglose IVA">📊 Excel+IVA</button>
+                    <button class="btn btn-sm btn-danger" onclick="eliminarTodo('facturas',renderFacturacion,'Facturas')">🗑 Eliminar todo</button>
                     <button class="btn btn-primary" onclick="openModal('mFactura')">+ Nueva Factura</button>
                 </div>
             </div>
@@ -374,6 +558,7 @@
                 <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
                     <button class="btn btn-sm" style="background:#f3f4f6;color:#374151" onclick="exportarModulo('vehiculos',false)">📥 Excel</button>
                     <button class="btn btn-sm" style="background:#ecfdf5;color:#059669;font-weight:700" onclick="openImportModal('vehiculos')">📤 Importar</button>
+                    <button class="btn btn-sm btn-danger" onclick="eliminarTodo('vehiculos',renderVehiculos,'Flota')">🗑 Eliminar todo</button>
                     <button class="btn btn-primary" onclick="openModal('mVehiculo')">+ Nuevo Vehículo</button>
                 </div>
             </div>
@@ -397,6 +582,7 @@
                 <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
                     <button class="btn btn-sm" style="background:#f3f4f6;color:#374151" onclick="exportarModulo('conductores',false)">📥 Excel</button>
                     <button class="btn btn-sm" style="background:#ecfdf5;color:#059669;font-weight:700" onclick="openImportModal('conductores')">📤 Importar</button>
+                    <button class="btn btn-sm btn-danger" onclick="eliminarTodo('conductores',renderConductores,'Conductores')">🗑 Eliminar todo</button>
                     <button class="btn btn-primary" onclick="openModal('mConductor')">+ Nuevo Conductor</button>
                 </div>
             </div>
@@ -421,6 +607,7 @@
                     <button class="btn btn-sm" style="background:#f3f4f6;color:#374151" onclick="exportarModulo('combustible',false)">📥 Excel</button>
                     <button class="btn btn-sm" style="background:#ecfdf5;color:#065f46" onclick="exportarModulo('combustible',true)" title="Con costo por km y totales">📊 Excel+IVA</button>
                     <button class="btn btn-sm" style="background:#ecfdf5;color:#059669;font-weight:700" onclick="openImportModal('combustible')">📤 Importar</button>
+                    <button class="btn btn-sm btn-danger" onclick="eliminarTodo('combustible',renderCombustible,'Combustible')">🗑 Eliminar todo</button>
                     <button class="btn btn-primary" onclick="openModal('mCombustible')">+ Registrar Carga</button>
                 </div>
             </div>
@@ -446,6 +633,7 @@
                     <button class="btn btn-sm" style="background:#ecfdf5;color:#065f46" onclick="exportarModulo('gastos',true)" title="Con IVA incluido/neto">📊 Excel+IVA</button>
                     <button class="btn btn-sm" style="background:#ecfdf5;color:#059669;font-weight:700" onclick="openImportModal('gastos')">📤 Importar</button>
                     <button class="btn btn-sm" onclick="openModal('mLeerFactura')" style="background:linear-gradient(135deg,#7c3aed,#4f46e5);color:white;font-weight:700">📄 Leer Factura con IA</button>
+                    <button class="btn btn-sm btn-danger" onclick="eliminarTodo('gastos',renderGastos,'Gastos')">🗑 Eliminar todo</button>
                     <button class="btn btn-primary" onclick="openModal('mGasto')">+ Nuevo Gasto</button>
                 </div>
             </div>
@@ -461,6 +649,57 @@
         </div>
     </div>
 
+    <!-- ── REMUNERACIONES ───────────────────────── -->
+    <div id="sec-remuneraciones" class="section">
+        <div class="section-card">
+            <div class="section-header">
+                <h2>💵 Remuneraciones</h2>
+                <button class="btn btn-primary" onclick="openNuevaRemuneracion()">+ Nueva Remuneración</button>
+            </div>
+            <!-- Filtros -->
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:flex-end">
+                <div>
+                    <label style="display:block;font-size:11px;color:#6b7280;margin-bottom:3px">Conductor</label>
+                    <select id="fRemConductor" style="padding:6px 10px;border:1px solid #d1d5db;border-radius:7px;font-size:13px" onchange="filtrarRemuneraciones()">
+                        <option value="">Todos</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="display:block;font-size:11px;color:#6b7280;margin-bottom:3px">Tipo</label>
+                    <select id="fRemTipo" style="padding:6px 10px;border:1px solid #d1d5db;border-radius:7px;font-size:13px" onchange="filtrarRemuneraciones()">
+                        <option value="">Todos</option>
+                        <option value="sueldo">Sueldo</option>
+                        <option value="viatico">Viático</option>
+                        <option value="aguinaldo">Aguinaldo</option>
+                        <option value="anticipo">Anticipo</option>
+                        <option value="otro">Otro</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="display:block;font-size:11px;color:#6b7280;margin-bottom:3px">Desde</label>
+                    <input type="date" id="fRemDesde" style="padding:6px 10px;border:1px solid #d1d5db;border-radius:7px;font-size:13px" onchange="filtrarRemuneraciones()">
+                </div>
+                <div>
+                    <label style="display:block;font-size:11px;color:#6b7280;margin-bottom:3px">Hasta</label>
+                    <input type="date" id="fRemHasta" style="padding:6px 10px;border:1px solid #d1d5db;border-radius:7px;font-size:13px" onchange="filtrarRemuneraciones()">
+                </div>
+                <button class="btn btn-sm" style="background:#f3f4f6;color:#374151" onclick="limpiarFiltrosRem()">✕ Limpiar</button>
+            </div>
+            <!-- Mini-dashboard remuneraciones -->
+            <div id="remSummary" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-bottom:16px"></div>
+            <!-- Tabla -->
+            <table>
+                <thead><tr>
+                    <th>Fecha</th><th>Conductor</th><th>Tipo</th>
+                    <th>Descripción</th><th>Monto</th><th>Acciones</th>
+                </tr></thead>
+                <tbody id="tRemuneraciones">
+                    <tr class="loading-row"><td colspan="6">Cargando...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
     <!-- ── MANTENIMIENTO ────────────────────────── -->
     <div id="sec-mantenimiento" class="section">
         <div class="section-card">
@@ -469,6 +708,7 @@
                 <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
                     <button class="btn btn-sm" style="background:#f3f4f6;color:#374151" onclick="exportarModulo('mantenimiento',false)">📥 Excel</button>
                     <button class="btn btn-sm" style="background:#ecfdf5;color:#059669;font-weight:700" onclick="openImportModal('mantenimiento')">📤 Importar</button>
+                    <button class="btn btn-sm btn-danger" onclick="eliminarTodo('mantenimiento',renderMantenimiento,'Mantenimiento')">🗑 Eliminar todo</button>
                     <button class="btn btn-primary" onclick="openModal('mMantenimiento')">+ Programar</button>
                 </div>
             </div>
@@ -484,11 +724,50 @@
         </div>
     </div>
 
+    <!-- ── RESUMEN MENSUAL ───────────────────────── -->
+    <div id="sec-resumen" class="section">
+        <div class="section-card">
+            <div class="section-header">
+                <h2>📊 Resumen Mensual</h2>
+                <div style="display:flex;align-items:center;gap:8px">
+                    <button class="btn btn-sm" style="background:#e0e7ff;color:#3730a3;font-size:16px;padding:4px 12px" onclick="navMes(-1)">‹</button>
+                    <span id="resMesLabel" style="font-weight:700;font-size:14px;color:#1f2937;min-width:130px;text-align:center">—</span>
+                    <button class="btn btn-sm" style="background:#e0e7ff;color:#3730a3;font-size:16px;padding:4px 12px" onclick="navMes(1)">›</button>
+                    <button class="btn btn-sm" style="background:#2563eb;color:white;font-weight:700" onclick="navMesHoy()">Hoy</button>
+                </div>
+            </div>
+            <div class="kpi-grid" id="resKpi" style="margin-bottom:18px"></div>
+            <h3 style="font-size:13px;color:#555;margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px">Viajes del mes</h3>
+            <table>
+                <thead><tr>
+                    <th>Fecha</th><th>Cliente</th><th>Ruta</th><th>Conductor</th><th>Tarifa</th><th>Estado</th>
+                </tr></thead>
+                <tbody id="resTablaViajes">
+                    <tr class="loading-row"><td colspan="6">Selecciona un mes...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
     <!-- ── RENTABILIDAD ─────────────────────────── -->
     <div id="sec-rentabilidad" class="section">
         <div class="section-card">
-            <div class="section-header"><h2>Análisis de Rentabilidad</h2></div>
+            <div class="section-header">
+                <h2>Análisis de Rentabilidad</h2>
+                <button class="btn btn-sm" style="background:#ecfdf5;color:#065f46" onclick="exportarPorPatente()">📊 Excel por Patente</button>
+            </div>
             <div class="kpi-grid" id="kpiRent"></div>
+
+            <h3 style="margin:18px 0 10px;font-size:14px;color:#555">RENTABILIDAD POR VEHÍCULO (PATENTE)</h3>
+            <table>
+                <thead><tr>
+                    <th>Patente</th><th>Viajes</th><th>Ingresos</th><th>Combustible</th><th>Gastos</th><th>Utilidad</th><th>Margen</th>
+                </tr></thead>
+                <tbody id="tRentPatente">
+                    <tr class="loading-row"><td colspan="7">Calculando...</td></tr>
+                </tbody>
+            </table>
+
             <h3 style="margin:18px 0 10px;font-size:14px;color:#555">TOP RUTAS POR INGRESO</h3>
             <table>
                 <thead><tr>
@@ -496,6 +775,16 @@
                 </tr></thead>
                 <tbody id="tRentabilidad">
                     <tr class="loading-row"><td colspan="4">Calculando...</td></tr>
+                </tbody>
+            </table>
+
+            <h3 style="margin:18px 0 10px;font-size:14px;color:#555">RENTABILIDAD POR CLIENTE</h3>
+            <table>
+                <thead><tr>
+                    <th>Cliente</th><th>Viajes</th><th>Ingresos</th><th>Promedio/Viaje</th><th>Facturas Pagadas</th>
+                </tr></thead>
+                <tbody id="tRentCliente">
+                    <tr class="loading-row"><td colspan="5">Calculando...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -509,6 +798,7 @@
                 <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
                     <button class="btn btn-sm" style="background:#f3f4f6;color:#374151" onclick="exportarModulo('cotizaciones',false)">📥 Excel</button>
                     <button class="btn btn-sm" style="background:#ecfdf5;color:#065f46" onclick="exportarModulo('cotizaciones',true)" title="Con IVA y vigencia">📊 Excel+IVA</button>
+                    <button class="btn btn-sm btn-danger" onclick="eliminarTodo('cotizaciones',renderCotizaciones,'Cotizaciones')">🗑 Eliminar todo</button>
                     <button class="btn btn-primary" onclick="openModal('mCotizacion')">+ Nueva Cotización</button>
                 </div>
             </div>
@@ -802,6 +1092,142 @@
                     <code style="background:#fef08a;padding:2px 8px;border-radius:4px;font-size:11px;user-select:all">928e15a2d14d4a6292345f04960f4bd3</code>
                 </p>
             </div>
+        </div>
+    </div>
+
+    <!-- ── USUARIOS ───────────────────────────────────────── -->
+    <div id="sec-usuarios" class="section">
+        <div class="section-card">
+            <div class="section-header">
+                <h2>👥 Gestión de Usuarios</h2>
+                <button class="btn btn-primary" onclick="openModal('mCrearUsuario')">+ Nuevo Usuario</button>
+            </div>
+
+            <!-- Tabla de usuarios -->
+            <div style="overflow-x:auto">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Email</th>
+                            <th>Rol</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tUsuarios">
+                        <tr class="loading-row"><td colspan="5">Cargando...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── MI PLAN ─────────────────────────────────────────── -->
+    <div id="sec-miplan" class="section">
+        <div class="section-card">
+            <div class="section-header">
+                <h2>💎 Mi Plan TransportPro</h2>
+                <span id="saasStatusBadge" style="font-size:13px;padding:5px 14px;border-radius:20px;background:#d1fae5;color:#065f46;font-weight:600">Activo</span>
+            </div>
+            <div id="miPlanContent">
+                <div style="text-align:center;padding:40px;color:#6b7280">Cargando información del plan...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── SOPORTE / TICKETS ──────────────────────────────── -->
+    <div id="sec-soporte" class="section">
+        <div class="section-card">
+            <div class="section-header">
+                <h2>🎫 Soporte & Mejoras</h2>
+                <button class="btn btn-primary" onclick="abrirNuevoTicket()">+ Nuevo Ticket</button>
+            </div>
+            <p style="color:#6b7280;font-size:13px;margin-bottom:16px">Reporta problemas, solicita mejoras o envíanos consultas. Respondemos en menos de 24 hrs hábiles.</p>
+            <div id="soporteContent">
+                <div style="text-align:center;padding:40px;color:#6b7280">Cargando tickets...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── TP ADMIN (solo superadmin) ────────────────────── -->
+    <div id="sec-tpadmin" class="section">
+        <div class="section-card" style="background:linear-gradient(135deg,#1e3a5f 0%,#1e40af 100%);color:#fff;margin-bottom:16px">
+            <h2 style="color:#fff;margin:0">🔐 Panel de Administración TransportPro</h2>
+            <p style="color:#93c5fd;margin:4px 0 0;font-size:13px">Acceso exclusivo — Gestión interna del SaaS</p>
+        </div>
+        <!-- Info de contacto y pago -->
+        <div class="section-card" style="margin-bottom:16px">
+            <h3 style="margin-bottom:16px;color:#1e40af">💳 Datos de Pago y Contacto</h3>
+            <div id="tpContactoContent">
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px">
+                    <div style="background:#f8fafc;padding:16px;border-radius:10px;border:1px solid #e2e8f0">
+                        <div style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Banco</div>
+                        <div id="tpBanco" style="font-weight:600;color:#1e293b">Banco de Chile</div>
+                    </div>
+                    <div style="background:#f8fafc;padding:16px;border-radius:10px;border:1px solid #e2e8f0">
+                        <div style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Cuenta Corriente</div>
+                        <div id="tpCuenta" style="font-weight:600;color:#1e293b">00-000-00000-00</div>
+                    </div>
+                    <div style="background:#f8fafc;padding:16px;border-radius:10px;border:1px solid #e2e8f0">
+                        <div style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">RUT</div>
+                        <div id="tpRut" style="font-weight:600;color:#1e293b">12.345.678-9</div>
+                    </div>
+                    <div style="background:#f8fafc;padding:16px;border-radius:10px;border:1px solid #e2e8f0">
+                        <div style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Celular Soporte</div>
+                        <div id="tpCelular" style="font-weight:600;color:#1e293b">+56 9 0000 0000</div>
+                    </div>
+                    <div style="background:#f8fafc;padding:16px;border-radius:10px;border:1px solid #e2e8f0">
+                        <div style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Email</div>
+                        <div id="tpEmail" style="font-weight:600;color:#1e293b">soporte@transportpro.cl</div>
+                    </div>
+                </div>
+                <button class="btn btn-primary" style="margin-top:14px" onclick="openModal_TpContacto()">✏️ Editar datos</button>
+            </div>
+        </div>
+        <!-- Empresas activas y bloqueo -->
+        <div class="section-card" style="margin-bottom:16px">
+            <div class="section-header">
+                <h3 style="color:#1e40af">🏢 Empresas Clientes</h3>
+                <button class="btn" style="background:#10b981;color:#fff" onclick="renderTpAdmin()">↻ Actualizar</button>
+            </div>
+            <div style="overflow-x:auto">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Empresa</th><th>Plan</th><th>Estado</th><th>Vence</th><th>Vehículos</th><th>Ops Mes</th><th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tTpEmpresas">
+                        <tr class="loading-row"><td colspan="7">Cargando...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <!-- Tickets de soporte -->
+        <div class="section-card">
+            <h3 style="color:#1e40af;margin-bottom:16px">🎫 Tickets de Soporte</h3>
+            <div id="tpTicketsContent">
+                <div style="text-align:center;padding:40px;color:#6b7280">Cargando...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── MÓDULO PERSONALIZADO (genérico, reutilizado) ─────────── -->
+    <div id="sec-modcustom" class="section">
+        <div class="section-card">
+            <div class="section-header">
+                <h2 id="modCustTitle">📋 Módulo</h2>
+                <div style="display:flex;gap:6px;flex-wrap:wrap">
+                    <button class="btn btn-sm" style="background:#f3f4f6;color:#374151" onclick="openConfigCurrentModule()">⚙️ Configurar campos</button>
+                    <button class="btn btn-sm btn-danger" onclick="eliminarCurrentModule()">🗑️ Eliminar módulo</button>
+                    <button class="btn btn-primary" onclick="openNuevoRegistroModulo()">+ Nuevo Registro</button>
+                </div>
+            </div>
+            <table>
+                <thead id="theadModCust"></thead>
+                <tbody id="tbodyModCust"></tbody>
+            </table>
         </div>
     </div>
 
@@ -1236,6 +1662,99 @@
 </div>
 
 <!-- ══════════════════════════════════════════════════════
+     MODAL REMUNERACION
+══════════════════════════════════════════════════════ -->
+<div id="mRemuneracion" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="mRemTitle">Nueva Remuneración</h2>
+            <button class="close-modal" onclick="closeModal('mRemuneracion')">&times;</button>
+        </div>
+        <form onsubmit="saveRemuneracion(event)">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Conductor *</label>
+                    <select id="iRemConductor" required>
+                        <option value="">Seleccionar...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Tipo *</label>
+                    <select id="iRemTipo" required>
+                        <option value="sueldo">Sueldo</option>
+                        <option value="viatico">Viático</option>
+                        <option value="aguinaldo">Aguinaldo</option>
+                        <option value="anticipo">Anticipo</option>
+                        <option value="otro">Otro</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Monto ($) *</label>
+                    <input type="number" id="iRemMonto" required placeholder="0" min="0">
+                </div>
+                <div class="form-group">
+                    <label>Fecha *</label>
+                    <input type="date" id="iRemFecha" required>
+                </div>
+                <div class="form-group" style="grid-column:span 2">
+                    <label>Descripción</label>
+                    <input type="text" id="iRemDesc" placeholder="Ej: Sueldo abril 2026">
+                </div>
+            </div>
+            <button type="submit" id="btnSaveRem" class="btn btn-success">Guardar</button>
+        </form>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     MODALS — MÓDULOS PERSONALIZADOS
+══════════════════════════════════════════════════════ -->
+<div id="mModuloConfig" class="modal">
+    <div class="modal-content" style="max-width:760px">
+        <div class="modal-header">
+            <h2 id="mModConfigTitle">+ Nuevo Módulo Personalizado</h2>
+            <button class="close-modal" onclick="closeModal('mModuloConfig')">&times;</button>
+        </div>
+        <form onsubmit="saveModuloConfig(event)">
+            <div class="form-grid">
+                <div class="form-group" style="grid-column:span 2">
+                    <label>Nombre del módulo *</label>
+                    <input type="text" id="iModNombre" required maxlength="40" placeholder="Ej: Bodegas, Proveedores, Multas...">
+                </div>
+                <div class="form-group">
+                    <label>Ícono (emoji)</label>
+                    <input type="text" id="iModIcono" placeholder="📋" value="📋" maxlength="4">
+                </div>
+                <div class="form-group">
+                    <label>Color</label>
+                    <input type="color" id="iModColor" value="#6366f1" style="height:38px;padding:2px">
+                </div>
+            </div>
+            <hr style="margin:18px 0;border:none;border-top:1px solid #e5e7eb">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+                <h3 style="margin:0;font-size:15px">Campos del módulo</h3>
+                <button type="button" class="btn btn-sm" onclick="modAgregarCampo()" style="background:#ecfdf5;color:#059669;font-weight:700">+ Agregar campo</button>
+            </div>
+            <div id="modCamposLista" style="margin-bottom:14px"></div>
+            <button type="submit" class="btn btn-success" style="width:100%">💾 Guardar módulo</button>
+        </form>
+    </div>
+</div>
+
+<div id="mRegistroModulo" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="mRegModTitle">Nuevo Registro</h2>
+            <button class="close-modal" onclick="closeModal('mRegistroModulo')">&times;</button>
+        </div>
+        <form onsubmit="saveRegistroModulo(event)">
+            <div id="formCamposModulo" class="form-grid"></div>
+            <button type="submit" class="btn btn-success" style="width:100%;margin-top:14px">Guardar</button>
+        </form>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
      MODAL LEER FACTURA CON IA
 ══════════════════════════════════════════════════════ -->
 <div id="mLeerFactura" class="modal">
@@ -1344,6 +1863,174 @@
     </div>
 </div>
 
+<!-- Modal Crear Usuario -->
+<!-- Modal Nuevo Ticket -->
+<div id="mNuevoTicket" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>🎫 Nuevo Ticket de Soporte</h2>
+            <button class="close-modal" onclick="closeModal('mNuevoTicket')">&times;</button>
+        </div>
+        <form onsubmit="guardarTicket(event)">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Tipo *</label>
+                    <select id="iTipoTicket" required>
+                        <option value="problema">🔴 Problema / Error</option>
+                        <option value="mejora">🟡 Solicitud de Mejora</option>
+                        <option value="consulta">🔵 Consulta</option>
+                        <option value="otro">⚪ Otro</option>
+                    </select>
+                </div>
+                <div class="form-group" style="grid-column:1/-1">
+                    <label>Título *</label>
+                    <input type="text" id="iTituloTicket" required placeholder="Describe brevemente el problema o solicitud">
+                </div>
+                <div class="form-group" style="grid-column:1/-1">
+                    <label>Descripción detallada</label>
+                    <textarea id="iDescTicket" rows="4" placeholder="Incluye pasos para reproducir el problema, capturas, etc." style="width:100%;resize:vertical;padding:8px;border:1px solid #e5e7eb;border-radius:6px;font-size:14px"></textarea>
+                </div>
+            </div>
+            <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
+                <button type="button" class="btn" onclick="closeModal('mNuevoTicket')">Cancelar</button>
+                <button type="submit" class="btn btn-primary" id="btnEnviarTicket">📤 Enviar Ticket</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Editar Contacto TP (solo superadmin) -->
+<div id="mTpContacto" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>💳 Editar Datos de Pago y Contacto</h2>
+            <button class="close-modal" onclick="closeModal('mTpContacto')">&times;</button>
+        </div>
+        <form onsubmit="guardarTpContacto(event)">
+            <div class="form-grid">
+                <div class="form-group"><label>Banco</label><input type="text" id="iTpBanco" placeholder="Banco de Chile"></div>
+                <div class="form-group"><label>N° Cuenta Corriente</label><input type="text" id="iTpCuenta" placeholder="00-000-00000-00"></div>
+                <div class="form-group"><label>RUT Empresa</label><input type="text" id="iTpRut" placeholder="12.345.678-9"></div>
+                <div class="form-group"><label>Celular Soporte</label><input type="text" id="iTpCelular" placeholder="+56 9 0000 0000"></div>
+                <div class="form-group"><label>Email Soporte</label><input type="email" id="iTpEmailC" placeholder="soporte@transportpro.cl"></div>
+                <div class="form-group"><label>Nombre titular</label><input type="text" id="iTpTitular" placeholder="Nombre y Apellido"></div>
+            </div>
+            <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
+                <button type="button" class="btn" onclick="closeModal('mTpContacto')">Cancelar</button>
+                <button type="submit" class="btn btn-primary">💾 Guardar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Responder Ticket (solo superadmin) -->
+<div id="mResponderTicket" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>💬 Responder Ticket</h2>
+            <button class="close-modal" onclick="closeModal('mResponderTicket')">&times;</button>
+        </div>
+        <input type="hidden" id="iTicketId">
+        <div id="ticketDetalleAdmin" style="background:#f8fafc;padding:14px;border-radius:8px;margin-bottom:16px;font-size:13px;color:#374151"></div>
+        <div class="form-group">
+            <label>Respuesta</label>
+            <textarea id="iRespuestaTicket" rows="4" required placeholder="Escribe tu respuesta..." style="width:100%;resize:vertical;padding:8px;border:1px solid #e5e7eb;border-radius:6px;font-size:14px"></textarea>
+        </div>
+        <div class="form-group">
+            <label>Cambiar estado</label>
+            <select id="iEstadoTicket">
+                <option value="abierto">🔴 Abierto</option>
+                <option value="en_proceso">🟡 En Proceso</option>
+                <option value="cerrado">✅ Cerrado</option>
+            </select>
+        </div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
+            <button type="button" class="btn" onclick="closeModal('mResponderTicket')">Cancelar</button>
+            <button class="btn btn-primary" onclick="enviarRespuestaTicket()">📤 Enviar Respuesta</button>
+        </div>
+    </div>
+</div>
+
+<div id="mCrearUsuario" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Crear Nuevo Usuario</h2>
+            <button class="close-modal" onclick="closeModal('mCrearUsuario')">&times;</button>
+        </div>
+        <form onsubmit="crearUsuario(event)">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Nombre completo *</label>
+                    <input type="text" id="iUNombre" required placeholder="Juan Pérez">
+                </div>
+                <div class="form-group">
+                    <label>Email *</label>
+                    <input type="email" id="iUEmail" required placeholder="juan@empresa.cl">
+                </div>
+                <div class="form-group">
+                    <label>Contraseña temporal *</label>
+                    <input type="password" id="iUPassword" required placeholder="Mínimo 8 caracteres" minlength="8">
+                </div>
+                <div class="form-group">
+                    <label>Rol</label>
+                    <select id="iURol">
+                        <option value="operador">Operador</option>
+                        <option value="admin">Administrador</option>
+                        <option value="contador">Contador</option>
+                    </select>
+                </div>
+            </div>
+            <div style="background:#eff6ff;border-radius:8px;padding:12px;margin-bottom:14px;font-size:12px;color:#1e40af">
+                El usuario recibirá acceso al sistema de tu empresa. Podrá cambiar su contraseña desde su perfil.
+            </div>
+            <button type="submit" class="btn btn-success" id="btnCrearUser">Crear Usuario</button>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Bitácora de Mantención -->
+<div id="mBitacora" class="modal">
+    <div class="modal-content" style="max-width:780px">
+        <div class="modal-header">
+            <h2 id="mBitacoraTitle">🔧 Bitácora — Vehículo</h2>
+            <button class="close-modal" onclick="closeModal('mBitacora')">&times;</button>
+        </div>
+        <div style="max-height:260px;overflow-y:auto;margin-bottom:18px;border:1px solid #e5e7eb;border-radius:8px">
+            <table style="margin:0">
+                <thead><tr>
+                    <th>Fecha</th><th>Tipo</th><th>Descripción</th><th>KM</th><th>Costo</th><th>Taller</th><th></th>
+                </tr></thead>
+                <tbody id="tBitacora">
+                    <tr class="loading-row"><td colspan="7">Cargando...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <h3 style="font-size:13px;font-weight:700;color:#374151;margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px">+ Agregar registro</h3>
+        <form onsubmit="saveBitacoraEntry(event)">
+            <div class="form-grid" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr))">
+                <div class="form-group"><label>Fecha *</label><input type="date" id="iBitFecha" required></div>
+                <div class="form-group"><label>Tipo *</label>
+                    <select id="iBitTipo" required>
+                        <option value="aceite">Cambio aceite</option>
+                        <option value="frenos">Frenos</option>
+                        <option value="neumaticos">Neumáticos</option>
+                        <option value="revision">Revisión técnica</option>
+                        <option value="electrico">Eléctrico</option>
+                        <option value="motor">Motor</option>
+                        <option value="transmision">Transmisión</option>
+                        <option value="otro">Otro</option>
+                    </select>
+                </div>
+                <div class="form-group"><label>Descripción</label><input type="text" id="iBitDesc" placeholder="Detalle del trabajo"></div>
+                <div class="form-group"><label>KM al momento</label><input type="number" id="iBitKm" placeholder="0" min="0"></div>
+                <div class="form-group"><label>Costo ($)</label><input type="number" id="iBitCosto" placeholder="0" min="0"></div>
+                <div class="form-group"><label>Taller / Proveedor</label><input type="text" id="iBitTaller" placeholder="Nombre taller"></div>
+            </div>
+            <button type="submit" class="btn btn-success">Guardar en Bitácora</button>
+        </form>
+    </div>
+</div>
+
 <!-- Toast -->
 <div id="toast"></div>
 
@@ -1390,6 +2077,30 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let currentUser    = null;
 let currentEmpresa = null;
+
+// ═══════════════════════════════════════════════════════════
+// HANDLERS GLOBALES DE ERRORES (visibilidad para diagnóstico)
+// ═══════════════════════════════════════════════════════════
+window.addEventListener('error', (e) => {
+    console.error('[global error]', e.error || e.message);
+    try {
+        const t = document.getElementById('toast');
+        if (t) { t.textContent = '⚠️ ' + (e.error?.message || e.message || 'Error inesperado'); t.style.display = 'block'; setTimeout(() => t.style.display='none', 5000); }
+    } catch(_) {}
+});
+window.addEventListener('unhandledrejection', (e) => {
+    console.error('[unhandled promise]', e.reason);
+    try {
+        const t = document.getElementById('toast');
+        if (t) { t.textContent = '⚠️ ' + (e.reason?.message || 'Error de red/base de datos'); t.style.display = 'block'; setTimeout(() => t.style.display='none', 5000); }
+    } catch(_) {}
+});
+
+// ─ Helper: detectar errores de schema cache
+function isSchemaError(error) {
+    return error?.message?.includes('could not find') || error?.message?.includes('schema cache') || error?.message?.includes('could not find the');
+}
+
 // ═══════════════════════════════════════════════════════════
 // UTILIDADES
 // ═══════════════════════════════════════════════════════════
@@ -1414,9 +2125,139 @@ const colorEstado = {
 };
 
 // ═══════════════════════════════════════════════════════════
+// AUTH — Login / Registro
 // ═══════════════════════════════════════════════════════════
-// AUTH
-// ═══════════════════════════════════════════════════════════
+
+function mostrarTabLogin() {
+    document.getElementById('loginFormContainer').style.display    = 'block';
+    document.getElementById('registroFormContainer').style.display = 'none';
+    document.getElementById('tabLoginBtn').style.cssText = 'flex:1;padding:10px;border:none;background:none;font-size:13px;font-weight:700;color:#2563eb;border-bottom:2px solid #2563eb;margin-bottom:-2px;cursor:pointer';
+    document.getElementById('tabRegBtn').style.cssText   = 'flex:1;padding:10px;border:none;background:none;font-size:13px;font-weight:600;color:#9ca3af;cursor:pointer';
+    document.getElementById('loginAlert').className = 'hidden';
+}
+
+function mostrarTabRegistro() {
+    document.getElementById('loginFormContainer').style.display    = 'none';
+    document.getElementById('registroFormContainer').style.display = 'block';
+    document.getElementById('tabRegBtn').style.cssText   = 'flex:1;padding:10px;border:none;background:none;font-size:13px;font-weight:700;color:#2563eb;border-bottom:2px solid #2563eb;margin-bottom:-2px;cursor:pointer';
+    document.getElementById('tabLoginBtn').style.cssText = 'flex:1;padding:10px;border:none;background:none;font-size:13px;font-weight:600;color:#9ca3af;cursor:pointer';
+    document.getElementById('loginAlert').className = 'hidden';
+}
+
+function seleccionarPlanReg(plan) {
+    document.getElementById('regPlan').value = plan;
+    ['BASIC','PRO','SCALE'].forEach(p => {
+        const lbl = document.getElementById('plan' + (p==='BASIC'?'Basic':p==='PRO'?'Pro':'Scale') + 'Lbl');
+        if (!lbl) return;
+        lbl.style.border     = p === plan ? '2px solid #2563eb' : '2px solid #e5e7eb';
+        lbl.style.background = p === plan ? '#eff6ff' : 'white';
+    });
+}
+
+async function registrarEmpresa(e) {
+    e.preventDefault();
+    const btn = document.getElementById('btnRegistro');
+    btn.disabled = true;
+    btn.textContent = '⏳ Creando cuenta...';
+    const alertEl = document.getElementById('loginAlert');
+    alertEl.className = 'hidden';
+
+    const empresa = document.getElementById('regEmpresa').value.trim();
+    const nombre  = document.getElementById('regNombre').value.trim();
+    const email   = document.getElementById('regEmail').value.trim().toLowerCase();
+    const pass    = document.getElementById('regPass').value;
+    const plan    = document.getElementById('regPlan').value;
+
+    try {
+        // PASO 1: Crear usuario en Supabase Auth (o recuperar si ya existe)
+        console.log('[registro] Paso 1: Creando auth user...');
+        let authUserId;
+        const { data: authData, error: authErr } = await sb.auth.signUp({ email, password: pass });
+
+        if (authErr) {
+            // "User already registered" — intenta login para recuperar sesión huérfana
+            const esYaRegistrado = authErr.message?.toLowerCase().includes('already registered')
+                                || authErr.message?.toLowerCase().includes('already been registered');
+            if (!esYaRegistrado) throw authErr;
+            console.log('[registro] Email ya existe en Auth, intentando recuperación...');
+            const { data: recData, error: recErr } = await sb.auth.signInWithPassword({ email, password: pass });
+            if (recErr) throw new Error('Este email ya tiene una cuenta. ¿Olvidaste tu contraseña? Usa "Iniciar Sesión".');
+            authUserId = recData?.user?.id;
+        } else {
+            authUserId = authData?.user?.id;
+        }
+
+        if (!authUserId) throw new Error('No se pudo obtener el usuario de autenticación');
+        console.log('[registro] Auth user id:', authUserId);
+
+        // PASO 2: Login inmediato para obtener sesión válida (si no la tenemos ya)
+        const sesionActual = (await sb.auth.getSession())?.data?.session;
+        if (!sesionActual) {
+            console.log('[registro] Paso 2: Iniciando sesión...');
+            const { error: loginErr } = await sb.auth.signInWithPassword({ email, password: pass });
+            if (loginErr) throw new Error('Cuenta creada pero no se pudo iniciar sesión: ' + loginErr.message);
+        }
+
+        // PASO 3: Crear empresa + perfil via RPC SECURITY DEFINER (bypass RLS)
+        // Si el perfil ya existe, crear_tenant retorna error controlado que ignoramos
+        console.log('[registro] Paso 3: Creando empresa y perfil...');
+        const { data: rpcData, error: rpcErr } = await sb.rpc('crear_tenant', {
+            p_auth_uid:       authUserId,
+            p_empresa_nombre: empresa,
+            p_nombre_usuario: nombre,
+            p_email:          email,
+            p_plan:           plan
+        });
+        if (rpcErr) throw rpcErr;
+        // Si ya tenía perfil completo, crear_tenant retorna error "ya tiene perfil" — entrar igual
+        const yaExistePerfil = rpcData?.error?.includes('ya tiene un perfil') || rpcData?.error?.includes('ya está registrado');
+        if (rpcData?.error && !yaExistePerfil) throw new Error(rpcData.error);
+        console.log('[registro] Tenant listo:', rpcData?.empresa_id || 'ya existía');
+
+        // PASO 4: Cargar sesión y entrar al sistema
+        alertEl.className = 'alert alert-success';
+        alertEl.innerHTML = '🎉 ¡Cuenta creada! Entrando al sistema...';
+        alertEl.style.display = 'block';
+        document.getElementById('registroForm').reset();
+        seleccionarPlanReg('BASIC');
+        setTimeout(async () => {
+            try {
+                await cargarSesion(authUserId);
+            } catch(err) {
+                console.error('[registro] Error cargando sesión:', err);
+                mostrarTabLogin();
+                alertEl.className = 'alert alert-success';
+                alertEl.innerHTML = '✅ Cuenta creada. Inicia sesión con tu email y contraseña.';
+                alertEl.style.display = 'block';
+            }
+        }, 800);
+
+    } catch (err) {
+        alertEl.className = 'alert alert-error';
+        alertEl.style.display = 'block';
+        // Detectar rate limit de Supabase y mostrar contador
+        const waitMatch = (err.message || '').match(/after (\d+) seconds/);
+        if (waitMatch) {
+            let secs = parseInt(waitMatch[1]);
+            btn.disabled = true;
+            const intervalo = setInterval(() => {
+                btn.textContent = `⏳ Espera ${secs}s para reintentar...`;
+                alertEl.innerHTML = `⏳ Por seguridad debes esperar <strong>${secs} segundos</strong> antes de intentar de nuevo.`;
+                secs--;
+                if (secs < 0) {
+                    clearInterval(intervalo);
+                    btn.disabled = false;
+                    btn.textContent = '🚀 Crear mi cuenta gratis (30 días)';
+                    alertEl.className = 'hidden';
+                }
+            }, 1000);
+        } else {
+            alertEl.innerHTML = '❌ ' + (err.message || 'Error al crear la cuenta');
+            btn.disabled = false;
+            btn.textContent = '🚀 Crear mi cuenta gratis (30 días)';
+        }
+    }
+}
 
 document.getElementById("loginForm").addEventListener("submit", async function(e) {
 
@@ -1457,6 +2298,8 @@ document.getElementById("loginForm").addEventListener("submit", async function(e
       msg = '⚠️ Tu cuenta no tiene perfil asignado. Contacta al administrador.';
     } else if (msg === 'cuenta_desactivada') {
       msg = '🔒 Tu cuenta está desactivada. Contacta al administrador.';
+    } else if (msg === 'cuenta_sin_empresa') {
+      msg = '⚠️ Tu cuenta no está vinculada a ninguna empresa. Contacta al administrador (soporte@transportpro.cl).';
     } else if (msg.includes('no encontrado') || msg.includes('perfil')) {
       msg = '⚠️ Tu cuenta no tiene perfil asignado. Contacta al administrador.';
     } else if (msg.includes('Too many requests')) {
@@ -1533,6 +2376,13 @@ async function cargarSesion(userId) {
 
     currentUser = data;
 
+    // RBAC: superadmin NO carga empresa cliente — aislamiento total
+    if (data.rol === 'superadmin') {
+        currentEmpresa = { id: null, razon_social: 'TransportPro Admin', plan: 'superadmin' };
+        iniciarApp();
+        return;
+    }
+
     // Empresa: del join o cargar por separado
     if (data.empresas) {
         currentEmpresa = data.empresas;
@@ -1540,20 +2390,57 @@ async function cargarSesion(userId) {
         const { data: emp } = await sb.from('empresas').select('*').eq('id', data.empresa_id).single();
         currentEmpresa = emp || { id: data.empresa_id, razon_social: 'Mi Empresa', plan: 'starter', activa: true };
     } else {
-        currentEmpresa = { razon_social: 'Mi Empresa', plan: 'starter', activa: true };
+        throw new Error('cuenta_sin_empresa');
     }
 
     iniciarApp();
 }
 
-function iniciarApp() {
+async function iniciarApp() {
     document.getElementById('login').style.display = 'none';
     document.getElementById('app').style.display   = 'block';
     document.getElementById('hdrEmpresa').textContent = currentEmpresa.razon_social || currentEmpresa.nombre || 'Mi Empresa';
     document.getElementById('hdrUser').textContent    = currentUser.nombre;
     _actualizarHdrLogo();
-    renderViajes();
-    updateStats();
+
+    // ── RBAC: separación absoluta superadmin vs clientes ──────
+    const rol = currentUser.rol || 'operador';
+    const esSuperAdmin = (rol === 'superadmin');
+
+    if (esSuperAdmin) {
+        // Superadmin: SOLO ve el panel TP Admin — cero acceso a datos de tenants
+        document.querySelectorAll('.tab-btn').forEach(b => b.style.display = 'none');
+        const tAdmin = document.getElementById('tabTpAdmin');
+        if (tAdmin) { tAdmin.style.display = ''; tAdmin.style.removeProperty('display'); }
+        // Ocultar stats de clientes que no aplican
+        const statsBar = document.querySelector('.stats-grid');
+        if (statsBar) statsBar.style.display = 'none';
+        // Activar directo el panel admin
+        document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+        const secAdmin = document.getElementById('sec-tpadmin');
+        if (secAdmin) secAdmin.classList.add('active');
+        if (tAdmin) tAdmin.classList.add('active');
+        renderTpAdmin();
+        return;
+    }
+
+    // Cliente normal: ocultar tab Usuarios si no es admin
+    if (rol !== 'admin') {
+        const tUsuarios = document.getElementById('tabUsuarios');
+        if (tUsuarios) tUsuarios.style.display = 'none';
+    }
+
+    try {
+        await Promise.race([
+            renderDashboard(),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout: conexión lenta. Revisa tu internet.')), 15000))
+        ]);
+    } catch (err) {
+        console.error('[iniciarApp] Dashboard error:', err);
+        try { toast('⚠️ ' + err.message); } catch(_) {}
+    }
+    saasInit();
+    cargarModulosCustom().catch(e => console.warn('[modulos custom]', e));
 }
 
 async function logout() {
@@ -1573,7 +2460,13 @@ function mostrarErrorLogin(msg) {
     const { data: { session } } = await sb.auth.getSession();
     if (session) {
         try { await cargarSesion(session.user.id); }
-        catch (e) { console.error('Sesión inválida:', e); }
+        catch (e) {
+            console.error('Sesión inválida:', e);
+            if (e.message === 'cuenta_sin_empresa') {
+                mostrarErrorLogin('⚠️ Tu cuenta no está vinculada a ninguna empresa. Contacta al administrador.');
+            }
+            await sb.auth.signOut();
+        }
     }
 })();
 
@@ -1581,13 +2474,17 @@ function mostrarErrorLogin(msg) {
 // NAVEGACIÓN
 // ═══════════════════════════════════════════════════════════
 const moduloRender = {
+    dashboard: renderDashboard,
     viajes: renderViajes,  clientes: renderClientes,
     facturacion: renderFacturacion, vehiculos: renderVehiculos,
     conductores: renderConductores, combustible: renderCombustible,
-    gastos: renderGastos, mantenimiento: renderMantenimiento,
+    gastos: renderGastos, remuneraciones: (...a) => renderRemuneraciones(...a), mantenimiento: renderMantenimiento,
+    resumen: (...a) => renderResumenMensual(...a),
     cotizaciones: renderCotizaciones,
     documentos:   (...a) => renderDocumentos(...a),
-    rentabilidad: renderRentabilidad, configuracion: renderConfiguracion
+    rentabilidad: renderRentabilidad, configuracion: renderConfiguracion,
+    usuarios: (...a) => renderUsuarios(...a), miplan: (...a) => renderMiPlan(...a),
+    soporte: (...a) => renderSoporte(...a), tpadmin: (...a) => renderTpAdmin(...a)
 };
 
 function switchTab(tab, btn) {
@@ -1606,18 +2503,28 @@ function openModal(id) {
     const t = today();
     if (id === 'mViaje') {
         cargarSelectsViaje().then(() => {
-            // Restore select values after async load (edit mode)
             if (_editingViajeId && _editingViajeData) {
                 const d = _editingViajeData;
-                document.getElementById('iVCliente').value   = d.cliente_id   || '';
-                document.getElementById('iVVehiculo').value  = d.vehiculo_id  || '';
-                document.getElementById('iVConductor').value = d.conductor_id || '';
+                const setVal = (elId, val) => {
+                    const el = document.getElementById(elId);
+                    if (!el || !val) return;
+                    el.value = val;
+                    // Si no matchea ninguna opción, forzar selección por value
+                    if (el.value !== val) {
+                        const opt = Array.from(el.options).find(o => o.value === val);
+                        if (opt) opt.selected = true;
+                    }
+                };
+                setVal('iVCliente',   d.cliente_id);
+                setVal('iVVehiculo',  d.vehiculo_id);
+                setVal('iVConductor', d.conductor_id);
             }
         });
         if (!_editingViajeId) document.getElementById('iVFecha').value = t;
-        renderCasillasEnForm(_editingViajeData?.datos_extra || null);
+        const extraLocal = _editingViajeId ? (() => { try { return JSON.parse(localStorage.getItem('tp_viaje_extra_' + _editingViajeId)); } catch(e) { return null; } })() : null;
+        renderCasillasEnForm(_editingViajeData?.datos_extra || extraLocal || null);
     }
-    if (id === 'mFactura')     { cargarSelectsFactura(); document.getElementById('iFFecha').value = t; }
+    if (id === 'mFactura')     { cargarSelectsFactura(_prefillFacturaClienteId); document.getElementById('iFFecha').value = t; _prefillFacturaClienteId = null; }
     if (id === 'mCombustible') {
         cargarSelectVehiculo('iCoVeh', false).then(() => {
             if (_editingCombustibleId && _editingCombustibleData)
@@ -1631,6 +2538,13 @@ function openModal(id) {
                 document.getElementById('iGVeh').value = _editingGastoData.vehiculo_id || '';
         });
         if (!_editingGastoId) document.getElementById('iGFecha').value = t;
+    }
+    if (id === 'mRemuneracion') {
+        _cargarSelectConductorRem('iRemConductor', false).then(() => {
+            if (_editingRemId && _editingRemData)
+                document.getElementById('iRemConductor').value = _editingRemData.conductor_id || '';
+        });
+        if (!_editingRemId) document.getElementById('iRemFecha').value = t;
     }
     if (id === 'mMantenimiento') {
         cargarSelectVehiculo('iMVeh', false).then(() => {
@@ -1652,6 +2566,7 @@ function openModal(id) {
 
 var _editingViajeId   = null; // must be declared before closeModal uses it
 var _editingViajeData = null;
+var _prefillFacturaClienteId = null;
 
 function closeModal(id) {
     document.getElementById(id).classList.remove('open');
@@ -1664,7 +2579,8 @@ function closeModal(id) {
         mCombustible: () => { _editingCombustibleId = null; _editingCombustibleData = null; document.querySelector('#mCombustible .modal-header h2').textContent = 'Registrar Carga de Combustible'; },
         mGasto:       () => { _editingGastoId = null; _editingGastoData = null; document.querySelector('#mGasto .modal-header h2').textContent = 'Registrar Gasto'; },
         mMantenimiento: () => { _editingMantenimientoId = null; _editingMantenimientoData = null; document.querySelector('#mMantenimiento .modal-header h2').textContent = 'Programar Mantención'; },
-        mCotizacion:  () => { _editingCotizacionId = null; document.querySelector('#mCotizacion .modal-header h2').textContent = '📋 Nueva Cotización'; cotResetForm(); },
+        mCotizacion:    () => { _editingCotizacionId = null; document.querySelector('#mCotizacion .modal-header h2').textContent = '📋 Nueva Cotización'; cotResetForm(); },
+        mRemuneracion:  () => { _editingRemId = null; _editingRemData = null; document.getElementById('mRemTitle').textContent = 'Nueva Remuneración'; },
     };
     if (resets[id]) resets[id]();
     // Reset OCR status in viaje form
@@ -1681,6 +2597,293 @@ document.addEventListener('click', e => {
 });
 
 // ═══════════════════════════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════════════════════════
+async function renderDashboard() {
+    if (!currentEmpresa) return;
+    const eid = currentEmpresa.id;
+    const hoy = new Date();
+    const mesInicio = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString().split('T')[0];
+    const nombre = currentEmpresa.razon_social || currentEmpresa.nombre || 'Mi Empresa';
+    document.getElementById('dashBienvenida').textContent = `📊 Dashboard — ${nombre}`;
+
+    try {
+        // ── Queries principales (5 paralelas) ──────────────────
+        const [{ data: viajes }, { data: gastosMes }, { data: combMes },
+               { data: fPend }, { data: vehiculos }, { data: conductores }, { data: mantPend }, { data: remMes }] =
+            await Promise.all([
+                sb.from('viajes').select('id, fecha, tarifa, estado, origen, destino, vehiculo_id, clientes(razon_social), vehiculos(patente)')
+                    .eq('empresa_id', eid).order('fecha', { ascending: false }),
+                sb.from('gastos').select('fecha, monto').eq('empresa_id', eid).gte('fecha', mesInicio),
+                sb.from('combustible').select('fecha, total, vehiculo_id').eq('empresa_id', eid).gte('fecha', mesInicio),
+                sb.from('facturas').select('monto').eq('empresa_id', eid).eq('estado', 'pendiente'),
+                sb.from('vehiculos').select('id, patente, estado').eq('empresa_id', eid),
+                sb.from('conductores').select('id, vencimiento_licencia').eq('empresa_id', eid).eq('estado', 'activo'),
+                sb.from('mantenimiento').select('tipo, vehiculos(patente), fecha_programada').eq('empresa_id', eid).eq('estado', 'pendiente'),
+                sb.from('remuneraciones').select('monto').eq('empresa_id', eid).gte('fecha', mesInicio)
+            ]);
+
+        const vMes     = (viajes||[]).filter(v => v.fecha >= mesInicio);
+        const ingresos = vMes.reduce((s,v) => s+(v.tarifa||0), 0);
+        const gastos   = (gastosMes||[]).reduce((s,g) => s+(g.monto||0), 0);
+        const comb     = (combMes||[]).reduce((s,c) => s+(c.total||0), 0);
+        const cobrar   = (fPend||[]).reduce((s,f) => s+(f.monto||0), 0);
+        const remTotal = (remMes||[]).reduce((s,r) => s+Number(r.monto||0), 0);
+        const utilidad = ingresos - gastos - comb;
+        const vehActivos = (vehiculos||[]).filter(v => v.estado === 'operativo').length;
+
+        // KPIs — Dashboard section
+        document.getElementById('dViajes').textContent    = vMes.length;
+        document.getElementById('dIngresos').textContent  = '$' + fmt(ingresos);
+        document.getElementById('dCobrar').textContent    = '$' + fmt(cobrar);
+        document.getElementById('dGastos').textContent    = '$' + fmt(gastos + comb);
+        document.getElementById('dUtilidad').textContent  = '$' + fmt(utilidad);
+        document.getElementById('dUtilidad').style.color  = utilidad >= 0 ? '#10b981' : '#ef4444';
+        document.getElementById('dVehiculos').textContent = vehActivos;
+        const elDRem = document.getElementById('dRemuneraciones');
+        if (elDRem) elDRem.textContent = '$' + fmt(remTotal);
+        const elSub = document.getElementById('dViajesSub');
+        if (elSub) elSub.textContent = (viajes||[]).length + ' total registrados';
+
+        // KPIs — Header section (same data, different IDs)
+        document.getElementById('stViajes').textContent   = vMes.length;
+        document.getElementById('stIngresos').textContent = '$' + fmt(ingresos);
+        document.getElementById('stVehiculos').textContent = vehActivos;
+        document.getElementById('stCobrar').textContent   = '$' + fmt(cobrar);
+
+        // Últimos 8 viajes
+        const ultimos = (viajes||[]).slice(0, 8);
+        const colorEstado = { completado:'badge-success', planificado:'badge-info', en_curso:'badge-warning', cancelado:'badge-danger' };
+        document.getElementById('dashUltViajes').innerHTML = ultimos.length
+            ? ultimos.map(v => `<tr>
+                <td>${fmtDate(v.fecha)}</td>
+                <td style="max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${v.clientes?.razon_social||'—'}</td>
+                <td style="font-size:11px">${v.origen||'—'} → ${v.destino||'—'}</td>
+                <td>$${fmt(v.tarifa)}</td>
+                <td><span class="badge ${colorEstado[v.estado]||'badge-info'}" style="font-size:10px">${v.estado}</span></td>
+              </tr>`).join('')
+            : '<tr class="empty-row"><td colspan="5">Sin viajes</td></tr>';
+
+        // Alertas
+        const alertas = [];
+        const enDias = (fecha) => Math.ceil((new Date(fecha) - hoy) / 86400000);
+        (conductores||[]).forEach(c => {
+            if (!c.vencimiento_licencia) return;
+            const dias = enDias(c.vencimiento_licencia);
+            if (dias <= 30) alertas.push({ color: dias <= 7 ? '#ef4444' : '#f59e0b', texto: `⚠️ Licencia vence en ${dias} días` });
+        });
+        (mantPend||[]).forEach(m => {
+            alertas.push({ color: '#f59e0b', texto: `🔧 Mantención pendiente: ${m.tipo} — ${m.vehiculos?.patente||''}` });
+        });
+        if (cobrar > 0) alertas.push({ color: '#ef4444', texto: `💰 Tienes $${fmt(cobrar)} por cobrar en facturas pendientes` });
+        if (!alertas.length) alertas.push({ color: '#10b981', texto: '✅ Todo en orden, sin alertas pendientes' });
+        document.getElementById('dashAlertas').innerHTML = alertas.slice(0,6).map(a =>
+            `<div style="padding:8px 12px;background:${a.color}18;border-left:3px solid ${a.color};border-radius:6px;font-size:12px;color:#374151">${a.texto}</div>`
+        ).join('');
+
+        // Rendimiento por patente
+        const porVeh = {};
+        (vehiculos||[]).forEach(v => { porVeh[v.id] = { patente: v.patente, viajes: 0, ingresos: 0, comb: 0 }; });
+        vMes.forEach(v => {
+            if (!v.vehiculo_id || !porVeh[v.vehiculo_id]) return;
+            porVeh[v.vehiculo_id].viajes++;
+            porVeh[v.vehiculo_id].ingresos += v.tarifa || 0;
+        });
+        (combMes||[]).forEach(c => { if (c.vehiculo_id && porVeh[c.vehiculo_id]) porVeh[c.vehiculo_id].comb += c.total || 0; });
+        const filasPat = Object.values(porVeh).filter(v => v.viajes > 0).sort((a,b) => b.ingresos - a.ingresos);
+        document.getElementById('dashPatentes').innerHTML = filasPat.length
+            ? filasPat.map(v => {
+                const util = v.ingresos - v.comb;
+                return `<tr>
+                    <td><strong>${v.patente}</strong></td><td>${v.viajes}</td>
+                    <td style="color:#10b981"><strong>$${fmt(v.ingresos)}</strong></td>
+                    <td style="color:#f59e0b">$${fmt(v.comb)}</td>
+                    <td style="color:${util>=0?'#10b981':'#ef4444'}"><strong>$${fmt(util)}</strong></td>
+                </tr>`;
+              }).join('')
+            : '<tr class="empty-row"><td colspan="5">Sin viajes este mes</td></tr>';
+
+        // ── GRÁFICOS (silencioso si Chart.js no está disponible) ──
+        if (typeof Chart === 'undefined') return;
+
+        // Reusar datos en memoria para histórico 6 meses (0 queries extra)
+        const meses6 = [], labels6 = [];
+        for (let i = 5; i >= 0; i--) {
+            const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - i);
+            meses6.push(d.toISOString().slice(0,7));
+            labels6.push(d.toLocaleDateString('es-CL', { month: 'short', year: '2-digit' }));
+        }
+        const ingMes = meses6.map(ym => (viajes||[]).filter(v => (v.fecha||'').startsWith(ym)).reduce((s,v) => s+(v.tarifa||0), 0));
+        const gasMes = meses6.map(ym => {
+            const g6Start = ym + '-01';
+            const g6End   = ym + '-31';
+            return ((gastosMes||[]).filter(g => (g.fecha||'') >= g6Start && (g.fecha||'') <= g6End).reduce((s,g) => s+(g.monto||0), 0))
+                 + ((combMes||[]).filter(c  => (c.fecha||'') >= g6Start && (c.fecha||'') <= g6End).reduce((s,c) => s+(c.total||0), 0));
+        });
+        // Para meses anteriores al actual, no tenemos datos completos — está OK, muestra 0
+
+        // Destruir gráficos previos
+        ['chartIngresos','chartEstados','chartIngGas','chartVehiculos'].forEach(id => {
+            try { const e = Chart.getChart(id); if (e) e.destroy(); } catch(_) {}
+        });
+
+        // 1. Línea ingresos 6 meses
+        const c1 = document.getElementById('chartIngresos');
+        if (c1) new Chart(c1, {
+            type: 'line',
+            data: { labels: labels6, datasets: [{
+                label: 'Ingresos ($)', data: ingMes,
+                borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,.08)',
+                tension: 0.4, fill: true, pointBackgroundColor: '#10b981', pointRadius: 5
+            }]},
+            options: { responsive: true, plugins: { legend: { display: false } },
+                scales: { y: { ticks: { callback: v => '$'+(v/1000).toFixed(0)+'K', font:{size:11} }, grid:{color:'#f1f5f9'} },
+                          x: { ticks: { font:{size:11} }, grid:{display:false} } } }
+        });
+
+        // 2. Donut estados
+        const estadosMap = {};
+        vMes.forEach(v => { estadosMap[v.estado||'otro'] = (estadosMap[v.estado||'otro']||0) + 1; });
+        const estLabels = Object.keys(estadosMap);
+        const estColors = { completado:'#10b981', planificado:'#6366f1', en_ruta:'#f59e0b', cancelado:'#ef4444', otro:'#94a3b8' };
+        const c2 = document.getElementById('chartEstados');
+        if (c2) new Chart(c2, {
+            type: 'doughnut',
+            data: { labels: estLabels.length ? estLabels : ['Sin viajes'],
+                    datasets: [{ data: estLabels.length ? estLabels.map(e=>estadosMap[e]) : [1],
+                        backgroundColor: estLabels.length ? estLabels.map(e=>estColors[e]||'#94a3b8') : ['#e5e7eb'],
+                        borderWidth:2, borderColor:'#fff' }]},
+            options: { responsive:true, cutout:'65%', plugins:{legend:{position:'bottom',labels:{font:{size:11},padding:8}}} }
+        });
+
+        // 3. Barras ingresos vs gastos
+        const c3 = document.getElementById('chartIngGas');
+        if (c3) new Chart(c3, {
+            type: 'bar',
+            data: { labels: labels6, datasets: [
+                { label:'Ingresos', data:ingMes, backgroundColor:'rgba(16,185,129,.75)', borderRadius:4 },
+                { label:'Gastos',   data:gasMes, backgroundColor:'rgba(239,68,68,.65)',  borderRadius:4 }
+            ]},
+            options: { responsive:true, plugins:{legend:{labels:{font:{size:11}}}},
+                scales: { y:{ticks:{callback:v=>'$'+(v/1000).toFixed(0)+'K',font:{size:11}},grid:{color:'#f1f5f9'}},
+                          x:{ticks:{font:{size:11}},grid:{display:false}} } }
+        });
+
+        // 4. Barras horizontales top vehículos
+        const topVeh = filasPat.slice(0, 6);
+        const c4 = document.getElementById('chartVehiculos');
+        if (c4) new Chart(c4, {
+            type: 'bar',
+            data: { labels: topVeh.length ? topVeh.map(v=>v.patente) : ['Sin datos'],
+                    datasets: [{ label:'Ingresos ($)',
+                        data: topVeh.length ? topVeh.map(v=>v.ingresos) : [0],
+                        backgroundColor: ['#6366f1','#8b5cf6','#0ea5e9','#10b981','#f59e0b','#ef4444'].slice(0, topVeh.length||1),
+                        borderRadius: 5 }]},
+            options: { indexAxis:'y', responsive:true, plugins:{legend:{display:false}},
+                scales: { x:{ticks:{callback:v=>'$'+(v/1000).toFixed(0)+'K',font:{size:11}},grid:{color:'#f1f5f9'}},
+                          y:{ticks:{font:{size:11}},grid:{display:false}} } }
+        });
+
+    } catch(err) {
+        console.error('[renderDashboard]', err);
+        // Mostrar error visible al usuario en lugar de dejar "Cargando..." eterno
+        const msgErr = `⚠️ ${err?.message || 'Error al cargar datos'}`;
+        const ultEl = document.getElementById('dashUltViajes');
+        if (ultEl) ultEl.innerHTML = `<tr class="empty-row"><td colspan="5">${msgErr}</td></tr>`;
+        const patEl = document.getElementById('dashPatentes');
+        if (patEl) patEl.innerHTML = `<tr class="empty-row"><td colspan="5">${msgErr}</td></tr>`;
+        const alEl = document.getElementById('dashAlertas');
+        if (alEl) alEl.innerHTML = `<div style="padding:10px;background:#fee2e2;border-radius:8px;font-size:12px;color:#dc2626">${msgErr} — Recarga la página (F5) o contacta soporte.</div>`;
+        try { toast(msgErr); } catch(_) {}
+    }
+}
+
+async function exportarTodo() {
+    if (!currentEmpresa) return;
+    if (typeof XLSX === 'undefined') { toast('❌ Librería Excel no cargada'); return; }
+    toast('⏳ Generando Excel completo...');
+    const eid = currentEmpresa.id;
+
+    const [{ data: viajes }, { data: facturas }, { data: clientes }, { data: vehiculos },
+           { data: conductores }, { data: combustible }, { data: gastos }, { data: mantenimiento }] = await Promise.all([
+        sb.from('viajes').select('*, clientes(razon_social), vehiculos(patente), conductores(nombre)').eq('empresa_id', eid).order('fecha', { ascending: false }),
+        sb.from('facturas').select('*, clientes(razon_social)').eq('empresa_id', eid).order('fecha', { ascending: false }),
+        sb.from('clientes').select('*').eq('empresa_id', eid).order('razon_social'),
+        sb.from('vehiculos').select('*').eq('empresa_id', eid).order('patente'),
+        sb.from('conductores').select('*').eq('empresa_id', eid).order('nombre'),
+        sb.from('combustible').select('*, vehiculos(patente)').eq('empresa_id', eid).order('fecha', { ascending: false }),
+        sb.from('gastos').select('*, vehiculos(patente)').eq('empresa_id', eid).order('fecha', { ascending: false }),
+        sb.from('mantenimiento').select('*, vehiculos(patente)').eq('empresa_id', eid).order('fecha_programada', { ascending: false })
+    ]);
+
+    const wb = XLSX.utils.book_new();
+    const addSheet = (name, rows) => XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), name.substring(0,31));
+
+    // Viajes
+    addSheet('Viajes', [
+        ['N° Viaje','Fecha','Cliente','Conductor','Vehículo','Origen','Destino','Tipo Carga','N° Guía','N° Contenedor','KM Inicial','KM Final','Tarifa ($)','Estado','Observaciones'],
+        ...(viajes||[]).map(v => ['VJ-'+shortId(v.id), v.fecha||'', v.clientes?.razon_social||'', v.conductores?.nombre||'', v.vehiculos?.patente||'', v.origen||'', v.destino||'', v.tipo_carga||'', v.numero_guia||'', v.numero_contenedor||'', v.km_inicial||'', v.km_final||'', v.tarifa||0, v.estado||'', v.observaciones||''])
+    ]);
+
+    // Facturas
+    addSheet('Facturas', [
+        ['N° Factura','Fecha','Vencimiento','Cliente','Monto ($)','Neto ($)','IVA ($)','Estado'],
+        ...(facturas||[]).map(f => [f.numero||'', f.fecha||'', f.vencimiento||'', f.clientes?.razon_social||'', f.monto||0, Math.round((f.monto||0)/1.19), Math.round((f.monto||0)/1.19*0.19), f.estado||''])
+    ]);
+
+    // Clientes
+    addSheet('Clientes', [
+        ['RUT','Razón Social','Contacto','Teléfono','Email','Dirección','Tarifa Base ($)'],
+        ...(clientes||[]).map(c => [c.rut||'', c.razon_social||'', c.contacto||'', c.telefono||'', c.email||'', c.direccion||'', c.tarifa_base||0])
+    ]);
+
+    // Vehículos
+    addSheet('Vehículos', [
+        ['Patente','Marca','Modelo','Año','KM','Estado'],
+        ...(vehiculos||[]).map(v => [v.patente||'', v.marca||'', v.modelo||'', v.ano||'', v.km||0, v.estado||''])
+    ]);
+
+    // Conductores
+    addSheet('Conductores', [
+        ['RUT','Nombre','Teléfono','N° Licencia','Vencimiento Licencia','Estado'],
+        ...(conductores||[]).map(c => [c.rut||'', c.nombre||'', c.telefono||'', c.licencia||'', c.vencimiento_licencia||'', c.estado||''])
+    ]);
+
+    // Combustible
+    addSheet('Combustible', [
+        ['Patente','Fecha','Litros','Precio/L ($)','Total ($)','Odómetro'],
+        ...(combustible||[]).map(c => [c.vehiculos?.patente||'', c.fecha||'', c.litros||0, c.precio_litro||0, c.total||0, c.odometro||''])
+    ]);
+
+    // Gastos
+    addSheet('Gastos', [
+        ['Patente','Fecha','Categoría','Descripción','Monto ($)'],
+        ...(gastos||[]).map(g => [g.vehiculos?.patente||'', g.fecha||'', g.categoria||'', g.descripcion||'', g.monto||0])
+    ]);
+
+    // Mantenimiento
+    addSheet('Mantenimiento', [
+        ['Patente','Tipo','Descripción','KM Programado','Fecha Prog.','Estado'],
+        ...(mantenimiento||[]).map(m => [m.vehiculos?.patente||'', m.tipo||'', m.descripcion||'', m.km_programado||'', m.fecha_programada||'', m.estado||''])
+    ]);
+
+    // Rentabilidad por patente
+    const porVeh = {};
+    (vehiculos||[]).forEach(v => { porVeh[v.id] = { patente: v.patente, marca: v.marca, modelo: v.modelo, viajes: 0, ingresos: 0, comb: 0, gastos_: 0 }; });
+    (viajes||[]).forEach(v => { if (v.vehiculo_id && porVeh[v.vehiculo_id]) { porVeh[v.vehiculo_id].viajes++; porVeh[v.vehiculo_id].ingresos += v.tarifa||0; } });
+    (combustible||[]).forEach(c => { if (c.vehiculo_id && porVeh[c.vehiculo_id]) porVeh[c.vehiculo_id].comb += c.total||0; });
+    (gastos||[]).forEach(g => { if (g.vehiculo_id && porVeh[g.vehiculo_id]) porVeh[g.vehiculo_id].gastos_ += g.monto||0; });
+    addSheet('Rentabilidad Patentes', [
+        ['Patente','Marca','Modelo','N° Viajes','Ingresos ($)','Combustible ($)','Gastos ($)','Utilidad ($)','Margen %'],
+        ...Object.values(porVeh).map(v => { const u = v.ingresos-v.comb-v.gastos_; return [v.patente, v.marca||'', v.modelo||'', v.viajes, v.ingresos, v.comb, v.gastos_, u, v.ingresos ? Math.round(u/v.ingresos*100)+'%' : '0%']; })
+    ]);
+
+    const mes = new Date().toISOString().slice(0,7).replace('-','');
+    XLSX.writeFile(wb, `TransportPro_Completo_${mes}.xlsx`);
+    toast('✅ Excel completo descargado (9 hojas)');
+}
+
+// ═══════════════════════════════════════════════════════════
 // STATS (KPIs header)
 // ═══════════════════════════════════════════════════════════
 async function updateStats() {
@@ -1690,7 +2893,7 @@ async function updateStats() {
         .toISOString().split('T')[0];
 
     const [{ count: nViajes }, { data: vMes }, { count: nVeh }, { data: fPend }] = await Promise.all([
-        sb.from('viajes').select('*',{count:'exact',head:true}).eq('empresa_id',eid).gte('fecha',mesInicio),
+        sb.from('viajes').select('id',{count:'exact',head:true}).eq('empresa_id',eid).gte('fecha',mesInicio),
         sb.from('viajes').select('tarifa').eq('empresa_id',eid).gte('fecha',mesInicio),
         sb.from('vehiculos').select('*',{count:'exact',head:true}).eq('empresa_id',eid).eq('estado','operativo'),
         sb.from('facturas').select('monto').eq('empresa_id',eid).eq('estado','pendiente')
@@ -1716,9 +2919,12 @@ async function renderViajes() {
     const t = document.getElementById('tViajes');
     t.innerHTML = '<tr class="loading-row"><td colspan="9">Cargando...</td></tr>';
 
-    const { data, error } = await sb
-        .from('viajes')
-        .select('*, clientes(rut, razon_social, email), vehiculos(patente), conductores(nombre)')
+    // Select ONLY columns that definitely exist in schema (no wildcard, no optional columns)
+    // Base columns: id, empresa_id, numero, cliente_id, vehiculo_id, conductor_id, fecha, origen, destino, km_inicial, km_final, tarifa, estado
+    // Added by migrations: tipo_carga, numero_guia, numero_contenedor
+    // Include related tables for display
+    const { data, error } = await sb.from('viajes')
+        .select('id, cliente_id, vehiculo_id, conductor_id, fecha, origen, destino, km_inicial, tarifa, estado, tipo_carga, numero_guia, numero_contenedor, observaciones, datos_extra, clientes(rut, razon_social), vehiculos(patente), conductores(nombre)')
         .eq('empresa_id', currentEmpresa.id)
         .order('fecha', { ascending: false });
 
@@ -1735,6 +2941,15 @@ function filtrarViajes() {
     const tipoCarga = (document.getElementById('fVTipoCarga')?.value || '');
     const estado    = (document.getElementById('fVEstado')?.value    || '');
 
+    const casillas = _getCasillas();
+    // Actualizar encabezado con columnas de casillas
+    const thead = document.getElementById('theadViajes');
+    if (thead) {
+        const casillasThs = casillas.map(c => `<th style="background:#f3f0ff;color:#5b21b6">${c.nombre}</th>`).join('');
+        thead.innerHTML = `<tr><th>N° Viaje</th><th>Fecha</th><th>Cliente</th><th>Conductor</th><th>Ruta</th><th>Tipo Carga</th><th>N° Guía</th><th>Tarifa</th><th>Estado</th>${casillasThs}<th>Acciones</th></tr>`;
+    }
+    const totalCols = 10 + casillas.length;
+
     const filtrados = _viajesData.filter(v => {
         const txt = [
             v.clientes?.razon_social, v.origen, v.destino,
@@ -1749,6 +2964,13 @@ function filtrarViajes() {
         const tipoBadge = v.tipo_carga
             ? `<span class="badge badge-info" style="font-size:10px">${v.tipo_carga}</span>`
             : '—';
+        const extra = v.datos_extra || {};
+        const casillasCells = casillas.map(c => {
+            const val = extra[c.nombre];
+            if (val === undefined || val === null || val === '') return '<td style="color:#9ca3af">—</td>';
+            if (c.tipo === 'si_no') return `<td>${val ? '<span style="color:#16a34a">✔ Sí</span>' : '<span style="color:#dc2626">✗ No</span>'}</td>`;
+            return `<td style="font-size:12px">${val}</td>`;
+        }).join('');
         return `<tr>
         <td><strong>VJ-${shortId(v.id)}</strong></td>
         <td>${fmtDate(v.fecha)}</td>
@@ -1759,15 +2981,19 @@ function filtrarViajes() {
         <td style="font-size:11px">${v.numero_guia || v.numero_contenedor || '—'}</td>
         <td><strong>$${fmt(v.tarifa)}</strong></td>
         <td><span class="badge ${colorEstado[v.estado] || 'badge-info'}">${v.estado}</span></td>
+        ${casillasCells}
         <td style="white-space:nowrap">
             <button class="btn btn-sm" style="margin-right:4px;background:#6c757d;color:#fff"
                 onclick="editarViaje('${v.id}')">✏️</button>
             <button class="btn btn-facturar btn-sm" style="margin-right:4px"
                 title="Emitir boleta/factura electrónica"
                 onclick="emitirFactura('${v.id}',this)">🧾</button>
+            <button class="btn btn-sm" style="margin-right:4px;background:#198754;color:#fff"
+                title="Crear factura manual desde este viaje"
+                onclick="facturaDesdeViaje('${v.id}')">📄</button>
             <button class="btn btn-danger btn-sm" onclick="eliminarRegistro('viajes','${v.id}',renderViajes)">✕</button>
         </td>
-    </tr>`;}).join('') : '<tr class="empty-row"><td colspan="10">Sin viajes registrados</td></tr>';
+    </tr>`;}).join('') : `<tr class="empty-row"><td colspan="${totalCols}">Sin viajes registrados</td></tr>`;
 }
 
 function editarViaje(id) {
@@ -1786,9 +3012,21 @@ function editarViaje(id) {
     document.getElementById('iVTipoCarga').value      = v.tipo_carga || '';
     document.getElementById('iVNumGuia').value        = v.numero_guia || '';
     document.getElementById('iVNumContenedor').value  = v.numero_contenedor || '';
-    document.getElementById('iVObs').value            = v.observaciones || '';
+    document.getElementById('iVObs').value            = v.observaciones || localStorage.getItem('tp_viaje_obs_' + v.id) || '';
     // Select values are restored in openModal after async cargarSelectsViaje()
     openModal('mViaje');
+}
+
+function facturaDesdeViaje(viajeId) {
+    const v = _viajesData.find(x => x.id === viajeId);
+    if (!v) return;
+    _prefillFacturaClienteId = v.cliente_id || null;
+    openModal('mFactura');
+    // Pre-fill monto with tarifa del viaje
+    if (v.tarifa) {
+        const elMonto = document.getElementById('iFMonto');
+        if (elMonto) elMonto.value = v.tarifa;
+    }
 }
 
 async function saveViaje(e) {
@@ -1800,6 +3038,7 @@ async function saveViaje(e) {
         const vehiculoId  = document.getElementById('iVVehiculo').value;
         const conductorId = document.getElementById('iVConductor').value;
 
+        const casillasData = _recogerCasillas();
         const payload = {
             fecha:               document.getElementById('iVFecha').value,
             cliente_id:          clienteId   || null,
@@ -1808,20 +3047,22 @@ async function saveViaje(e) {
             origen:              document.getElementById('iVOrigen').value,
             destino:             document.getElementById('iVDestino').value,
             km_inicial:          parseInt(document.getElementById('iVKmI').value)    || 0,
-            tarifa:              parseInt(document.getElementById('iVTarifa').value)  || 0,
+            tarifa:              parseFloat(document.getElementById('iVTarifa').value)  || 0,
             estado:              document.getElementById('iVEstado').value,
             tipo_carga:          document.getElementById('iVTipoCarga').value    || null,
             numero_guia:         document.getElementById('iVNumGuia').value      || null,
             numero_contenedor:   document.getElementById('iVNumContenedor').value || null,
-            observaciones:       document.getElementById('iVObs').value || null,
-            datos_extra:         _recogerCasillas()
+            observaciones:       document.getElementById('iVObs').value           || null,
+            ...(casillasData !== null ? { datos_extra: casillasData } : {})
         };
 
         let error;
         if (_editingViajeId) {
             ({ error } = await sb.from('viajes').update(payload).eq('id', _editingViajeId));
         } else {
-            ({ error } = await sb.from('viajes').insert([{ empresa_id: currentEmpresa.id, ...payload }]));
+            const { data: inserted, error: insErr } = await sb.from('viajes').insert([{ empresa_id: currentEmpresa.id, ...payload }]).select('id').single();
+            error = insErr;
+            if (!insErr) saasTrackOp();
         }
         if (error) throw error;
         const wasEditing = !!_editingViajeId;
@@ -1916,7 +3157,8 @@ async function renderClientes() {
 
     if (error) { t.innerHTML = `<tr class="empty-row"><td colspan="6">⚠️ ${error.message}</td></tr>`; return; }
 
-    t.innerHTML = data.length ? data.map(c => `<tr>
+    _clientesData = data || [];
+    t.innerHTML = _clientesData.length ? _clientesData.map(c => `<tr>
         <td>${c.rut}</td>
         <td><strong>${c.razon_social}</strong></td>
         <td>${c.contacto || '—'}</td>
@@ -2017,12 +3259,20 @@ async function saveFactura(e) {
     } finally { if (btn) btn.disabled = false; }
 }
 
-async function cargarSelectsFactura() {
+async function cargarSelectsFactura(clienteId) {
     const { data } = await sb.from('clientes').select('id, razon_social')
         .eq('empresa_id', currentEmpresa.id).order('razon_social');
     document.getElementById('iFCliente').innerHTML =
         '<option value="">Seleccionar cliente...</option>' +
         (data||[]).map(c => `<option value="${c.id}">${c.razon_social}</option>`).join('');
+    if (clienteId) {
+        const el = document.getElementById('iFCliente');
+        el.value = clienteId;
+        if (el.value !== clienteId) {
+            const opt = Array.from(el.options).find(o => o.value === clienteId);
+            if (opt) opt.selected = true;
+        }
+    }
 }
 
 async function marcarPagada(facturaId) {
@@ -2067,6 +3317,10 @@ async function saveVehiculo(e) {
     e.preventDefault();
     const btn = e.submitter || e.target?.querySelector('button[type="submit"]'); if (btn) btn.disabled = true;
     try {
+        if (!_editingVehiculoId) {
+            const ok = await saasCheckVehicleLimit();
+            if (!ok) { if (btn) btn.disabled = false; return; }
+        }
         const payload = {
             patente: document.getElementById('iVhPatente').value,
             marca:   document.getElementById('iVhMarca').value,
@@ -2320,35 +3574,66 @@ async function saveMantenimiento(e) {
 // ═══════════════════════════════════════════════════════════
 async function renderRentabilidad() {
     if (!currentEmpresa) return;
-    const t = document.getElementById('tRentabilidad');
-    t.innerHTML = '<tr class="loading-row"><td colspan="4">Calculando...</td></tr>';
-
     const eid = currentEmpresa.id;
-    const [{ data: viajes }, { data: gastos }, { data: combustible }] = await Promise.all([
-        sb.from('viajes').select('origen, destino, tarifa').eq('empresa_id', eid),
-        sb.from('gastos').select('monto').eq('empresa_id', eid),
-        sb.from('combustible').select('total').eq('empresa_id', eid)
+
+    const [{ data: viajes }, { data: gastos }, { data: combustible }, { data: vehiculos }, { data: facturas }] = await Promise.all([
+        sb.from('viajes').select('origen, destino, tarifa, vehiculo_id, cliente_id, clientes(razon_social), vehiculos(patente)').eq('empresa_id', eid),
+        sb.from('gastos').select('monto, vehiculo_id').eq('empresa_id', eid),
+        sb.from('combustible').select('total, vehiculo_id').eq('empresa_id', eid),
+        sb.from('vehiculos').select('id, patente, marca, modelo').eq('empresa_id', eid),
+        sb.from('facturas').select('monto, estado, cliente_id').eq('empresa_id', eid)
     ]);
 
-    const totalIngresos  = (viajes     ||[]).reduce((s,v) => s+(v.tarifa||0), 0);
-    const totalGastos    = (gastos     ||[]).reduce((s,g) => s+(g.monto ||0), 0);
-    const totalComb      = (combustible||[]).reduce((s,c) => s+(c.total ||0), 0);
-    const totalCostos    = totalGastos + totalComb;
-    const utilidad       = totalIngresos - totalCostos;
-    const margen         = totalIngresos ? Math.round((utilidad / totalIngresos) * 100) : 0;
+    // KPIs globales
+    const totalIngresos = (viajes||[]).reduce((s,v) => s+(v.tarifa||0), 0);
+    const totalGastos   = (gastos||[]).reduce((s,g) => s+(g.monto||0), 0);
+    const totalComb     = (combustible||[]).reduce((s,c) => s+(c.total||0), 0);
+    const totalCostos   = totalGastos + totalComb;
+    const utilidad      = totalIngresos - totalCostos;
+    const margen        = totalIngresos ? Math.round((utilidad / totalIngresos) * 100) : 0;
 
     document.getElementById('kpiRent').innerHTML = `
         <div class="kpi-card"><div class="kpi-label">Ingresos Totales</div>
             <div class="kpi-value" style="color:#10b981">$${fmt(totalIngresos)}</div></div>
-        <div class="kpi-card"><div class="kpi-label">Costos Totales</div>
-            <div class="kpi-value" style="color:#ef4444">$${fmt(totalCostos)}</div></div>
+        <div class="kpi-card"><div class="kpi-label">Combustible</div>
+            <div class="kpi-value" style="color:#f59e0b">$${fmt(totalComb)}</div></div>
+        <div class="kpi-card"><div class="kpi-label">Gastos</div>
+            <div class="kpi-value" style="color:#ef4444">$${fmt(totalGastos)}</div></div>
         <div class="kpi-card"><div class="kpi-label">Utilidad Neta</div>
             <div class="kpi-value" style="color:${utilidad>=0?'#10b981':'#ef4444'}">$${fmt(utilidad)}</div></div>
         <div class="kpi-card"><div class="kpi-label">Margen %</div>
             <div class="kpi-value" style="color:${margen>=0?'var(--primary)':'#ef4444'}">${margen}%</div></div>
     `;
 
-    // Agrupar por ruta
+    // ── POR PATENTE ──────────────────────────────────────────
+    const porVeh = {};
+    (vehiculos||[]).forEach(v => { porVeh[v.id] = { patente: v.patente, marca: v.marca, modelo: v.modelo, viajes: 0, ingresos: 0, comb: 0, gastos: 0 }; });
+    (viajes||[]).forEach(v => {
+        if (!v.vehiculo_id) return;
+        if (!porVeh[v.vehiculo_id]) porVeh[v.vehiculo_id] = { patente: v.vehiculos?.patente || v.vehiculo_id, viajes: 0, ingresos: 0, comb: 0, gastos: 0 };
+        porVeh[v.vehiculo_id].viajes++;
+        porVeh[v.vehiculo_id].ingresos += v.tarifa || 0;
+    });
+    (combustible||[]).forEach(c => { if (c.vehiculo_id && porVeh[c.vehiculo_id]) porVeh[c.vehiculo_id].comb += c.total || 0; });
+    (gastos||[]).forEach(g => { if (g.vehiculo_id && porVeh[g.vehiculo_id]) porVeh[g.vehiculo_id].gastos += g.monto || 0; });
+
+    const tPatente = document.getElementById('tRentPatente');
+    const vehRows = Object.values(porVeh).sort((a,b) => b.ingresos - a.ingresos);
+    tPatente.innerHTML = vehRows.length ? vehRows.map(v => {
+        const util = v.ingresos - v.comb - v.gastos;
+        const mg   = v.ingresos ? Math.round((util/v.ingresos)*100) : 0;
+        return `<tr>
+            <td><strong>${v.patente}</strong></td>
+            <td>${v.viajes}</td>
+            <td style="color:#10b981"><strong>$${fmt(v.ingresos)}</strong></td>
+            <td style="color:#f59e0b">$${fmt(v.comb)}</td>
+            <td style="color:#ef4444">$${fmt(v.gastos)}</td>
+            <td style="color:${util>=0?'#10b981':'#ef4444'}"><strong>$${fmt(util)}</strong></td>
+            <td><span class="badge ${mg>=30?'badge-success':mg>=0?'badge-warning':'badge-danger'}">${mg}%</span></td>
+        </tr>`;
+    }).join('') : '<tr class="empty-row"><td colspan="7">Sin datos de vehículos</td></tr>';
+
+    // ── TOP RUTAS ────────────────────────────────────────────
     const rutas = {};
     (viajes||[]).forEach(v => {
         const k = `${v.origen || '?'} → ${v.destino || '?'}`;
@@ -2356,23 +3641,116 @@ async function renderRentabilidad() {
         rutas[k].n++;
         rutas[k].ing += v.tarifa || 0;
     });
-
     const top = Object.entries(rutas).sort((a,b) => b[1].ing - a[1].ing).slice(0, 10);
-    t.innerHTML = top.length ? top.map(([ruta, d]) => `<tr>
-        <td>${ruta}</td>
-        <td>${d.n}</td>
+    document.getElementById('tRentabilidad').innerHTML = top.length ? top.map(([ruta, d]) => `<tr>
+        <td>${ruta}</td><td>${d.n}</td>
         <td><strong>$${fmt(d.ing)}</strong></td>
         <td>$${fmt(Math.round(d.ing / d.n))}</td>
     </tr>`).join('') : '<tr class="empty-row"><td colspan="4">Sin datos de viajes aún</td></tr>';
+
+    // ── POR CLIENTE ──────────────────────────────────────────
+    const porCli = {};
+    (viajes||[]).forEach(v => {
+        const nombre = v.clientes?.razon_social || v.cliente_id || '—';
+        if (!porCli[nombre]) porCli[nombre] = { viajes: 0, ingresos: 0, factPagadas: 0 };
+        porCli[nombre].viajes++;
+        porCli[nombre].ingresos += v.tarifa || 0;
+    });
+    (facturas||[]).filter(f => f.estado === 'pagada').forEach(f => {
+        const nombre = Object.keys(porCli).find(k => k !== '—') || '—';
+        if (porCli[nombre]) porCli[nombre].factPagadas += f.monto || 0;
+    });
+    const topCli = Object.entries(porCli).sort((a,b) => b[1].ingresos - a[1].ingresos).slice(0, 10);
+    document.getElementById('tRentCliente').innerHTML = topCli.length ? topCli.map(([nombre, d]) => `<tr>
+        <td><strong>${nombre}</strong></td>
+        <td>${d.viajes}</td>
+        <td><strong>$${fmt(d.ingresos)}</strong></td>
+        <td>$${fmt(d.viajes ? Math.round(d.ingresos/d.viajes) : 0)}</td>
+        <td style="color:#10b981">$${fmt(d.factPagadas)}</td>
+    </tr>`).join('') : '<tr class="empty-row"><td colspan="5">Sin datos</td></tr>';
+}
+
+async function exportarPorPatente() {
+    if (!currentEmpresa) return;
+    const eid = currentEmpresa.id;
+    const [{ data: viajes }, { data: gastos }, { data: combustible }, { data: vehiculos }] = await Promise.all([
+        sb.from('viajes').select('*, clientes(razon_social), vehiculos(patente), conductores(nombre)').eq('empresa_id', eid).order('fecha', { ascending: false }),
+        sb.from('gastos').select('*, vehiculos(patente)').eq('empresa_id', eid).order('fecha', { ascending: false }),
+        sb.from('combustible').select('*, vehiculos(patente)').eq('empresa_id', eid).order('fecha', { ascending: false }),
+        sb.from('vehiculos').select('*').eq('empresa_id', eid).order('patente')
+    ]);
+
+    if (typeof XLSX === 'undefined') { toast('❌ Librería Excel no cargada'); return; }
+    const wb = XLSX.utils.book_new();
+
+    // Hoja resumen por patente
+    const resumenData = [['Patente', 'Marca/Modelo', 'N° Viajes', 'Ingresos ($)', 'Combustible ($)', 'Gastos ($)', 'Utilidad ($)', 'Margen %']];
+    (vehiculos||[]).forEach(v => {
+        const vViajes = (viajes||[]).filter(x => x.vehiculo_id === v.id);
+        const vComb   = (combustible||[]).filter(x => x.vehiculo_id === v.id);
+        const vGastos = (gastos||[]).filter(x => x.vehiculo_id === v.id);
+        const ing  = vViajes.reduce((s,x) => s+(x.tarifa||0), 0);
+        const comb = vComb.reduce((s,x) => s+(x.total||0), 0);
+        const gast = vGastos.reduce((s,x) => s+(x.monto||0), 0);
+        const util = ing - comb - gast;
+        const mg   = ing ? Math.round((util/ing)*100) : 0;
+        resumenData.push([v.patente, `${v.marca} ${v.modelo}`, vViajes.length, ing, comb, gast, util, mg + '%']);
+    });
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(resumenData), 'Resumen Patentes');
+
+    // Hoja detalle viajes por patente
+    const viajesData = [['Patente', 'N° Viaje', 'Fecha', 'Cliente', 'Conductor', 'Origen', 'Destino', 'Tipo Carga', 'N° Guía', 'Tarifa ($)', 'Estado']];
+    (viajes||[]).forEach(v => {
+        viajesData.push([
+            v.vehiculos?.patente || '—',
+            'VJ-' + shortId(v.id),
+            v.fecha || '',
+            v.clientes?.razon_social || '',
+            v.conductores?.nombre || '',
+            v.origen || '',
+            v.destino || '',
+            v.tipo_carga || '',
+            v.numero_guia || '',
+            v.tarifa || 0,
+            v.estado || ''
+        ]);
+    });
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(viajesData), 'Viajes por Patente');
+
+    // Hoja combustible
+    const combData = [['Patente', 'Fecha', 'Litros', 'Precio/L ($)', 'Total ($)', 'Odómetro']];
+    (combustible||[]).forEach(c => {
+        combData.push([c.vehiculos?.patente || '—', c.fecha || '', c.litros || 0, c.precio_litro || 0, c.total || 0, c.odometro || '']);
+    });
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(combData), 'Combustible');
+
+    // Hoja gastos
+    const gastData = [['Patente', 'Fecha', 'Categoría', 'Descripción', 'Monto ($)']];
+    (gastos||[]).forEach(g => {
+        gastData.push([g.vehiculos?.patente || '—', g.fecha || '', g.categoria || '', g.descripcion || '', g.monto || 0]);
+    });
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(gastData), 'Gastos');
+
+    const mes = new Date().toISOString().slice(0,7).replace('-','');
+    XLSX.writeFile(wb, `TransportPro_Patentes_${mes}.xlsx`);
+    toast('✅ Excel por patente descargado');
 }
 
 // ═══════════════════════════════════════════════════════════
 // UTILIDAD COMPARTIDA: eliminar registro
 // ═══════════════════════════════════════════════════════════
+async function eliminarTodo(tabla, rerender, nombreVisible) {
+    if (!confirm(`¿Eliminar TODOS los registros de "${nombreVisible}"?\nEsta acción no se puede deshacer.`)) return;
+    if (!confirm(`Confirmación final: se borrarán TODOS los registros de "${nombreVisible}". ¿Continuar?`)) return;
+    const { error } = await sb.from(tabla).delete().eq('empresa_id', currentEmpresa.id);
+    if (error) { toast('❌ Error: ' + error.message); return; }
+    toast(`🗑 Todos los registros de "${nombreVisible}" eliminados`);
+    await rerender();
+}
+
 async function eliminarRegistro(tabla, id, rerender) {
     if (!confirm('¿Eliminar este registro? Esta acción no se puede deshacer.')) return;
-    const { error } = await sb.from(tabla).delete()
-        .eq('id', id).eq('empresa_id', currentEmpresa.id);
+    const { error } = await sb.from(tabla).delete().eq('id', id);
     if (error) { toast('❌ Error: ' + error.message); return; }
     toast('🗑 Registro eliminado');
     await rerender();
@@ -2461,18 +3839,24 @@ async function exportarModulo(modulo, conCalculos) {
     // ── VIAJES ──────────────────────────────────────────────
     if (modulo === 'viajes') {
         const { data } = await sb.from('viajes')
-            .select('*, clientes(razon_social)')
+            .select('*, clientes(razon_social), conductores(nombre), vehiculos(patente)')
             .eq('empresa_id', eid).order('fecha', { ascending: false });
         const cols = [
-            { label: 'N° Viaje',    val: f => f.numero_viaje   || '' },
-            { label: 'Fecha',       val: f => f.fecha          || '' },
-            { label: 'Cliente',     val: f => f.clientes?.razon_social || '' },
-            { label: 'Origen',      key: 'origen' },
-            { label: 'Destino',     key: 'destino' },
-            { label: 'Tipo Carga',  key: 'tipo_carga' },
-            { label: 'N° Guía',     key: 'guia_despacho' },
-            { label: 'Tarifa ($)',  key: 'tarifa' },
-            { label: 'Estado',      key: 'estado' },
+            { label: 'N° Viaje',       val: f => 'VJ-' + shortId(f.id) },
+            { label: 'Fecha',          key: 'fecha' },
+            { label: 'Cliente',        val: f => f.clientes?.razon_social || '' },
+            { label: 'Conductor',      val: f => f.conductores?.nombre || '' },
+            { label: 'Vehículo',       val: f => f.vehiculos?.patente || '' },
+            { label: 'Origen',         key: 'origen' },
+            { label: 'Destino',        key: 'destino' },
+            { label: 'Tipo Carga',     key: 'tipo_carga' },
+            { label: 'N° Guía',        key: 'numero_guia' },
+            { label: 'N° Contenedor',  key: 'numero_contenedor' },
+            { label: 'KM Inicial',     key: 'km_inicial' },
+            { label: 'KM Final',       key: 'km_final' },
+            { label: 'Tarifa ($)',     key: 'tarifa' },
+            { label: 'Estado',         key: 'estado' },
+            { label: 'Observaciones',  key: 'observaciones' },
         ];
         if (conCalculos) cols.push(
             { label: 'Neto (sin IVA)',  val: f => Math.round((f.tarifa||0) / 1.19) },
@@ -4345,10 +5729,10 @@ async function renderDocumentos() {
   const tbody = document.getElementById('tDocumentos');
   if (!tbody) return;
   const { data, error } = await sb.from('viajes')
-    .select('*, clientes(razon_social)')
+    .select('id, fecha, origen, destino, tarifa, notas, clientes(razon_social)')
     .eq('empresa_id', currentEmpresa.id)
     .ilike('notas', '%Doc IA%')
-    .order('created_at', { ascending: false })
+    .order('fecha', { ascending: false })
     .limit(50);
 
   if (error || !data?.length) {
@@ -4830,6 +6214,7 @@ renderVehiculos = async function() {
         <td>${fmt(v.km)} km</td>
         <td><span class="badge ${colorEstado[v.estado] || 'badge-info'}">${v.estado}</span></td>
         <td style="white-space:nowrap">
+            <button class="btn btn-sm" style="background:#0891b2;color:#fff;margin-right:4px" onclick="abrirBitacora('${v.id}','${v.patente}')">📋 Bitácora</button>
             <button class="btn btn-sm" style="background:#6c757d;color:#fff;margin-right:4px" onclick="editarVehiculo('${v.id}')">✏️</button>
             <button class="btn btn-danger btn-sm" onclick="eliminarRegistro('vehiculos','${v.id}',renderVehiculos)">✕</button>
         </td>
@@ -5213,12 +6598,27 @@ function casillasRender() {
     const tipoBadge = { texto:'📝 Texto', numero:'🔢 Número', fecha:'📅 Fecha', si_no:'☑️ Sí/No' };
     el.innerHTML = lista.map((c, i) => `
         <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:#fff;border:1.5px solid #e5e7eb;border-radius:8px;margin-bottom:6px">
-            <div>
-                <span style="font-weight:700;font-size:13px;color:#111827">${c.nombre}</span>
-                <span style="margin-left:8px;font-size:11px;background:#ede9fe;color:#5b21b6;padding:2px 7px;border-radius:12px">${tipoBadge[c.tipo] || c.tipo}</span>
+            <div style="display:flex;align-items:center;gap:6px">
+                <div style="display:flex;flex-direction:column;gap:1px">
+                    <button onclick="casillasMover(${i},-1)" style="border:none;background:#e5e7eb;border-radius:3px;padding:1px 5px;font-size:10px;line-height:1;cursor:pointer;opacity:${i===0?'0.3':'1'}" ${i===0?'disabled':''}>▲</button>
+                    <button onclick="casillasMover(${i},1)"  style="border:none;background:#e5e7eb;border-radius:3px;padding:1px 5px;font-size:10px;line-height:1;cursor:pointer;opacity:${i===lista.length-1?'0.3':'1'}" ${i===lista.length-1?'disabled':''}>▼</button>
+                </div>
+                <div>
+                    <span style="font-weight:700;font-size:13px;color:#111827">${c.nombre}</span>
+                    <span style="margin-left:8px;font-size:11px;background:#ede9fe;color:#5b21b6;padding:2px 7px;border-radius:12px">${tipoBadge[c.tipo] || c.tipo}</span>
+                </div>
             </div>
             <button onclick="casillasEliminar(${i})" class="btn btn-danger btn-sm" style="padding:3px 8px;font-size:12px">✕ Quitar</button>
         </div>`).join('');
+}
+
+function casillasMover(i, dir) {
+    const lista = _getCasillas();
+    const j = i + dir;
+    if (j < 0 || j >= lista.length) return;
+    [lista[i], lista[j]] = [lista[j], lista[i]];
+    _setCasillas(lista);
+    casillasRender();
 }
 
 function casillasAgregar() {
@@ -5280,6 +6680,512 @@ function _recogerCasillas() {
     return Object.keys(datos).length ? datos : null;
 }
 
+// ═══════════════════════════════════════════════════════════
+// MÓDULO: GESTIÓN DE USUARIOS
+// ═══════════════════════════════════════════════════════════
+
+async function renderUsuarios() {
+    if (!currentEmpresa) return;
+    const t = document.getElementById('tUsuarios');
+    t.innerHTML = '<tr class="loading-row"><td colspan="5">Cargando...</td></tr>';
+
+    const { data, error } = await sb
+        .from('usuarios')
+        .select('id, nombre, email, rol, activo, created_at')
+        .eq('empresa_id', currentEmpresa.id)
+        .order('nombre');
+
+    if (error) {
+        t.innerHTML = `<tr class="empty-row"><td colspan="5">⚠️ ${error.message}</td></tr>`;
+        return;
+    }
+
+    t.innerHTML = (data || []).length ? data.map(u => `
+        <tr>
+            <td><strong>${u.nombre || '—'}</strong></td>
+            <td>${u.email || '—'}</td>
+            <td><span style="padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;background:${u.rol==='admin'?'#dbeafe':'#f0fdf4'};color:${u.rol==='admin'?'#1e40af':'#065f46'}">${u.rol || 'operador'}</span></td>
+            <td><span style="padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;background:${u.activo?'#d1fae5':'#fee2e2'};color:${u.activo?'#065f46':'#991b1b'}">${u.activo ? 'Activo' : 'Inactivo'}</span></td>
+            <td style="white-space:nowrap">
+                <button class="btn btn-sm" style="background:${u.activo?'#ef4444':'#10b981'};color:#fff" onclick="toggleUsuario('${u.id}',${u.activo})">${u.activo ? '🚫 Desactivar' : '✅ Activar'}</button>
+            </td>
+        </tr>`).join('')
+        : '<tr class="empty-row"><td colspan="5">Sin usuarios registrados</td></tr>';
+}
+
+async function crearUsuario(e) {
+    e.preventDefault();
+    const btn = document.getElementById('btnCrearUser');
+    btn.disabled = true;
+    btn.textContent = '⏳ Creando...';
+
+    const nombre   = document.getElementById('iUNombre').value.trim();
+    const email    = document.getElementById('iUEmail').value.trim().toLowerCase();
+    const password = document.getElementById('iUPassword').value;
+    const rol      = document.getElementById('iURol').value;
+
+    try {
+        // 1. Crear usuario en Supabase Auth
+        const { data: authData, error: authErr } = await sb.auth.admin
+            ? await sb.auth.admin.createUser({ email, password, email_confirm: true })
+            : { data: null, error: { message: 'Solo el admin puede crear usuarios' } };
+
+        // Fallback: usar signUp si no hay admin SDK (cliente web)
+        let authUserId = authData?.user?.id;
+        if (authErr || !authUserId) {
+            // Intentar con signUp (el usuario recibirá email de confirmación)
+            const { data: signUpData, error: signUpErr } = await sb.auth.signUp({ email, password });
+            if (signUpErr) throw signUpErr;
+            authUserId = signUpData?.user?.id;
+        }
+
+        if (!authUserId) throw new Error('No se pudo obtener el ID del nuevo usuario');
+
+        // 2. Insertar en tabla usuarios vinculado a la empresa
+        const { error: dbErr } = await sb.from('usuarios').insert([{
+            auth_uid:   authUserId,
+            empresa_id: currentEmpresa.id,
+            nombre,
+            email,
+            rol,
+            activo:     true
+        }]);
+        if (dbErr) throw dbErr;
+
+        closeModal('mCrearUsuario');
+        toast('✅ Usuario creado: ' + nombre);
+        e.target.reset();
+        await renderUsuarios();
+    } catch (err) {
+        toast('❌ Error al crear usuario: ' + err.message);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Crear Usuario';
+    }
+}
+
+async function toggleUsuario(userId, activo) {
+    const { error } = await sb.from('usuarios')
+        .update({ activo: !activo })
+        .eq('id', userId)
+        .eq('empresa_id', currentEmpresa.id);
+    if (error) { toast('❌ ' + error.message); return; }
+    toast(activo ? '🚫 Usuario desactivado' : '✅ Usuario activado');
+    await renderUsuarios();
+}
+
+// ═══════════════════════════════════════════════════════════
+// MÓDULO SAAS: PLANES, USO Y SUSCRIPCIONES
+// ═══════════════════════════════════════════════════════════
+
+const SAAS_PLANS = {
+    BASIC: { label: 'Plan Básico',  price: 55000,  maxVeh: 3,  maxOps: 300,  overagePer100: 5000 },
+    PRO:   { label: 'Plan Pro',     price: 70000,  maxVeh: 6,  maxOps: 700,  overagePer100: 5000 },
+    SCALE: { label: 'Plan Scale',   price: 105000, maxVeh: 10, maxOps: 1500, overagePer100: 5000 }
+};
+
+let _saasUsage = null; // caché de uso mensual
+
+async function saasInit() {
+    if (!currentEmpresa?.id) return;
+    try {
+        const { data, error } = await sb.rpc('get_usage_summary', { p_empresa_id: currentEmpresa.id });
+        if (!error && data) {
+            _saasUsage = data;
+            saasRenderHeaderBadge();
+            if (data.sub_status === 'suspended') {
+                toast('⛔ Tu cuenta está suspendida. Contáctanos para reactivarla.');
+            } else if (data.sub_status === 'overdue') {
+                toast('⚠️ Tu suscripción venció. Regulariza el pago para seguir usando TransportPro.');
+            }
+        }
+    } catch (_) { /* silencioso si RPC no existe aún */ }
+}
+
+function saasRenderHeaderBadge() {
+    if (!_saasUsage) return;
+    const pct = Math.min(100, Math.round((_saasUsage.ops_count / _saasUsage.ops_limit) * 100));
+    const color = pct >= 100 ? '#ef4444' : pct >= 80 ? '#f59e0b' : '#10b981';
+    let badge = document.getElementById('saasBadge');
+    if (!badge) {
+        badge = document.createElement('span');
+        badge.id = 'saasBadge';
+        badge.style.cssText = 'font-size:11px;padding:3px 10px;border-radius:20px;font-weight:600;cursor:pointer';
+        badge.onclick = () => switchTabById('miplan');
+        const hdrRight = document.querySelector('.header-right');
+        if (hdrRight) hdrRight.insertBefore(badge, hdrRight.firstChild);
+    }
+    const planName = _saasUsage.plan_name || 'BASIC';
+    badge.style.background = color + '22';
+    badge.style.color = color;
+    badge.textContent = `${SAAS_PLANS[planName]?.label || planName} · ${_saasUsage.ops_count}/${_saasUsage.ops_limit} ops`;
+}
+
+function switchTabById(tab) {
+    const btn = document.querySelector(`[onclick*="switchTab('${tab}'"]`);
+    if (btn) switchTab(tab, btn);
+}
+
+async function saasTrackOp() {
+    if (!currentEmpresa?.id) return;
+    const yearMonth = new Date().toISOString().slice(0, 7);
+    const opsLimit  = currentEmpresa.max_ops || 300;
+    try {
+        await sb.rpc('increment_usage', {
+            p_empresa_id: currentEmpresa.id,
+            p_year_month: yearMonth,
+            p_ops_limit:  opsLimit
+        });
+        // Actualizar caché local
+        if (_saasUsage) {
+            _saasUsage.ops_count = (_saasUsage.ops_count || 0) + 1;
+            saasRenderHeaderBadge();
+        }
+    } catch (_) { /* silencioso si RPC no existe aún */ }
+}
+
+async function saasCheckVehicleLimit() {
+    if (!currentEmpresa?.id) return true; // permitir si no hay info
+    const maxVeh = currentEmpresa.max_vehicles || 3;
+    const { count } = await sb.from('vehiculos')
+        .select('id', { count: 'exact', head: true })
+        .eq('empresa_id', currentEmpresa.id);
+    if ((count || 0) >= maxVeh) {
+        const plan = SAAS_PLANS[currentEmpresa.plan_name] || SAAS_PLANS.BASIC;
+        toast(`⛔ Tu ${plan.label} permite máximo ${maxVeh} vehículo(s). Cambia al Plan Pro o Scale para agregar más.`);
+        return false;
+    }
+    return true;
+}
+
+async function renderMiPlan() {
+    if (!currentEmpresa) return;
+
+    const container = document.getElementById('miPlanContent');
+    container.innerHTML = '<div style="text-align:center;padding:40px;color:#6b7280">Cargando...</div>';
+
+    // Actualizar badge de estado
+    let usage = _saasUsage;
+    if (!usage) {
+        try {
+            const { data } = await sb.rpc('get_usage_summary', { p_empresa_id: currentEmpresa.id });
+            usage = data;
+            _saasUsage = data;
+        } catch (_) {}
+    }
+
+    const planKey   = (usage?.plan_name || currentEmpresa.plan_name || 'BASIC').toUpperCase();
+    const plan      = SAAS_PLANS[planKey] || SAAS_PLANS.BASIC;
+    const opsCount  = usage?.ops_count  ?? 0;
+    const opsLimit  = usage?.ops_limit  ?? plan.maxOps;
+    const pct       = Math.min(100, Math.round((opsCount / opsLimit) * 100));
+    const status    = usage?.sub_status ?? currentEmpresa.sub_status ?? 'active';
+    const endDate   = usage?.sub_end_date ?? currentEmpresa.sub_end_date ?? '—';
+    const price     = usage?.monthly_price ?? plan.price;
+    const ovgOps    = Math.max(0, opsCount - opsLimit);
+    const ovgCharge = Math.ceil(ovgOps / 100) * plan.overagePer100;
+
+    const statusColors = {
+        active:    { bg: '#d1fae5', color: '#065f46', label: 'Activo' },
+        overdue:   { bg: '#fef3c7', color: '#92400e', label: 'Pago Pendiente' },
+        suspended: { bg: '#fee2e2', color: '#991b1b', label: 'Suspendido' },
+        cancelled: { bg: '#f3f4f6', color: '#374151', label: 'Cancelado' }
+    };
+    const sc = statusColors[status] || statusColors.active;
+
+    // Actualizar badge superior
+    const badge = document.getElementById('saasStatusBadge');
+    if (badge) {
+        badge.textContent = sc.label;
+        badge.style.background = sc.bg;
+        badge.style.color = sc.color;
+    }
+
+    const barColor = pct >= 100 ? '#ef4444' : pct >= 80 ? '#f59e0b' : '#10b981';
+
+    container.innerHTML = `
+        <!-- Tarjeta del plan actual -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px;margin-bottom:28px">
+            <div style="background:linear-gradient(135deg,#2563eb,#764ba2);border-radius:14px;padding:24px;color:white">
+                <div style="font-size:12px;opacity:0.8;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Plan Actual</div>
+                <div style="font-size:28px;font-weight:800;margin-bottom:4px">${plan.label}</div>
+                <div style="font-size:20px;font-weight:600">$${price.toLocaleString('es-CL')} <span style="font-size:13px;opacity:0.8">/mes</span></div>
+                <div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.2);font-size:12px;opacity:0.9">
+                    Hasta ${plan.maxVeh} vehículos · ${plan.maxOps} operaciones/mes
+                </div>
+                <div style="font-size:12px;opacity:0.8;margin-top:4px">Vence: ${endDate}</div>
+            </div>
+
+            <!-- Medidor de uso -->
+            <div style="background:white;border:1.5px solid #e5e7eb;border-radius:14px;padding:22px">
+                <div style="font-size:13px;font-weight:700;color:#374151;margin-bottom:4px">Operaciones este mes</div>
+                <div style="font-size:32px;font-weight:800;color:${barColor}">${opsCount} <span style="font-size:15px;color:#6b7280;font-weight:400">/ ${opsLimit}</span></div>
+                <div style="background:#f3f4f6;border-radius:6px;height:10px;margin:12px 0;overflow:hidden">
+                    <div style="width:${pct}%;height:100%;background:${barColor};border-radius:6px;transition:width 0.4s"></div>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:12px;color:#6b7280">
+                    <span>${pct}% utilizado</span>
+                    <span>${Math.max(0, opsLimit - opsCount)} disponibles</span>
+                </div>
+                ${ovgOps > 0 ? `<div style="margin-top:10px;padding:8px 12px;background:#fef3c7;border-radius:8px;font-size:12px;color:#92400e">
+                    <strong>Cargo adicional:</strong> ${ovgOps} ops extra · $${ovgCharge.toLocaleString('es-CL')}
+                </div>` : ''}
+            </div>
+
+            <!-- Próximo cobro estimado -->
+            <div style="background:white;border:1.5px solid #e5e7eb;border-radius:14px;padding:22px">
+                <div style="font-size:13px;font-weight:700;color:#374151;margin-bottom:12px">Próximo cobro estimado</div>
+                <div style="font-size:28px;font-weight:800;color:#2563eb">$${(price + ovgCharge).toLocaleString('es-CL')}</div>
+                <div style="font-size:12px;color:#6b7280;margin-top:4px">Base: $${price.toLocaleString('es-CL')} + cargos extra: $${ovgCharge.toLocaleString('es-CL')}</div>
+                <div style="margin-top:14px;padding-top:14px;border-top:1px solid #f3f4f6">
+                    <div style="font-size:12px;color:#374151;font-weight:600">Datos bancarios de pago:</div>
+                    <div style="font-size:12px;color:#6b7280;margin-top:4px;line-height:1.6">
+                        Banco: Banco Estado<br>
+                        Cuenta: 123456789<br>
+                        RUT: 76.XXX.XXX-X<br>
+                        Email: pagos@transportpro.cl
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Comparativa de planes -->
+        <div style="margin-bottom:28px">
+            <h3 style="font-size:15px;font-weight:700;color:#374151;margin-bottom:14px">Planes disponibles</h3>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px">
+                ${Object.entries(SAAS_PLANS).map(([key, p]) => {
+                    const isCurrent = key === planKey;
+                    return `<div style="border:2px solid ${isCurrent ? '#2563eb' : '#e5e7eb'};border-radius:12px;padding:18px;text-align:center;position:relative;background:${isCurrent ? '#eff6ff' : 'white'}">
+                        ${isCurrent ? '<div style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:#2563eb;color:white;font-size:11px;font-weight:700;padding:2px 12px;border-radius:10px">ACTUAL</div>' : ''}
+                        <div style="font-size:15px;font-weight:700;color:#374151;margin-bottom:4px">${p.label}</div>
+                        <div style="font-size:22px;font-weight:800;color:#2563eb;margin-bottom:6px">$${p.price.toLocaleString('es-CL')}<span style="font-size:11px;color:#6b7280;font-weight:400">/mes</span></div>
+                        <div style="font-size:12px;color:#6b7280;line-height:1.6">
+                            Hasta <strong>${p.maxVeh}</strong> vehículos<br>
+                            <strong>${p.maxOps}</strong> ops/mes<br>
+                            Exceso: $${p.overagePer100.toLocaleString('es-CL')}/100 ops
+                        </div>
+                        ${!isCurrent ? `<div style="margin-top:10px;padding:6px 14px;background:#2563eb;color:white;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer" onclick="solicitarCambioPlan('${key}')">Cambiar plan</div>` : ''}
+                    </div>`;
+                }).join('')}
+            </div>
+        </div>
+
+        <!-- Historial de suscripciones -->
+        <div>
+            <h3 style="font-size:15px;font-weight:700;color:#374151;margin-bottom:14px">Historial de pagos</h3>
+            <div id="saasHistorialPagos"><div style="color:#6b7280;font-size:13px">Cargando historial...</div></div>
+        </div>
+    `;
+
+    // Cargar historial de suscripciones
+    const { data: subs } = await sb.from('subscriptions')
+        .select('*')
+        .eq('empresa_id', currentEmpresa.id)
+        .order('created_at', { ascending: false })
+        .limit(6);
+
+    const histEl = document.getElementById('saasHistorialPagos');
+    if (histEl) {
+        if (!subs || !subs.length) {
+            histEl.innerHTML = '<div style="color:#6b7280;font-size:13px">Sin registros de pago aún.</div>';
+        } else {
+            const statusLabel = { pending: '⏳ Pendiente', paid: '✅ Pagado', overdue: '⚠️ Vencido', cancelled: '✕ Cancelado' };
+            histEl.innerHTML = `<div style="overflow-x:auto"><table style="width:100%;font-size:13px;border-collapse:collapse">
+                <thead><tr style="background:#f9fafb">
+                    <th style="padding:8px 12px;text-align:left;font-size:11px;color:#6b7280;font-weight:600;border-bottom:1px solid #e5e7eb">Período</th>
+                    <th style="padding:8px 12px;text-align:left;font-size:11px;color:#6b7280;font-weight:600;border-bottom:1px solid #e5e7eb">Plan</th>
+                    <th style="padding:8px 12px;text-align:right;font-size:11px;color:#6b7280;font-weight:600;border-bottom:1px solid #e5e7eb">Monto</th>
+                    <th style="padding:8px 12px;text-align:center;font-size:11px;color:#6b7280;font-weight:600;border-bottom:1px solid #e5e7eb">Estado</th>
+                </tr></thead>
+                <tbody>${subs.map(s => `<tr style="border-bottom:1px solid #f3f4f6">
+                    <td style="padding:8px 12px">${s.period_start} → ${s.period_end}</td>
+                    <td style="padding:8px 12px">${SAAS_PLANS[s.plan_name]?.label || s.plan_name}</td>
+                    <td style="padding:8px 12px;text-align:right;font-weight:600">$${(s.total_charge || s.base_price).toLocaleString('es-CL')}</td>
+                    <td style="padding:8px 12px;text-align:center">${statusLabel[s.status] || s.status}</td>
+                </tr>`).join('')}</tbody>
+            </table></div>`;
+        }
+    }
+}
+
+async function solicitarCambioPlan(planKey) {
+    const plan = SAAS_PLANS[planKey];
+    if (!plan) return;
+    toast(`📧 Solicitud de cambio a ${plan.label} enviada. Te contactaremos pronto.`);
+    // En una implementación real, aquí iría un email/webhook de notificación al admin
+}
+
+// ═══════════════════════════════════════════════════════════
+// MÓDULO: RESUMEN MENSUAL
+// ═══════════════════════════════════════════════════════════
+let _resMes = { year: new Date().getFullYear(), month: new Date().getMonth() };
+const _MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+function navMes(delta) {
+    _resMes.month += delta;
+    if (_resMes.month > 11) { _resMes.month = 0; _resMes.year++; }
+    if (_resMes.month < 0)  { _resMes.month = 11; _resMes.year--; }
+    renderResumenMensual();
+}
+
+function navMesHoy() {
+    const n = new Date();
+    _resMes = { year: n.getFullYear(), month: n.getMonth() };
+    renderResumenMensual();
+}
+
+async function renderResumenMensual() {
+    if (!currentEmpresa) return;
+    const eid = currentEmpresa.id;
+    const { year, month } = _resMes;
+    const inicio = `${year}-${String(month+1).padStart(2,'0')}-01`;
+    const fin    = new Date(year, month+1, 0);
+    const finStr = `${year}-${String(month+1).padStart(2,'0')}-${String(fin.getDate()).padStart(2,'0')}`;
+    const hoy = new Date();
+    const esMesActual = year === hoy.getFullYear() && month === hoy.getMonth();
+    document.getElementById('resMesLabel').textContent = `${_MESES[month]} ${year}${esMesActual ? ' ★' : ''}`;
+    document.getElementById('resKpi').innerHTML = '<div style="padding:12px;color:#999">Cargando datos...</div>';
+    document.getElementById('resTablaViajes').innerHTML = '<tr class="loading-row"><td colspan="6">Cargando...</td></tr>';
+
+    const [
+        { data: viajes },
+        { data: gastos },
+        { data: combustible },
+        { count: nVeh },
+        { data: factPend }
+    ] = await Promise.all([
+        sb.from('viajes').select('*, clientes(razon_social), conductores(nombre)').eq('empresa_id',eid).gte('fecha',inicio).lte('fecha',finStr).order('fecha',{ascending:false}),
+        sb.from('gastos').select('monto').eq('empresa_id',eid).gte('fecha',inicio).lte('fecha',finStr),
+        sb.from('combustible').select('total').eq('empresa_id',eid).gte('fecha',inicio).lte('fecha',finStr),
+        sb.from('vehiculos').select('*',{count:'exact',head:true}).eq('empresa_id',eid).eq('estado','operativo'),
+        sb.from('facturas').select('monto').eq('empresa_id',eid).eq('estado','pendiente')
+    ]);
+
+    const ingresos = (viajes||[]).reduce((s,v)=>s+(v.tarifa||0),0);
+    const totalGastos = (gastos||[]).reduce((s,g)=>s+(g.monto||0),0);
+    const totalComb   = (combustible||[]).reduce((s,c)=>s+(c.total||0),0);
+    const porCobrar   = (factPend||[]).reduce((s,f)=>s+(f.monto||0),0);
+    const utilidad    = ingresos - totalGastos - totalComb;
+
+    document.getElementById('resKpi').innerHTML = `
+        <div class="kpi-card" style="border-left-color:#2563eb">
+            <div class="kpi-label">Viajes</div>
+            <div class="kpi-value" style="color:#2563eb">${(viajes||[]).length}</div>
+        </div>
+        <div class="kpi-card" style="border-left-color:#10b981">
+            <div class="kpi-label">Ingresos</div>
+            <div class="kpi-value" style="color:#10b981">$${fmt(ingresos)}</div>
+        </div>
+        <div class="kpi-card" style="border-left-color:#ef4444">
+            <div class="kpi-label">Gastos</div>
+            <div class="kpi-value" style="color:#ef4444">$${fmt(totalGastos)}</div>
+        </div>
+        <div class="kpi-card" style="border-left-color:#f59e0b">
+            <div class="kpi-label">Combustible</div>
+            <div class="kpi-value" style="color:#f59e0b">$${fmt(totalComb)}</div>
+        </div>
+        <div class="kpi-card" style="border-left-color:${utilidad>=0?'#10b981':'#ef4444'}">
+            <div class="kpi-label">Utilidad</div>
+            <div class="kpi-value" style="color:${utilidad>=0?'#10b981':'#ef4444'}">$${fmt(utilidad)}</div>
+        </div>
+        <div class="kpi-card" style="border-left-color:#6366f1">
+            <div class="kpi-label">Por Cobrar</div>
+            <div class="kpi-value" style="color:#6366f1">$${fmt(porCobrar)}</div>
+        </div>
+        <div class="kpi-card" style="border-left-color:#0891b2">
+            <div class="kpi-label">Vehículos Operativos</div>
+            <div class="kpi-value" style="color:#0891b2">${nVeh||0}</div>
+        </div>
+    `;
+
+    const colorEst = { pendiente:'badge-warning', pagada:'badge-success', cancelada:'badge-danger', entregado:'badge-success' };
+    document.getElementById('resTablaViajes').innerHTML = (viajes&&viajes.length)
+        ? viajes.map(v=>`<tr>
+            <td>${fmtDate(v.fecha)}</td>
+            <td>${v.clientes?.razon_social||'—'}</td>
+            <td style="font-size:12px">${v.origen||'—'} → ${v.destino||'—'}</td>
+            <td>${v.conductores?.nombre||'—'}</td>
+            <td><strong>$${fmt(v.tarifa)}</strong></td>
+            <td><span class="badge ${colorEst[v.estado]||'badge-info'}">${v.estado}</span></td>
+          </tr>`).join('')
+        : '<tr class="empty-row"><td colspan="6">Sin viajes en este mes</td></tr>';
+}
+
+// ═══════════════════════════════════════════════════════════
+// MÓDULO: BITÁCORA DE MANTENCIÓN POR VEHÍCULO
+// ═══════════════════════════════════════════════════════════
+let _bitacoraVehiculoId = null;
+
+async function abrirBitacora(vehiculoId, patente) {
+    _bitacoraVehiculoId = vehiculoId;
+    document.getElementById('mBitacoraTitle').textContent = `🔧 Bitácora — ${patente}`;
+    document.getElementById('iBitFecha').value  = today();
+    document.getElementById('iBitDesc').value   = '';
+    document.getElementById('iBitKm').value     = '';
+    document.getElementById('iBitCosto').value  = '';
+    document.getElementById('iBitTaller').value = '';
+    openModal('mBitacora');
+    await renderBitacora();
+}
+
+async function renderBitacora() {
+    if (!_bitacoraVehiculoId || !currentEmpresa) return;
+    const t = document.getElementById('tBitacora');
+    t.innerHTML = '<tr class="loading-row"><td colspan="7">Cargando...</td></tr>';
+    const { data, error } = await sb
+        .from('bitacora_mantencion')
+        .select('*')
+        .eq('empresa_id', currentEmpresa.id)
+        .eq('vehiculo_id', _bitacoraVehiculoId)
+        .order('fecha', { ascending: false });
+    if (error) { t.innerHTML = `<tr class="empty-row"><td colspan="7">⚠️ ${error.message}</td></tr>`; return; }
+    t.innerHTML = data.length ? data.map(r=>`<tr>
+        <td>${fmtDate(r.fecha)}</td>
+        <td><span class="badge badge-info">${r.tipo}</span></td>
+        <td style="font-size:12px">${r.descripcion||'—'}</td>
+        <td>${r.km ? fmt(r.km)+' km' : '—'}</td>
+        <td>${r.costo ? '$'+fmt(r.costo) : '—'}</td>
+        <td style="font-size:12px">${r.taller||'—'}</td>
+        <td><button class="btn btn-danger btn-sm" onclick="eliminarBitacora('${r.id}')">✕</button></td>
+    </tr>`).join('')
+    : '<tr class="empty-row"><td colspan="7">Sin registros aún</td></tr>';
+}
+
+async function saveBitacoraEntry(e) {
+    e.preventDefault();
+    const btn = e.submitter || e.target.querySelector('button[type="submit"]');
+    if (btn) btn.disabled = true;
+    try {
+        const payload = {
+            empresa_id:  currentEmpresa.id,
+            vehiculo_id: _bitacoraVehiculoId,
+            fecha:       document.getElementById('iBitFecha').value,
+            tipo:        document.getElementById('iBitTipo').value,
+            descripcion: document.getElementById('iBitDesc').value || null,
+            km:          parseInt(document.getElementById('iBitKm').value)    || 0,
+            costo:       parseFloat(document.getElementById('iBitCosto').value) || 0,
+            taller:      document.getElementById('iBitTaller').value || null
+        };
+        const { error } = await sb.from('bitacora_mantencion').insert([payload]);
+        if (error) throw error;
+        toast('✅ Registro guardado en bitácora');
+        document.getElementById('iBitDesc').value   = '';
+        document.getElementById('iBitKm').value     = '';
+        document.getElementById('iBitCosto').value  = '';
+        document.getElementById('iBitTaller').value = '';
+        await renderBitacora();
+    } catch (err) { toast('❌ ' + err.message); }
+    finally { if (btn) btn.disabled = false; }
+}
+
+async function eliminarBitacora(id) {
+    if (!confirm('¿Eliminar este registro?')) return;
+    const { error } = await sb.from('bitacora_mantencion').delete().eq('id', id).eq('empresa_id', currentEmpresa.id);
+    if (error) { toast('❌ ' + error.message); return; }
+    toast('✅ Registro eliminado');
+    await renderBitacora();
+}
+
 // ── Enter para enviar (Shift+Enter = nueva línea)
 document.addEventListener('DOMContentLoaded', () => {
     const input = document.getElementById('tp-chat-input');
@@ -5292,6 +7198,737 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+
+// ═══════════════════════════════════════════════════════════
+// SOPORTE / TICKETS
+// ═══════════════════════════════════════════════════════════
+const TICKET_TIPOS = { problema:'🔴 Problema', mejora:'🟡 Mejora', consulta:'🔵 Consulta', otro:'⚪ Otro' };
+const TICKET_ESTADOS = { abierto:'🔴 Abierto', en_proceso:'🟡 En Proceso', cerrado:'✅ Cerrado' };
+
+function abrirNuevoTicket() {
+    document.getElementById('iTipoTicket').value = 'problema';
+    document.getElementById('iTituloTicket').value = '';
+    document.getElementById('iDescTicket').value = '';
+    openModal('mNuevoTicket');
+}
+
+async function guardarTicket(e) {
+    e.preventDefault();
+    const btn = document.getElementById('btnEnviarTicket');
+    btn.disabled = true; btn.textContent = '⏳ Enviando...';
+    try {
+        const { error } = await sb.from('support_tickets').insert({
+            empresa_id:  currentEmpresa.id,
+            usuario_id:  currentUser.id,
+            tipo:        document.getElementById('iTipoTicket').value,
+            titulo:      document.getElementById('iTituloTicket').value.trim(),
+            descripcion: document.getElementById('iDescTicket').value.trim() || null,
+            estado:      'abierto'
+        });
+        if (error) throw error;
+        toast('✅ Ticket enviado. Te responderemos pronto.');
+        closeModal('mNuevoTicket');
+        renderSoporte();
+    } catch(err) {
+        toast('❌ ' + err.message);
+    } finally {
+        btn.disabled = false; btn.textContent = '📤 Enviar Ticket';
+    }
+}
+
+async function renderSoporte() {
+    if (!currentEmpresa) return;
+    const el = document.getElementById('soporteContent');
+    el.innerHTML = '<div style="text-align:center;padding:30px;color:#6b7280">Cargando...</div>';
+    try {
+        const { data, error } = await sb.from('support_tickets')
+            .select('*').eq('empresa_id', currentEmpresa.id)
+            .order('created_at', { ascending: false });
+        if (error) throw error;
+        if (!data.length) {
+            el.innerHTML = '<div style="text-align:center;padding:40px;color:#9ca3af;font-size:14px">Sin tickets. ¡Todo en orden! 🎉</div>';
+            return;
+        }
+        el.innerHTML = data.map(t => `
+            <div style="border:1px solid #e5e7eb;border-radius:10px;padding:16px;margin-bottom:12px;background:#fff">
+                <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;flex-wrap:wrap">
+                    <div>
+                        <span style="font-size:11px;background:#eff6ff;color:#1d4ed8;padding:2px 8px;border-radius:10px;font-weight:600">${TICKET_TIPOS[t.tipo]||t.tipo}</span>
+                        <span style="font-size:11px;margin-left:6px;background:#f3f4f6;color:#374151;padding:2px 8px;border-radius:10px">${TICKET_ESTADOS[t.estado]||t.estado}</span>
+                    </div>
+                    <span style="font-size:11px;color:#9ca3af">${fmtDate(t.created_at?.slice(0,10))}</span>
+                </div>
+                <p style="font-weight:600;color:#1e293b;margin:8px 0 4px">${t.titulo}</p>
+                ${t.descripcion ? `<p style="font-size:13px;color:#6b7280;margin:0 0 8px">${t.descripcion}</p>` : ''}
+                ${t.respuesta ? `<div style="background:#f0fdf4;border-left:3px solid #10b981;padding:10px 12px;border-radius:0 8px 8px 0;margin-top:8px">
+                    <div style="font-size:11px;color:#059669;font-weight:600;margin-bottom:4px">💬 Respuesta de TransportPro:</div>
+                    <p style="font-size:13px;color:#065f46;margin:0">${t.respuesta}</p>
+                </div>` : ''}
+            </div>`).join('');
+    } catch(err) {
+        el.innerHTML = `<div style="padding:16px;color:#dc2626">⚠️ ${err.message}</div>`;
+    }
+}
+
+// ═══════════════════════════════════════════════════════════
+// TP ADMIN (solo superadmin rol='superadmin')
+// ═══════════════════════════════════════════════════════════
+const TP_CONTACTO_KEY = 'tp_contacto_info';
+
+function _getTpContacto() {
+    try { return JSON.parse(localStorage.getItem(TP_CONTACTO_KEY) || '{}'); } catch(_) { return {}; }
+}
+
+function _renderTpContacto() {
+    const c = _getTpContacto();
+    document.getElementById('tpBanco').textContent   = c.banco   || 'Banco de Chile';
+    document.getElementById('tpCuenta').textContent  = c.cuenta  || '00-000-00000-00';
+    document.getElementById('tpRut').textContent     = c.rut     || '12.345.678-9';
+    document.getElementById('tpCelular').textContent = c.celular || '+56 9 0000 0000';
+    document.getElementById('tpEmail').textContent   = c.email   || 'soporte@transportpro.cl';
+}
+
+function guardarTpContacto(e) {
+    e.preventDefault();
+    const c = {
+        banco:   document.getElementById('iTpBanco').value.trim(),
+        cuenta:  document.getElementById('iTpCuenta').value.trim(),
+        rut:     document.getElementById('iTpRut').value.trim(),
+        celular: document.getElementById('iTpCelular').value.trim(),
+        email:   document.getElementById('iTpEmailC').value.trim(),
+        titular: document.getElementById('iTpTitular').value.trim()
+    };
+    localStorage.setItem(TP_CONTACTO_KEY, JSON.stringify(c));
+    _renderTpContacto();
+    closeModal('mTpContacto');
+    toast('✅ Datos de contacto guardados');
+}
+
+function openModal_TpContacto() {
+    const c = _getTpContacto();
+    document.getElementById('iTpBanco').value   = c.banco   || '';
+    document.getElementById('iTpCuenta').value  = c.cuenta  || '';
+    document.getElementById('iTpRut').value     = c.rut     || '';
+    document.getElementById('iTpCelular').value = c.celular || '';
+    document.getElementById('iTpEmailC').value  = c.email   || '';
+    document.getElementById('iTpTitular').value = c.titular || '';
+    openModal('mTpContacto');
+}
+
+async function bloquearEmpresa(empresaId, bloquear) {
+    const acc = bloquear ? 'suspended' : 'active';
+    const { error } = await sb.from('empresas').update({ sub_status: acc }).eq('id', empresaId);
+    if (error) { toast('❌ ' + error.message); return; }
+    toast(bloquear ? '🔒 Empresa bloqueada' : '✅ Empresa reactivada');
+    renderTpAdmin();
+}
+
+function abrirResponderTicket(ticketId, titulo, desc, respuesta) {
+    document.getElementById('iTicketId').value = ticketId;
+    document.getElementById('ticketDetalleAdmin').innerHTML =
+        `<strong>${titulo}</strong>${desc ? '<br><span style="color:#6b7280">'+desc+'</span>' : ''}`;
+    document.getElementById('iRespuestaTicket').value = respuesta || '';
+    document.getElementById('iEstadoTicket').value = 'en_proceso';
+    openModal('mResponderTicket');
+}
+
+async function enviarRespuestaTicket() {
+    const id        = document.getElementById('iTicketId').value;
+    const respuesta = document.getElementById('iRespuestaTicket').value.trim();
+    const estado    = document.getElementById('iEstadoTicket').value;
+    if (!respuesta) { toast('⚠️ Escribe una respuesta'); return; }
+    const { error } = await sb.from('support_tickets').update({ respuesta, estado, updated_at: new Date().toISOString() }).eq('id', id);
+    if (error) { toast('❌ ' + error.message); return; }
+    toast('✅ Respuesta enviada');
+    closeModal('mResponderTicket');
+    renderTpAdmin();
+}
+
+async function renderTpAdmin() {
+    if (!currentEmpresa && currentUser?.rol !== 'superadmin') return;
+    _renderTpContacto();
+
+    // Cargar empresas
+    const tEmp = document.getElementById('tTpEmpresas');
+    tEmp.innerHTML = '<tr class="loading-row"><td colspan="7">Cargando...</td></tr>';
+
+    // Cargar tickets
+    const tTick = document.getElementById('tpTicketsContent');
+    tTick.innerHTML = '<div style="text-align:center;padding:20px;color:#6b7280">Cargando tickets...</div>';
+
+    const [{ data: empresas, error: e1 }, { data: tickets, error: e2 }] = await Promise.all([
+        sb.from('empresas').select('id,razon_social,plan_name,sub_status,sub_end_date,max_vehicles,max_ops').order('razon_social'),
+        sb.from('support_tickets').select('*, empresas(razon_social)').order('created_at', { ascending: false }).limit(50)
+    ]);
+
+    // Tabla empresas
+    if (e1) {
+        tEmp.innerHTML = `<tr class="empty-row"><td colspan="7">⚠️ ${e1.message}</td></tr>`;
+    } else {
+        const statColor = { active:'#10b981', overdue:'#f59e0b', suspended:'#ef4444', cancelled:'#9ca3af' };
+        tEmp.innerHTML = (empresas||[]).map(emp => {
+            const sc = statColor[emp.sub_status] || '#9ca3af';
+            const bloqueado = emp.sub_status === 'suspended';
+            return `<tr>
+                <td><strong>${emp.razon_social}</strong></td>
+                <td><span style="background:#eff6ff;color:#1d4ed8;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600">${emp.plan_name||'BASIC'}</span></td>
+                <td><span style="background:${sc}22;color:${sc};padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600">${emp.sub_status||'active'}</span></td>
+                <td>${emp.sub_end_date ? fmtDate(emp.sub_end_date) : '—'}</td>
+                <td style="text-align:center">${emp.max_vehicles||3}</td>
+                <td style="text-align:center">${emp.max_ops||300}</td>
+                <td style="white-space:nowrap">
+                    <button class="btn btn-sm" style="background:${bloqueado?'#10b981':'#ef4444'};color:#fff;font-size:11px" onclick="bloquearEmpresa('${emp.id}',${!bloqueado})">
+                        ${bloqueado ? '🔓 Reactivar' : '🔒 Bloquear'}
+                    </button>
+                </td>
+            </tr>`;
+        }).join('') || '<tr class="empty-row"><td colspan="7">Sin empresas</td></tr>';
+    }
+
+    // Tickets
+    if (e2) {
+        tTick.innerHTML = `<div style="padding:16px;color:#dc2626">⚠️ ${e2.message}</div>`;
+    } else if (!tickets?.length) {
+        tTick.innerHTML = '<div style="text-align:center;padding:30px;color:#9ca3af">Sin tickets pendientes 🎉</div>';
+    } else {
+        tTick.innerHTML = (tickets||[]).map(t => `
+            <div style="border:1px solid #e5e7eb;border-radius:10px;padding:14px;margin-bottom:10px;background:${t.estado==='cerrado'?'#f9fafb':'#fff'}">
+                <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+                    <div>
+                        <span style="font-size:11px;background:#eff6ff;color:#1d4ed8;padding:2px 8px;border-radius:10px;font-weight:600">${TICKET_TIPOS[t.tipo]||t.tipo}</span>
+                        <span style="font-size:11px;margin-left:6px;background:#f3f4f6;color:#374151;padding:2px 8px;border-radius:10px">${TICKET_ESTADOS[t.estado]||t.estado}</span>
+                        <span style="font-size:11px;margin-left:6px;color:#6b7280">${t.empresas?.razon_social||'—'}</span>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:8px">
+                        <span style="font-size:11px;color:#9ca3af">${fmtDate(t.created_at?.slice(0,10))}</span>
+                        ${t.estado !== 'cerrado' ? `<button class="btn btn-sm" style="background:#2563eb;color:#fff;font-size:11px" onclick="abrirResponderTicket('${t.id}','${(t.titulo||'').replace(/'/g,"\\'")}','${(t.descripcion||'').replace(/'/g,"\\'")}','${(t.respuesta||'').replace(/'/g,"\\'")}')">💬 Responder</button>` : ''}
+                    </div>
+                </div>
+                <p style="font-weight:600;color:#1e293b;margin:8px 0 2px">${t.titulo}</p>
+                ${t.descripcion ? `<p style="font-size:12px;color:#6b7280;margin:0">${t.descripcion}</p>` : ''}
+                ${t.respuesta ? `<div style="background:#f0fdf4;border-left:3px solid #10b981;padding:8px 12px;margin-top:8px;border-radius:0 6px 6px 0;font-size:12px;color:#065f46"><strong>Tu respuesta:</strong> ${t.respuesta}</div>` : ''}
+            </div>`).join('');
+    }
+}
+
+// ═══════════════════════════════════════════════════════════
+// MÓDULO: REMUNERACIONES
+// ═══════════════════════════════════════════════════════════
+var _remData       = [];
+var _editingRemId   = null;
+var _editingRemData = null;
+
+const _REM_TIPO_LABEL = { sueldo:'Sueldo', viatico:'Viático', aguinaldo:'Aguinaldo', anticipo:'Anticipo', otro:'Otro' };
+const _REM_TIPO_COLOR = { sueldo:'#2563eb', viatico:'#059669', aguinaldo:'#d97706', anticipo:'#7c3aed', otro:'#6b7280' };
+
+async function renderRemuneraciones() {
+    if (!currentEmpresa) return;
+    const t = document.getElementById('tRemuneraciones');
+    t.innerHTML = '<tr class="loading-row"><td colspan="6">Cargando...</td></tr>';
+
+    const { data, error } = await sb
+        .from('remuneraciones')
+        .select('*, conductores(nombre)')
+        .eq('empresa_id', currentEmpresa.id)
+        .order('fecha', { ascending: false });
+
+    if (error) {
+        t.innerHTML = `<tr class="empty-row"><td colspan="6">⚠️ ${error.message}</td></tr>`;
+        return;
+    }
+
+    _remData = data || [];
+    await _cargarSelectConductorRem('fRemConductor', true);
+    _renderRemTable(_remData);
+    _renderRemSummary(_remData);
+}
+
+function _renderRemTable(data) {
+    const t = document.getElementById('tRemuneraciones');
+    t.innerHTML = data.length ? data.map(r => `<tr>
+        <td>${fmtDate(r.fecha)}</td>
+        <td>${r.conductores?.nombre || '—'}</td>
+        <td><span style="background:${_REM_TIPO_COLOR[r.tipo]||'#6b7280'}20;color:${_REM_TIPO_COLOR[r.tipo]||'#6b7280'};padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600">${_REM_TIPO_LABEL[r.tipo]||r.tipo}</span></td>
+        <td>${r.descripcion || '—'}</td>
+        <td><strong>$${fmt(r.monto)}</strong></td>
+        <td style="white-space:nowrap">
+            <button class="btn btn-sm" style="background:#6c757d;color:#fff;margin-right:4px" onclick="editarRemuneracion('${r.id}')">✏️</button>
+            <button class="btn btn-danger btn-sm" onclick="eliminarRemuneracion('${r.id}')">✕</button>
+        </td>
+    </tr>`).join('') : '<tr class="empty-row"><td colspan="6">Sin remuneraciones registradas</td></tr>';
+}
+
+function _renderRemSummary(data) {
+    const total = data.reduce((s,r) => s + Number(r.monto||0), 0);
+
+    const porTipo = {};
+    data.forEach(r => { porTipo[r.tipo] = (porTipo[r.tipo]||0) + Number(r.monto||0); });
+
+    const porConductor = {};
+    data.forEach(r => {
+        const nombre = r.conductores?.nombre || 'Sin asignar';
+        porConductor[nombre] = (porConductor[nombre]||0) + Number(r.monto||0);
+    });
+
+    const byTipoHtml = Object.entries(porTipo).sort((a,b) => b[1]-a[1])
+        .map(([tipo,monto]) => `<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
+            <span style="color:#6b7280">${_REM_TIPO_LABEL[tipo]||tipo}</span>
+            <span style="font-weight:600">$${fmt(monto)}</span>
+        </div>`).join('') || '<div style="font-size:12px;color:#9ca3af">Sin datos</div>';
+
+    const byConductorHtml = Object.entries(porConductor).sort((a,b) => b[1]-a[1]).slice(0,5)
+        .map(([nombre,monto]) => `<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
+            <span style="color:#6b7280;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${nombre}</span>
+            <span style="font-weight:600">$${fmt(monto)}</span>
+        </div>`).join('') || '<div style="font-size:12px;color:#9ca3af">Sin datos</div>';
+
+    document.getElementById('remSummary').innerHTML = `
+        <div style="background:linear-gradient(135deg,#7c3aed,#6d28d9);border-radius:10px;padding:14px 16px;color:white">
+            <div style="font-size:10px;opacity:.8;text-transform:uppercase;letter-spacing:.6px">Total período</div>
+            <div style="font-size:24px;font-weight:800;margin:4px 0">$${fmt(total)}</div>
+            <div style="font-size:11px;opacity:.7">${data.length} registro${data.length!==1?'s':''}</div>
+        </div>
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px 16px">
+            <div style="font-size:11px;font-weight:700;color:#374151;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Por Tipo</div>
+            ${byTipoHtml}
+        </div>
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px 16px">
+            <div style="font-size:11px;font-weight:700;color:#374151;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Por Conductor</div>
+            ${byConductorHtml}
+        </div>`;
+}
+
+async function _cargarSelectConductorRem(selectId, opcional) {
+    if (!currentEmpresa) return;
+    const { data } = await sb.from('conductores').select('id, nombre')
+        .eq('empresa_id', currentEmpresa.id).order('nombre');
+    const sel = document.getElementById(selectId);
+    if (!sel) return;
+    const current = sel.value;
+    const first = opcional ? '<option value="">Todos</option>' : '<option value="">Seleccionar...</option>';
+    sel.innerHTML = first + (data||[]).map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
+    if (current) sel.value = current;
+}
+
+function filtrarRemuneraciones() {
+    const cond  = document.getElementById('fRemConductor').value;
+    const tipo  = document.getElementById('fRemTipo').value;
+    const desde = document.getElementById('fRemDesde').value;
+    const hasta = document.getElementById('fRemHasta').value;
+
+    let filtered = _remData;
+    if (cond)  filtered = filtered.filter(r => r.conductor_id === cond);
+    if (tipo)  filtered = filtered.filter(r => r.tipo === tipo);
+    if (desde) filtered = filtered.filter(r => r.fecha >= desde);
+    if (hasta) filtered = filtered.filter(r => r.fecha <= hasta);
+
+    _renderRemTable(filtered);
+    _renderRemSummary(filtered);
+}
+
+function limpiarFiltrosRem() {
+    ['fRemConductor','fRemTipo','fRemDesde','fRemHasta'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+    });
+    _renderRemTable(_remData);
+    _renderRemSummary(_remData);
+}
+
+function openNuevaRemuneracion() {
+    _editingRemId   = null;
+    _editingRemData = null;
+    openModal('mRemuneracion');
+}
+
+async function editarRemuneracion(id) {
+    const r = _remData.find(x => x.id === id);
+    if (!r) return;
+    _editingRemId   = id;
+    _editingRemData = r;
+    document.getElementById('mRemTitle').textContent = 'Editar Remuneración';
+    await _cargarSelectConductorRem('iRemConductor', false);
+    document.getElementById('iRemConductor').value = r.conductor_id || '';
+    document.getElementById('iRemTipo').value       = r.tipo;
+    document.getElementById('iRemMonto').value      = r.monto;
+    document.getElementById('iRemFecha').value      = r.fecha;
+    document.getElementById('iRemDesc').value       = r.descripcion || '';
+    document.getElementById(id ? 'mRemuneracion' : 'mRemuneracion').classList.add('open');
+}
+
+async function saveRemuneracion(e) {
+    e.preventDefault();
+    const btn = document.getElementById('btnSaveRem');
+    btn.disabled = true;
+    try {
+        const payload = {
+            conductor_id: document.getElementById('iRemConductor').value || null,
+            tipo:         document.getElementById('iRemTipo').value,
+            monto:        parseFloat(document.getElementById('iRemMonto').value) || 0,
+            fecha:        document.getElementById('iRemFecha').value,
+            descripcion:  document.getElementById('iRemDesc').value.trim() || null
+        };
+        let error;
+        if (_editingRemId) {
+            ({ error } = await sb.from('remuneraciones').update(payload)
+                .eq('id', _editingRemId).eq('empresa_id', currentEmpresa.id));
+        } else {
+            ({ error } = await sb.from('remuneraciones').insert([{ empresa_id: currentEmpresa.id, ...payload }]));
+        }
+        if (error) throw error;
+        closeModal('mRemuneracion');
+        toast(_editingRemId ? '✅ Remuneración actualizada' : '✅ Remuneración registrada');
+        await renderRemuneraciones();
+    } catch (err) {
+        toast('❌ Error: ' + err.message);
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+async function eliminarRemuneracion(id) {
+    if (!confirm('¿Eliminar esta remuneración?')) return;
+    const { error } = await sb.from('remuneraciones').delete()
+        .eq('id', id).eq('empresa_id', currentEmpresa.id);
+    if (error) { toast('❌ Error: ' + error.message); return; }
+    toast('✅ Eliminada');
+    await renderRemuneraciones();
+}
+
+// ═══════════════════════════════════════════════════════════
+// MÓDULOS PERSONALIZADOS (sistema editable end-to-end)
+// ═══════════════════════════════════════════════════════════
+var _modulosCustom        = [];
+var _moduloActualId       = null;
+var _moduloActualData     = null;
+var _registrosActuales    = [];
+var _editingModConfigId   = null;
+var _editingRegistroId    = null;
+var _camposEnEdicion      = [];
+
+const _TIPOS_CAMPO = [
+    { v:'texto',       t:'Texto'        },
+    { v:'texto_largo', t:'Texto largo'  },
+    { v:'numero',      t:'Número'       },
+    { v:'moneda',      t:'Moneda ($)'   },
+    { v:'fecha',       t:'Fecha'        },
+    { v:'si_no',       t:'Sí / No'      },
+    { v:'select',      t:'Lista (select)' },
+    { v:'email',       t:'Email'        },
+    { v:'url',         t:'URL'          }
+];
+
+async function cargarModulosCustom() {
+    if (!currentEmpresa?.id) return;
+    const { data, error } = await sb.from('modulos_custom')
+        .select('*')
+        .eq('empresa_id', currentEmpresa.id)
+        .eq('activo', true)
+        .order('orden', { ascending: true })
+        .order('created_at', { ascending: true });
+    if (error) { console.warn('[modulos_custom]', error); return; }
+    _modulosCustom = data || [];
+    renderTabsCustom();
+}
+
+function renderTabsCustom() {
+    document.querySelectorAll('.tab-btn-custom').forEach(b => b.remove());
+    const btnAdd = document.getElementById('btnAddModulo');
+    if (!btnAdd) return;
+    _modulosCustom.forEach(m => {
+        const btn = document.createElement('button');
+        btn.className = 'tab-btn tab-btn-custom';
+        btn.dataset.moduloId = m.id;
+        btn.textContent = `${m.icono || '📋'} ${m.nombre}`;
+        btn.onclick = () => switchToCustomModule(m.id, btn);
+        btnAdd.parentElement.insertBefore(btn, btnAdd);
+    });
+}
+
+function switchToCustomModule(moduloId, btn) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('sec-modcustom').classList.add('active');
+    if (btn) btn.classList.add('active');
+    _moduloActualId   = moduloId;
+    _moduloActualData = _modulosCustom.find(m => m.id === moduloId);
+    renderModuloCustom();
+}
+
+async function renderModuloCustom() {
+    if (!_moduloActualData) return;
+    const m = _moduloActualData;
+    const titleEl = document.getElementById('modCustTitle');
+    titleEl.innerHTML = `<span style="color:${m.color||'#6366f1'}">${m.icono||'📋'}</span> ${m.nombre}`;
+
+    const campos = m.campos || [];
+    const thead = document.getElementById('theadModCust');
+    thead.innerHTML = '<tr>' + campos.map(c => `<th>${_escapeHtml(c.nombre)}</th>`).join('') + '<th style="width:100px">Acciones</th></tr>';
+
+    const tbody = document.getElementById('tbodyModCust');
+    tbody.innerHTML = `<tr class="loading-row"><td colspan="${campos.length+1}">Cargando...</td></tr>`;
+
+    const { data, error } = await sb.from('modulos_registros')
+        .select('*').eq('empresa_id', currentEmpresa.id).eq('modulo_id', m.id)
+        .order('created_at', { ascending: false });
+
+    if (error) {
+        tbody.innerHTML = `<tr class="empty-row"><td colspan="${campos.length+1}">⚠️ ${error.message}</td></tr>`;
+        return;
+    }
+
+    _registrosActuales = data || [];
+    renderTablaRegistros();
+}
+
+function renderTablaRegistros() {
+    const m = _moduloActualData;
+    const campos = m.campos || [];
+    const tbody = document.getElementById('tbodyModCust');
+
+    if (!_registrosActuales.length) {
+        tbody.innerHTML = `<tr class="empty-row"><td colspan="${campos.length+1}">Sin registros. Haz clic en "+ Nuevo Registro" para agregar uno.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = _registrosActuales.map(r => `<tr>
+        ${campos.map(c => `<td>${_formatearValorCampo(r.datos?.[c.id], c.tipo)}</td>`).join('')}
+        <td style="white-space:nowrap">
+            <button class="btn btn-sm" style="background:#6c757d;color:#fff;margin-right:4px" onclick="editarRegistroModulo('${r.id}')">✏️</button>
+            <button class="btn btn-danger btn-sm" onclick="eliminarRegistroModulo('${r.id}')">✕</button>
+        </td>
+    </tr>`).join('');
+}
+
+function _formatearValorCampo(val, tipo) {
+    if (val === undefined || val === null || val === '') return '<span style="color:#9ca3af">—</span>';
+    if (tipo === 'si_no')  return val ? '<span style="color:#16a34a;font-weight:600">✔ Sí</span>' : '<span style="color:#dc2626;font-weight:600">✗ No</span>';
+    if (tipo === 'moneda') return '<strong>$' + fmt(Number(val)||0) + '</strong>';
+    if (tipo === 'fecha')  return fmtDate(val);
+    if (tipo === 'url')    return `<a href="${_escapeHtml(val)}" target="_blank" style="color:#2563eb">${_escapeHtml(val)}</a>`;
+    if (tipo === 'email')  return `<a href="mailto:${_escapeHtml(val)}" style="color:#2563eb">${_escapeHtml(val)}</a>`;
+    if (tipo === 'texto_largo') return `<span style="font-size:12px">${_escapeHtml(String(val)).slice(0,80)}${String(val).length>80?'…':''}</span>`;
+    return _escapeHtml(String(val));
+}
+
+function _escapeHtml(s) {
+    return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// ── Crear / editar módulo personalizado ───────────────────────
+function openCustomModuleManager() {
+    _editingModConfigId = null;
+    _camposEnEdicion = [
+        { id: _newCampoId(), nombre: 'Nombre', tipo: 'texto', requerido: true }
+    ];
+    document.getElementById('mModConfigTitle').textContent = '+ Nuevo Módulo Personalizado';
+    document.getElementById('iModNombre').value = '';
+    document.getElementById('iModIcono').value  = '📋';
+    document.getElementById('iModColor').value  = '#6366f1';
+    _renderCamposEditor();
+    openModal('mModuloConfig');
+}
+
+function openConfigCurrentModule() {
+    if (!_moduloActualData) return;
+    const m = _moduloActualData;
+    _editingModConfigId = m.id;
+    _camposEnEdicion = JSON.parse(JSON.stringify(m.campos || []));
+    document.getElementById('mModConfigTitle').textContent = '⚙️ Editar: ' + m.nombre;
+    document.getElementById('iModNombre').value = m.nombre;
+    document.getElementById('iModIcono').value  = m.icono || '📋';
+    document.getElementById('iModColor').value  = m.color || '#6366f1';
+    _renderCamposEditor();
+    openModal('mModuloConfig');
+}
+
+function _newCampoId() {
+    return 'c' + Math.random().toString(36).slice(2, 9);
+}
+
+function modAgregarCampo() {
+    _camposEnEdicion.push({ id: _newCampoId(), nombre: '', tipo: 'texto', requerido: false });
+    _renderCamposEditor();
+}
+
+function modEliminarCampo(idx) {
+    _camposEnEdicion.splice(idx, 1);
+    _renderCamposEditor();
+}
+
+function modMoverCampo(idx, dir) {
+    const j = idx + dir;
+    if (j < 0 || j >= _camposEnEdicion.length) return;
+    [_camposEnEdicion[idx], _camposEnEdicion[j]] = [_camposEnEdicion[j], _camposEnEdicion[idx]];
+    _renderCamposEditor();
+}
+
+function modUpdateCampo(idx, prop, value) {
+    if (prop === 'requerido') value = !!value;
+    if (prop === 'opciones')  value = String(value).split(',').map(s => s.trim()).filter(Boolean);
+    _camposEnEdicion[idx][prop] = value;
+    if (prop === 'tipo') _renderCamposEditor();
+}
+
+function _renderCamposEditor() {
+    const cont = document.getElementById('modCamposLista');
+    if (!_camposEnEdicion.length) {
+        cont.innerHTML = '<div style="padding:12px;background:#f9fafb;border-radius:8px;color:#9ca3af;font-size:13px;text-align:center">Sin campos. Haz clic en "+ Agregar campo".</div>';
+        return;
+    }
+    cont.innerHTML = _camposEnEdicion.map((c, i) => `
+        <div style="display:grid;grid-template-columns:1fr 150px 80px auto;gap:6px;align-items:center;padding:8px;background:#f9fafb;border-radius:8px;margin-bottom:6px">
+            <input type="text" placeholder="Nombre del campo" value="${_escapeHtml(c.nombre)}" oninput="modUpdateCampo(${i},'nombre',this.value)" style="padding:6px 9px;border:1px solid #d1d5db;border-radius:6px;font-size:13px">
+            <select onchange="modUpdateCampo(${i},'tipo',this.value)" style="padding:6px 9px;border:1px solid #d1d5db;border-radius:6px;font-size:13px">
+                ${_TIPOS_CAMPO.map(t => `<option value="${t.v}" ${c.tipo===t.v?'selected':''}>${t.t}</option>`).join('')}
+            </select>
+            <label style="font-size:11px;display:flex;align-items:center;gap:4px;color:#374151">
+                <input type="checkbox" ${c.requerido?'checked':''} onchange="modUpdateCampo(${i},'requerido',this.checked)"> Req.
+            </label>
+            <div style="display:flex;gap:2px">
+                <button type="button" onclick="modMoverCampo(${i},-1)" style="border:none;background:#e5e7eb;border-radius:3px;padding:3px 7px;cursor:pointer;opacity:${i===0?'0.3':'1'}" ${i===0?'disabled':''}>▲</button>
+                <button type="button" onclick="modMoverCampo(${i},1)"  style="border:none;background:#e5e7eb;border-radius:3px;padding:3px 7px;cursor:pointer;opacity:${i===_camposEnEdicion.length-1?'0.3':'1'}" ${i===_camposEnEdicion.length-1?'disabled':''}>▼</button>
+                <button type="button" onclick="modEliminarCampo(${i})" style="border:none;background:#fee2e2;color:#dc2626;border-radius:3px;padding:3px 7px;cursor:pointer">✕</button>
+            </div>
+            ${c.tipo === 'select' ? `<input type="text" placeholder="Opciones separadas por coma: opción 1, opción 2..." value="${_escapeHtml((c.opciones||[]).join(', '))}" oninput="modUpdateCampo(${i},'opciones',this.value)" style="grid-column:1 / -1;padding:6px 9px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;background:#fff">` : ''}
+        </div>`).join('');
+}
+
+async function saveModuloConfig(e) {
+    e.preventDefault();
+    const nombre = document.getElementById('iModNombre').value.trim();
+    const icono  = document.getElementById('iModIcono').value.trim() || '📋';
+    const color  = document.getElementById('iModColor').value;
+
+    if (!nombre) { toast('⚠️ Ingresa el nombre del módulo'); return; }
+    const camposValidos = _camposEnEdicion.filter(c => c.nombre.trim()).map(c => ({ ...c, nombre: c.nombre.trim() }));
+    if (!camposValidos.length) { toast('⚠️ Agrega al menos un campo con nombre'); return; }
+
+    const payload = { nombre, icono, color, campos: camposValidos };
+    let error, savedId;
+
+    if (_editingModConfigId) {
+        ({ error } = await sb.from('modulos_custom').update(payload)
+            .eq('id', _editingModConfigId).eq('empresa_id', currentEmpresa.id));
+        savedId = _editingModConfigId;
+    } else {
+        const ins = await sb.from('modulos_custom').insert([{ empresa_id: currentEmpresa.id, ...payload }]).select('id').single();
+        error = ins.error;
+        savedId = ins.data?.id;
+    }
+
+    if (error) { toast('❌ Error: ' + error.message); return; }
+    closeModal('mModuloConfig');
+    toast(_editingModConfigId ? '✅ Módulo actualizado' : '✅ Módulo creado');
+    await cargarModulosCustom();
+    if (savedId) {
+        const btn = document.querySelector(`.tab-btn-custom[data-modulo-id="${savedId}"]`);
+        if (btn) switchToCustomModule(savedId, btn);
+    }
+}
+
+async function eliminarCurrentModule() {
+    if (!_moduloActualData) return;
+    const nombre = _moduloActualData.nombre;
+    if (!confirm(`¿Eliminar el módulo "${nombre}" y TODOS sus registros? Esta acción no se puede deshacer.`)) return;
+    const { error } = await sb.from('modulos_custom').delete()
+        .eq('id', _moduloActualData.id).eq('empresa_id', currentEmpresa.id);
+    if (error) { toast('❌ ' + error.message); return; }
+    toast('✅ Módulo eliminado');
+    _moduloActualId = null;
+    _moduloActualData = null;
+    await cargarModulosCustom();
+    document.querySelector('.tab-btn[onclick*="dashboard"]').click();
+}
+
+// ── Registros del módulo ──────────────────────────────────────
+function openNuevoRegistroModulo() {
+    if (!_moduloActualData) return;
+    _editingRegistroId = null;
+    document.getElementById('mRegModTitle').textContent = `+ Nuevo en ${_moduloActualData.nombre}`;
+    _renderFormRegistro({});
+    openModal('mRegistroModulo');
+}
+
+function editarRegistroModulo(id) {
+    const r = _registrosActuales.find(x => x.id === id);
+    if (!r) return;
+    _editingRegistroId = id;
+    document.getElementById('mRegModTitle').textContent = `Editar registro`;
+    _renderFormRegistro(r.datos || {});
+    openModal('mRegistroModulo');
+}
+
+function _renderFormRegistro(datos) {
+    const m = _moduloActualData;
+    const cont = document.getElementById('formCamposModulo');
+    cont.innerHTML = (m.campos || []).map(c => {
+        const v = datos[c.id] ?? '';
+        const req = c.requerido ? 'required' : '';
+        const reqMark = c.requerido ? ' *' : '';
+        let input = '';
+        if (c.tipo === 'texto_largo') {
+            input = `<textarea id="iReg_${c.id}" ${req} rows="3" style="width:100%;padding:8px 10px;border:1px solid #d1d5db;border-radius:7px">${_escapeHtml(v)}</textarea>`;
+        } else if (c.tipo === 'numero' || c.tipo === 'moneda') {
+            input = `<input type="number" id="iReg_${c.id}" ${req} step="any" value="${_escapeHtml(v)}">`;
+        } else if (c.tipo === 'fecha') {
+            input = `<input type="date" id="iReg_${c.id}" ${req} value="${_escapeHtml(v)}">`;
+        } else if (c.tipo === 'si_no') {
+            input = `<select id="iReg_${c.id}" ${req}><option value="">—</option><option value="true" ${v===true||v==='true'?'selected':''}>Sí</option><option value="false" ${v===false||v==='false'?'selected':''}>No</option></select>`;
+        } else if (c.tipo === 'select') {
+            input = `<select id="iReg_${c.id}" ${req}><option value="">Seleccionar...</option>${(c.opciones||[]).map(o => `<option value="${_escapeHtml(o)}" ${v===o?'selected':''}>${_escapeHtml(o)}</option>`).join('')}</select>`;
+        } else if (c.tipo === 'email') {
+            input = `<input type="email" id="iReg_${c.id}" ${req} value="${_escapeHtml(v)}">`;
+        } else if (c.tipo === 'url') {
+            input = `<input type="url" id="iReg_${c.id}" ${req} value="${_escapeHtml(v)}" placeholder="https://...">`;
+        } else {
+            input = `<input type="text" id="iReg_${c.id}" ${req} value="${_escapeHtml(v)}">`;
+        }
+        const span = (c.tipo === 'texto_largo') ? 'grid-column:span 2;' : '';
+        return `<div class="form-group" style="${span}"><label>${_escapeHtml(c.nombre)}${reqMark}</label>${input}</div>`;
+    }).join('');
+}
+
+async function saveRegistroModulo(e) {
+    e.preventDefault();
+    const m = _moduloActualData;
+    const datos = {};
+    (m.campos || []).forEach(c => {
+        const el = document.getElementById('iReg_' + c.id);
+        if (!el) return;
+        let v = el.value;
+        if (v === '') { datos[c.id] = null; return; }
+        if (c.tipo === 'numero' || c.tipo === 'moneda') v = parseFloat(v) || 0;
+        else if (c.tipo === 'si_no') v = (v === 'true');
+        datos[c.id] = v;
+    });
+
+    let error;
+    if (_editingRegistroId) {
+        ({ error } = await sb.from('modulos_registros').update({ datos })
+            .eq('id', _editingRegistroId).eq('empresa_id', currentEmpresa.id));
+    } else {
+        ({ error } = await sb.from('modulos_registros').insert([{
+            empresa_id: currentEmpresa.id,
+            modulo_id:  m.id,
+            datos
+        }]));
+    }
+    if (error) { toast('❌ ' + error.message); return; }
+    closeModal('mRegistroModulo');
+    toast(_editingRegistroId ? '✅ Registro actualizado' : '✅ Registro guardado');
+    _editingRegistroId = null;
+    await renderModuloCustom();
+}
+
+async function eliminarRegistroModulo(id) {
+    if (!confirm('¿Eliminar este registro?')) return;
+    const { error } = await sb.from('modulos_registros').delete()
+        .eq('id', id).eq('empresa_id', currentEmpresa.id);
+    if (error) { toast('❌ ' + error.message); return; }
+    toast('✅ Eliminado');
+    await renderModuloCustom();
+}
 </script>
 </body>
 </html>
