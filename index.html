@@ -353,7 +353,13 @@
         <div class="section-card">
             <div class="section-header">
                 <h2 id="dashBienvenida">📊 Dashboard</h2>
-                <button class="btn btn-success" onclick="exportarTodo()" style="font-weight:700">📥 Exportar Todo</button>
+                <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+                    <button class="btn btn-sm" style="background:#e0e7ff;color:#3730a3;font-size:16px;padding:4px 12px" onclick="navDashMes(-1)">‹</button>
+                    <span id="dashMesLabel" style="font-weight:700;color:#374151;font-size:13px;min-width:110px;text-align:center">—</span>
+                    <button class="btn btn-sm" style="background:#e0e7ff;color:#3730a3;font-size:16px;padding:4px 12px" onclick="navDashMes(1)">›</button>
+                    <button class="btn btn-sm" style="background:#2563eb;color:white;font-weight:700" onclick="navDashMesHoy()">Hoy</button>
+                    <button class="btn btn-success" onclick="exportarTodo()" style="font-weight:700">📥 Exportar Todo</button>
+                </div>
             </div>
 
             <!-- KPIs principales -->
@@ -441,7 +447,7 @@
             </div>
 
             <!-- Rendimiento por vehículo -->
-            <h3 style="font-size:13px;font-weight:700;color:#374151;margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px">Rendimiento por Vehículo — Mes Actual</h3>
+            <h3 id="dashPatentesTitle" style="font-size:13px;font-weight:700;color:#374151;margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px">Rendimiento por Vehículo — Mes Actual</h3>
             <div style="overflow-x:auto">
             <table style="font-size:12px">
                 <thead><tr><th>Patente</th><th>Viajes</th><th>Ingresos</th><th>Combustible</th><th>Mantenciones</th><th>Total Costos</th><th>Utilidad</th><th>Margen</th></tr></thead>
@@ -2862,16 +2868,24 @@ document.addEventListener('click', e => {
 async function renderDashboard() {
     if (!currentEmpresa) return;
     const eid = currentEmpresa.id;
-    const hoy = new Date();
-    const mesInicio  = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString().split('T')[0];
-    const seisInicio = new Date(hoy.getFullYear(), hoy.getMonth() - 5, 1).toISOString().split('T')[0];
+    const hoy  = new Date();
+    const { year: dYear, month: dMonth } = _dashMes;
+    const mesInicio  = new Date(dYear, dMonth, 1).toISOString().split('T')[0];
+    const mesFin     = new Date(dYear, dMonth + 1, 0).toISOString().split('T')[0];
+    const seisInicio = new Date(dYear, dMonth - 5, 1).toISOString().split('T')[0];
+    const esMesActual = dYear === hoy.getFullYear() && dMonth === hoy.getMonth();
+    const _MESES_D = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
     const nombre = currentEmpresa.razon_social || currentEmpresa.nombre || 'Mi Empresa';
     document.getElementById('dashBienvenida').textContent = `📊 Dashboard — ${nombre}`;
+    const mlEl = document.getElementById('dashMesLabel');
+    if (mlEl) mlEl.textContent = `${_MESES_D[dMonth]} ${dYear}${esMesActual ? ' ★' : ''}`;
+    const ptEl = document.getElementById('dashPatentesTitle');
+    if (ptEl) ptEl.textContent = `Rendimiento por Vehículo — ${_MESES_D[dMonth]} ${dYear}`;
 
     try {
         // Rangos de fechas
-        const prevInicio = new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1).toISOString().split('T')[0];
-        const prevFin    = new Date(hoy.getFullYear(), hoy.getMonth(), 0).toISOString().split('T')[0];
+        const prevInicio = new Date(dYear, dMonth - 1, 1).toISOString().split('T')[0];
+        const prevFin    = new Date(dYear, dMonth, 0).toISOString().split('T')[0];
 
         // ── Queries principales ──────────────────
         const [{ data: viajes }, { data: gastosMes }, { data: combMes },
@@ -2879,24 +2893,24 @@ async function renderDashboard() {
                { data: bitMes }, { data: gastosPrev }, { data: combPrev }, { data: viajesPrev }] =
             await Promise.all([
                 sb.from('viajes').select('id, fecha, tarifa, estado, origen, destino, vehiculo_id, clientes(razon_social), vehiculos(patente)')
-                    .eq('empresa_id', eid).order('fecha', { ascending: false }),
-                sb.from('gastos').select('fecha, monto, vehiculo_id').eq('empresa_id', eid).gte('fecha', seisInicio),
-                sb.from('combustible').select('fecha, total, vehiculo_id').eq('empresa_id', eid).gte('fecha', seisInicio),
+                    .eq('empresa_id', eid).gte('fecha', seisInicio).order('fecha', { ascending: false }),
+                sb.from('gastos').select('fecha, monto, vehiculo_id').eq('empresa_id', eid).gte('fecha', seisInicio).lte('fecha', mesFin),
+                sb.from('combustible').select('fecha, total, vehiculo_id').eq('empresa_id', eid).gte('fecha', seisInicio).lte('fecha', mesFin),
                 sb.from('facturas').select('monto').eq('empresa_id', eid).eq('estado', 'pendiente'),
                 sb.from('vehiculos').select('id, patente, estado').eq('empresa_id', eid),
                 sb.from('conductores').select('id, vencimiento_licencia').eq('empresa_id', eid).eq('estado', 'activo'),
                 sb.from('mantenimiento').select('tipo, vehiculos(patente), fecha_programada').eq('empresa_id', eid).eq('estado', 'pendiente'),
-                sb.from('remuneraciones').select('monto').eq('empresa_id', eid).gte('fecha', mesInicio),
-                sb.from('bitacora_mantencion').select('vehiculo_id, costo').eq('empresa_id', eid).gte('fecha', mesInicio).then(r=>r,()=>({data:[]})),
+                sb.from('remuneraciones').select('monto').eq('empresa_id', eid).gte('fecha', mesInicio).lte('fecha', mesFin),
+                sb.from('bitacora_mantencion').select('vehiculo_id, costo').eq('empresa_id', eid).gte('fecha', mesInicio).lte('fecha', mesFin).then(r=>r,()=>({data:[]})),
                 sb.from('gastos').select('monto').eq('empresa_id', eid).gte('fecha', prevInicio).lte('fecha', prevFin),
                 sb.from('combustible').select('total').eq('empresa_id', eid).gte('fecha', prevInicio).lte('fecha', prevFin),
                 sb.from('viajes').select('tarifa').eq('empresa_id', eid).gte('fecha', prevInicio).lte('fecha', prevFin)
             ]);
 
-        const vMes     = (viajes||[]).filter(v => v.fecha >= mesInicio);
+        const vMes     = (viajes||[]).filter(v => v.fecha >= mesInicio && v.fecha <= mesFin);
         const ingresos = vMes.reduce((s,v) => s+(v.tarifa||0), 0);
-        const gMesArr  = (gastosMes||[]).filter(g => (g.fecha||'') >= mesInicio);
-        const cMesArr  = (combMes||[]).filter(c => (c.fecha||'') >= mesInicio);
+        const gMesArr  = (gastosMes||[]).filter(g => (g.fecha||'') >= mesInicio && (g.fecha||'') <= mesFin);
+        const cMesArr  = (combMes||[]).filter(c => (c.fecha||'') >= mesInicio && (c.fecha||'') <= mesFin);
         const gastos   = gMesArr.reduce((s,g) => s+(g.monto||0), 0);
         const comb     = cMesArr.reduce((s,c) => s+(c.total||0), 0);
         const bitTotal = (bitMes||[]).reduce((s,b) => s+(b.costo||0), 0);
@@ -2921,7 +2935,7 @@ async function renderDashboard() {
         const elDRem = document.getElementById('dRemuneraciones');
         if (elDRem) elDRem.textContent = '$' + fmt(remTotal);
         const elSub = document.getElementById('dViajesSub');
-        if (elSub) elSub.textContent = (viajes||[]).length + ' total registrados';
+        if (elSub) elSub.textContent = `${_MESES_D[dMonth]} ${dYear}`;
 
         // KPIs — Header section (same data, different IDs)
         document.getElementById('stViajes').textContent   = vMes.length;
@@ -2929,8 +2943,8 @@ async function renderDashboard() {
         document.getElementById('stVehiculos').textContent = vehActivos;
         document.getElementById('stCobrar').textContent   = '$' + fmt(cobrar);
 
-        // Últimos 8 viajes
-        const ultimos = (viajes||[]).slice(0, 8);
+        // Últimos 8 viajes del mes seleccionado
+        const ultimos = vMes.slice(0, 8);
         const colorEstado = { completado:'badge-success', planificado:'badge-info', en_curso:'badge-warning', cancelado:'badge-danger' };
         document.getElementById('dashUltViajes').innerHTML = ultimos.length
             ? ultimos.map(v => `<tr>
@@ -3002,8 +3016,7 @@ async function renderDashboard() {
             const good = inverted ? !up : up;
             return `<span style="color:${good?'#10b981':'#ef4444'};font-size:18px;line-height:1">${up?'▲':'▼'}</span>`;
         };
-        const _mNombre = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-        const prevLabel = _mNombre[hoy.getMonth() === 0 ? 11 : hoy.getMonth() - 1];
+        const prevLabel = _MESES_D[dMonth === 0 ? 11 : dMonth - 1];
         const compItems = [
             { label:'Ingresos', cur: ingresos, prev: ingPrev, prefix:'$', inverted: false },
             { label:'Total Gastos', cur: gastos+comb+bitTotal, prev: gasPrev, prefix:'$', inverted: true },
@@ -3027,7 +3040,7 @@ async function renderDashboard() {
         // Reusar datos en memoria para histórico 6 meses (0 queries extra)
         const meses6 = [], labels6 = [];
         for (let i = 5; i >= 0; i--) {
-            const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - i);
+            const d = new Date(dYear, dMonth - i, 1);
             meses6.push(d.toISOString().slice(0,7));
             labels6.push(d.toLocaleDateString('es-CL', { month: 'short', year: '2-digit' }));
         }
@@ -7336,7 +7349,20 @@ async function solicitarCambioPlan(planKey) {
 // ═══════════════════════════════════════════════════════════
 // MÓDULO: RESUMEN MENSUAL
 // ═══════════════════════════════════════════════════════════
-let _resMes = { year: new Date().getFullYear(), month: new Date().getMonth() };
+let _resMes  = { year: new Date().getFullYear(), month: new Date().getMonth() };
+let _dashMes = { year: new Date().getFullYear(), month: new Date().getMonth() };
+
+function navDashMes(delta) {
+    _dashMes.month += delta;
+    if (_dashMes.month > 11) { _dashMes.month = 0; _dashMes.year++; }
+    if (_dashMes.month < 0)  { _dashMes.month = 11; _dashMes.year--; }
+    renderDashboard();
+}
+function navDashMesHoy() {
+    const n = new Date();
+    _dashMes = { year: n.getFullYear(), month: n.getMonth() };
+    renderDashboard();
+}
 const _MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
 function navMes(delta) {
