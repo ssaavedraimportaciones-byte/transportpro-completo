@@ -7618,13 +7618,13 @@ async function renderAlmacenaje() {
 async function _renderAlmInventario() {
     const t = document.getElementById('tAlmInventario');
     if (!t || !currentEmpresa) return;
-    t.innerHTML = '<tr class="loading-row"><td colspan="10">Cargando...</td></tr>';
+    t.innerHTML = '<tr class="loading-row"><td colspan="11">Cargando...</td></tr>';
     const { data, error } = await sb.from('unidades_logisticas')
         .select('*, clientes(razon_social)')
         .eq('empresa_id', currentEmpresa.id)
         .order('created_at', {ascending:false})
         .catch(()=>({data:null,error:{message:'Tabla no encontrada — ejecuta el SQL de migración'}}));
-    if (error) { t.innerHTML = `<tr class="empty-row"><td colspan="10">⚠️ ${error.message}</td></tr>`; return; }
+    if (error) { t.innerHTML = `<tr class="empty-row"><td colspan="11">⚠️ ${error.message}</td></tr>`; return; }
     _almData = data || [];
     filtrarAlmacenaje();
 }
