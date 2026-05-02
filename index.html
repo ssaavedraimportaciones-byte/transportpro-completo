@@ -441,11 +441,17 @@
             </div>
 
             <!-- Rendimiento por vehículo -->
-            <h3 style="font-size:13px;font-weight:700;color:#374151;margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px">Rendimiento por Vehículo</h3>
+            <h3 style="font-size:13px;font-weight:700;color:#374151;margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px">Rendimiento por Vehículo — Mes Actual</h3>
+            <div style="overflow-x:auto">
             <table style="font-size:12px">
-                <thead><tr><th>Patente</th><th>Viajes mes</th><th>Ingresos mes</th><th>Combustible</th><th>Utilidad</th></tr></thead>
-                <tbody id="dashPatentes"><tr class="loading-row"><td colspan="5">Cargando...</td></tr></tbody>
+                <thead><tr><th>Patente</th><th>Viajes</th><th>Ingresos</th><th>Combustible</th><th>Mantenciones</th><th>Total Costos</th><th>Utilidad</th><th>Margen</th></tr></thead>
+                <tbody id="dashPatentes"><tr class="loading-row"><td colspan="8">Cargando...</td></tr></tbody>
             </table>
+            </div>
+
+            <!-- Comparativa mes anterior -->
+            <h3 style="font-size:13px;font-weight:700;color:#374151;margin:18px 0 10px;text-transform:uppercase;letter-spacing:.5px">Comparativa Mes Anterior</h3>
+            <div class="kpi-grid" id="dashComparativa" style="margin-bottom:0"></div>
         </div>
     </div>
 
@@ -796,12 +802,14 @@
                         <option value="perdido">Perdido</option>
                     </select>
                 </div>
-                <table>
+                <div style="overflow-x:auto">
+                <table style="font-size:12px">
                     <thead><tr>
-                        <th>BL / Ref.</th><th>Cliente</th><th>Descripción</th><th>Peso</th><th>Volumen</th><th>Estado</th><th>Ingreso</th><th>Días</th><th>Costo Alm.</th><th>Acciones</th>
+                        <th>BL / Ref.</th><th>Tipo Carga</th><th>Cliente</th><th>Descripción / Destino</th><th>Peso</th><th>Estado</th><th>Ingreso</th><th>Entrega</th><th>Días</th><th>Costo Alm.</th><th>Acciones</th>
                     </tr></thead>
-                    <tbody id="tAlmInventario"><tr class="loading-row"><td colspan="10">Cargando...</td></tr></tbody>
+                    <tbody id="tAlmInventario"><tr class="loading-row"><td colspan="11">Cargando...</td></tr></tbody>
                 </table>
+                </div>
             </div>
             <!-- Movimientos -->
             <div id="alm-movimientos" style="display:none">
@@ -818,7 +826,7 @@
                 <table>
                     <thead><tr>
                         <th><input type="checkbox" id="chkAlmTodo" onchange="toggleAlmTodo(this)"></th>
-                        <th>BL / Ref.</th><th>Cliente</th><th>Descripción</th><th>Estado</th>
+                        <th>BL / Ref.</th><th>Cliente</th><th>Descripción / Destino / Contacto</th><th>Estado</th>
                     </tr></thead>
                     <tbody id="tAlmDespacho"><tr class="loading-row"><td colspan="5">Cargando...</td></tr></tbody>
                 </table>
@@ -2130,26 +2138,114 @@
 
 <!-- Modal Unidad Logística -->
 <div id="mUnidadLogistica" class="modal">
-    <div class="modal-content" style="max-width:700px">
+    <div class="modal-content" style="max-width:860px;max-height:92vh;overflow-y:auto">
         <div class="modal-header">
-            <h2 id="mULTitle">📦 Recibir Unidad Logística</h2>
+            <h2 id="mULTitle">📦 Recibir Unidad / Carga</h2>
             <button class="close-modal" onclick="closeModal('mUnidadLogistica')">&times;</button>
         </div>
         <form onsubmit="saveUnidadLogistica(event)">
-            <div class="form-grid">
-                <div class="form-group"><label>BL / Referencia *</label><input type="text" id="iULBL" required placeholder="BL-2025-001"></div>
-                <div class="form-group"><label>Cliente *</label><select id="iULCliente" required><option value="">Seleccionar...</option></select></div>
-                <div class="form-group"><label>Descripción / Marca *</label><input type="text" id="iULDesc" required placeholder="Pallet electrónicos, Caja fragil..."></div>
-                <div class="form-group"><label>Peso (kg)</label><input type="number" id="iULPeso" placeholder="0" min="0" step="0.1"></div>
-                <div class="form-group"><label>Volumen (m³)</label><input type="number" id="iULVolumen" placeholder="0" min="0" step="0.01"></div>
-                <div class="form-group"><label>Fecha ingreso *</label><input type="date" id="iULFechaIngreso" required></div>
-                <div class="form-group"><label>Bodega</label><input type="text" id="iULBodega" placeholder="Bodega principal"></div>
-                <div class="form-group"><label>Tarifa almacenaje ($/día)</label><input type="number" id="iULTarifa" placeholder="0" min="0"></div>
+
+            <!-- Sección: Identificación -->
+            <div style="background:#f8fafc;border-radius:8px;padding:12px 16px;margin-bottom:14px">
+                <div style="font-size:11px;font-weight:700;color:#6366f1;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">📋 Identificación</div>
+                <div class="form-grid">
+                    <div class="form-group"><label>BL / N° Referencia *</label><input type="text" id="iULBL" required placeholder="BL-2026-001 / OT-001"></div>
+                    <div class="form-group"><label>Cliente *</label><select id="iULCliente" required><option value="">Seleccionar...</option></select></div>
+                    <div class="form-group"><label>Tipo de Carga *</label>
+                        <select id="iULTipoCarga" onchange="_ulTipoCargaChange(this)">
+                            <option value="general">General</option>
+                            <option value="contenedor">Contenedor</option>
+                            <option value="palletizado">Palletizado</option>
+                            <option value="granel_solido">Granel Sólido</option>
+                            <option value="granel_liquido">Granel Líquido</option>
+                            <option value="frigorifico">Frigorífico (T° controlada)</option>
+                            <option value="sobredimensionado">Sobredimensionado</option>
+                            <option value="peligroso">Mercancía Peligrosa (IMO)</option>
+                            <option value="vehiculos">Vehículos</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="fgContenedor" style="display:none"><label>N° Contenedor</label><input type="text" id="iULContenedor" placeholder="XXXX1234567"></div>
+                    <div class="form-group"><label>N° Bultos / Unidades</label><input type="number" id="iULBultos" placeholder="1" min="1" value="1"></div>
+                    <div class="form-group"><label>Prioridad</label>
+                        <select id="iULPrioridad">
+                            <option value="normal">Normal</option>
+                            <option value="urgente">Urgente</option>
+                            <option value="critico">Crítico</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group"><label>Descripción / Mercancía *</label>
+                    <input type="text" id="iULDesc" required placeholder="Ej: 20 pallets electrodomésticos marca Samsung, fragil" style="width:100%;padding:9px 12px;border:2px solid #e5e7eb;border-radius:7px;font-size:13px">
+                </div>
             </div>
-            <div class="form-group" style="margin-bottom:14px"><label>Observaciones</label>
-                <input type="text" id="iULObs" placeholder="Notas adicionales" style="width:100%;padding:9px 12px;border:2px solid #e5e7eb;border-radius:7px;font-size:13px">
+
+            <!-- Sección: Dimensiones y Vehículo -->
+            <div style="background:#f8fafc;border-radius:8px;padding:12px 16px;margin-bottom:14px">
+                <div style="font-size:11px;font-weight:700;color:#059669;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">⚖️ Dimensiones y Transporte</div>
+                <div class="form-grid">
+                    <div class="form-group"><label>Peso bruto (kg)</label><input type="number" id="iULPeso" placeholder="0" min="0" step="0.1"></div>
+                    <div class="form-group"><label>Volumen (m³)</label><input type="number" id="iULVolumen" placeholder="0" min="0" step="0.01"></div>
+                    <div class="form-group"><label>Tipo Vehículo Requerido</label>
+                        <select id="iULVehReq">
+                            <option value="">No especificado</option>
+                            <option value="rampla_3ejes">Rampla 3 ejes</option>
+                            <option value="rampla_semirremolque">Semirremolque / Trailer</option>
+                            <option value="camion_3_4">Camión 3/4</option>
+                            <option value="camion_rigido">Camión Rígido</option>
+                            <option value="furgon">Furgón</option>
+                            <option value="termico">Térmico / Refrigerado</option>
+                            <option value="cisterna">Cisterna</option>
+                            <option value="plataforma">Plataforma</option>
+                            <option value="portacontenedor">Portacontenedor</option>
+                            <option value="grua">Con Grúa</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="fgTemp" style="display:none"><label>Temperatura (°C)</label>
+                        <div style="display:flex;gap:8px">
+                            <input type="number" id="iULTempMin" placeholder="Min" step="1" style="flex:1;padding:9px;border:2px solid #e5e7eb;border-radius:7px;font-size:13px">
+                            <input type="number" id="iULTempMax" placeholder="Max" step="1" style="flex:1;padding:9px;border:2px solid #e5e7eb;border-radius:7px;font-size:13px">
+                        </div>
+                    </div>
+                    <div class="form-group"><label>Valor Declarado ($)</label><input type="number" id="iULValor" placeholder="0" min="0"></div>
+                    <div class="form-group" style="display:flex;align-items:center;gap:8px;padding-top:22px">
+                        <input type="checkbox" id="iULSeguro" style="width:16px;height:16px">
+                        <label for="iULSeguro" style="margin:0;cursor:pointer">Requiere seguro de carga</label>
+                    </div>
+                </div>
             </div>
-            <button type="submit" class="btn btn-success">📦 Registrar Recepción</button>
+
+            <!-- Sección: Direcciones y Contacto -->
+            <div style="background:#f8fafc;border-radius:8px;padding:12px 16px;margin-bottom:14px">
+                <div style="font-size:11px;font-weight:700;color:#dc2626;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">📍 Direcciones y Contacto</div>
+                <div class="form-grid">
+                    <div class="form-group"><label>Dirección Origen / Retiro</label>
+                        <input type="text" id="iULDirOrigen" placeholder="Av. Industrial 1234, Santiago" style="width:100%;padding:9px 12px;border:2px solid #e5e7eb;border-radius:7px;font-size:13px"></div>
+                    <div class="form-group"><label>Dirección Destino / Descarga *</label>
+                        <input type="text" id="iULDirDestino" placeholder="Puerto / Bodega cliente / Cliente final" style="width:100%;padding:9px 12px;border:2px solid #e5e7eb;border-radius:7px;font-size:13px"></div>
+                    <div class="form-group"><label>Contacto en Destino</label><input type="text" id="iULContacto" placeholder="Nombre responsable descarga"></div>
+                    <div class="form-group"><label>Teléfono Contacto Destino</label><input type="tel" id="iULTelefono" placeholder="+56 9 1234 5678"></div>
+                </div>
+            </div>
+
+            <!-- Sección: Almacenaje y Fechas -->
+            <div style="background:#f8fafc;border-radius:8px;padding:12px 16px;margin-bottom:14px">
+                <div style="font-size:11px;font-weight:700;color:#f59e0b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">🗓️ Almacenaje y Fechas</div>
+                <div class="form-grid">
+                    <div class="form-group"><label>Fecha Ingreso *</label><input type="date" id="iULFechaIngreso" required></div>
+                    <div class="form-group"><label>Fecha Entrega Comprometida</label><input type="date" id="iULFechaEntrega"></div>
+                    <div class="form-group"><label>Bodega / Sector</label><input type="text" id="iULBodega" placeholder="Bodega A, Sector 3, Rack B2..."></div>
+                    <div class="form-group"><label>Tarifa Almacenaje ($/día)</label><input type="number" id="iULTarifa" placeholder="0" min="0"></div>
+                </div>
+            </div>
+
+            <!-- Instrucciones especiales -->
+            <div class="form-group" style="margin-bottom:16px">
+                <label>Instrucciones Especiales / Observaciones</label>
+                <textarea id="iULObs" rows="2" placeholder="No apilar, requiere transpaleta eléctrica, verificar temperatura al ingreso, documentos adjuntos..."
+                    style="width:100%;padding:9px 12px;border:2px solid #e5e7eb;border-radius:7px;font-size:13px;resize:vertical"></textarea>
+            </div>
+
+            <button type="submit" class="btn btn-success" style="width:100%">📦 Registrar Recepción de Carga</button>
         </form>
     </div>
 </div>
@@ -2704,6 +2800,16 @@ function openModal(id) {
     }
     if (id === 'mUnidadLogistica') {
         document.getElementById('iULFechaIngreso').value = t;
+        // reset new fields
+        ['iULBL','iULDesc','iULContenedor','iULDirOrigen','iULDirDestino','iULContacto','iULTelefono','iULBodega','iULObs','iULFechaEntrega'].forEach(x=>{ const el=document.getElementById(x); if(el) el.value=''; });
+        ['iULPeso','iULVolumen','iULValor','iULTarifa','iULTempMin','iULTempMax'].forEach(x=>{ const el=document.getElementById(x); if(el) el.value=''; });
+        const bSeg = document.getElementById('iULSeguro'); if(bSeg) bSeg.checked = false;
+        const blt = document.getElementById('iULBultos'); if(blt) blt.value='1';
+        const tc = document.getElementById('iULTipoCarga'); if(tc) tc.value='general';
+        const pr = document.getElementById('iULPrioridad'); if(pr) pr.value='normal';
+        const vr = document.getElementById('iULVehReq'); if(vr) vr.value='';
+        const fg = document.getElementById('fgContenedor'); if(fg) fg.style.display='none';
+        const fgt = document.getElementById('fgTemp'); if(fgt) fgt.style.display='none';
         _cargarClientesUL();
     }
     if (id === 'mCotizacion') {
@@ -2757,33 +2863,51 @@ async function renderDashboard() {
     if (!currentEmpresa) return;
     const eid = currentEmpresa.id;
     const hoy = new Date();
-    const mesInicio = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString().split('T')[0];
+    const mesInicio  = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString().split('T')[0];
+    const seisInicio = new Date(hoy.getFullYear(), hoy.getMonth() - 5, 1).toISOString().split('T')[0];
     const nombre = currentEmpresa.razon_social || currentEmpresa.nombre || 'Mi Empresa';
     document.getElementById('dashBienvenida').textContent = `📊 Dashboard — ${nombre}`;
 
     try {
-        // ── Queries principales (5 paralelas) ──────────────────
+        // Rangos de fechas
+        const prevInicio = new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1).toISOString().split('T')[0];
+        const prevFin    = new Date(hoy.getFullYear(), hoy.getMonth(), 0).toISOString().split('T')[0];
+
+        // ── Queries principales ──────────────────
         const [{ data: viajes }, { data: gastosMes }, { data: combMes },
-               { data: fPend }, { data: vehiculos }, { data: conductores }, { data: mantPend }, { data: remMes }] =
+               { data: fPend }, { data: vehiculos }, { data: conductores }, { data: mantPend }, { data: remMes },
+               { data: bitMes }, { data: gastosPrev }, { data: combPrev }, { data: viajesPrev }] =
             await Promise.all([
                 sb.from('viajes').select('id, fecha, tarifa, estado, origen, destino, vehiculo_id, clientes(razon_social), vehiculos(patente)')
                     .eq('empresa_id', eid).order('fecha', { ascending: false }),
-                sb.from('gastos').select('fecha, monto').eq('empresa_id', eid).gte('fecha', mesInicio),
-                sb.from('combustible').select('fecha, total, vehiculo_id').eq('empresa_id', eid).gte('fecha', mesInicio),
+                sb.from('gastos').select('fecha, monto, vehiculo_id').eq('empresa_id', eid).gte('fecha', seisInicio),
+                sb.from('combustible').select('fecha, total, vehiculo_id').eq('empresa_id', eid).gte('fecha', seisInicio),
                 sb.from('facturas').select('monto').eq('empresa_id', eid).eq('estado', 'pendiente'),
                 sb.from('vehiculos').select('id, patente, estado').eq('empresa_id', eid),
                 sb.from('conductores').select('id, vencimiento_licencia').eq('empresa_id', eid).eq('estado', 'activo'),
                 sb.from('mantenimiento').select('tipo, vehiculos(patente), fecha_programada').eq('empresa_id', eid).eq('estado', 'pendiente'),
-                sb.from('remuneraciones').select('monto').eq('empresa_id', eid).gte('fecha', mesInicio)
+                sb.from('remuneraciones').select('monto').eq('empresa_id', eid).gte('fecha', mesInicio),
+                sb.from('bitacora_mantencion').select('vehiculo_id, costo').eq('empresa_id', eid).gte('fecha', mesInicio).catch(()=>({data:[]})),
+                sb.from('gastos').select('monto').eq('empresa_id', eid).gte('fecha', prevInicio).lte('fecha', prevFin),
+                sb.from('combustible').select('total').eq('empresa_id', eid).gte('fecha', prevInicio).lte('fecha', prevFin),
+                sb.from('viajes').select('tarifa').eq('empresa_id', eid).gte('fecha', prevInicio).lte('fecha', prevFin)
             ]);
 
         const vMes     = (viajes||[]).filter(v => v.fecha >= mesInicio);
         const ingresos = vMes.reduce((s,v) => s+(v.tarifa||0), 0);
-        const gastos   = (gastosMes||[]).reduce((s,g) => s+(g.monto||0), 0);
-        const comb     = (combMes||[]).reduce((s,c) => s+(c.total||0), 0);
+        const gMesArr  = (gastosMes||[]).filter(g => (g.fecha||'') >= mesInicio);
+        const cMesArr  = (combMes||[]).filter(c => (c.fecha||'') >= mesInicio);
+        const gastos   = gMesArr.reduce((s,g) => s+(g.monto||0), 0);
+        const comb     = cMesArr.reduce((s,c) => s+(c.total||0), 0);
+        const bitTotal = (bitMes||[]).reduce((s,b) => s+(b.costo||0), 0);
         const cobrar   = (fPend||[]).reduce((s,f) => s+(f.monto||0), 0);
         const remTotal = (remMes||[]).reduce((s,r) => s+Number(r.monto||0), 0);
-        const utilidad = ingresos - gastos - comb;
+        const utilidad = ingresos - gastos - comb - bitTotal;
+
+        // Mes anterior para comparativa
+        const ingPrev  = (viajesPrev||[]).reduce((s,v) => s+(v.tarifa||0), 0);
+        const gasPrev  = (gastosPrev||[]).reduce((s,g) => s+(g.monto||0), 0) + (combPrev||[]).reduce((s,c) => s+(c.total||0), 0);
+        const utilPrev = ingPrev - gasPrev;
         const vehActivos = (vehiculos||[]).filter(v => v.estado === 'operativo').length;
 
         // KPIs — Dashboard section
@@ -2835,27 +2959,67 @@ async function renderDashboard() {
             `<div style="padding:8px 12px;background:${a.color}18;border-left:3px solid ${a.color};border-radius:6px;font-size:12px;color:#374151">${a.texto}</div>`
         ).join('');
 
-        // Rendimiento por patente
+        // Rendimiento por patente (8 columnas)
         const porVeh = {};
-        (vehiculos||[]).forEach(v => { porVeh[v.id] = { patente: v.patente, viajes: 0, ingresos: 0, comb: 0 }; });
+        (vehiculos||[]).forEach(v => { porVeh[v.id] = { patente: v.patente, viajes: 0, ingresos: 0, comb: 0, gastos_: 0, mant: 0 }; });
         vMes.forEach(v => {
             if (!v.vehiculo_id || !porVeh[v.vehiculo_id]) return;
             porVeh[v.vehiculo_id].viajes++;
             porVeh[v.vehiculo_id].ingresos += v.tarifa || 0;
         });
-        (combMes||[]).forEach(c => { if (c.vehiculo_id && porVeh[c.vehiculo_id]) porVeh[c.vehiculo_id].comb += c.total || 0; });
-        const filasPat = Object.values(porVeh).filter(v => v.viajes > 0).sort((a,b) => b.ingresos - a.ingresos);
+        cMesArr.forEach(c => { if (c.vehiculo_id && porVeh[c.vehiculo_id]) porVeh[c.vehiculo_id].comb += c.total || 0; });
+        gMesArr.forEach(g => { if (g.vehiculo_id && porVeh[g.vehiculo_id]) porVeh[g.vehiculo_id].gastos_ += g.monto || 0; });
+        (bitMes||[]).forEach(b => { if (b.vehiculo_id && porVeh[b.vehiculo_id]) porVeh[b.vehiculo_id].mant += b.costo || 0; });
+        const filasPat = Object.values(porVeh).filter(v => v.viajes > 0 || v.comb > 0 || v.mant > 0).sort((a,b) => b.ingresos - a.ingresos);
         document.getElementById('dashPatentes').innerHTML = filasPat.length
             ? filasPat.map(v => {
-                const util = v.ingresos - v.comb;
+                const totalCostos = v.comb + v.gastos_ + v.mant;
+                const util = v.ingresos - totalCostos;
+                const margen = v.ingresos > 0 ? Math.round(util / v.ingresos * 100) : 0;
+                const mColor = margen >= 20 ? '#10b981' : margen >= 0 ? '#f59e0b' : '#ef4444';
                 return `<tr>
-                    <td><strong>${v.patente}</strong></td><td>${v.viajes}</td>
-                    <td style="color:#10b981"><strong>$${fmt(v.ingresos)}</strong></td>
-                    <td style="color:#f59e0b">$${fmt(v.comb)}</td>
-                    <td style="color:${util>=0?'#10b981':'#ef4444'}"><strong>$${fmt(util)}</strong></td>
+                    <td><strong>${v.patente}</strong></td>
+                    <td style="text-align:center">${v.viajes}</td>
+                    <td style="color:#10b981;text-align:right"><strong>$${fmt(v.ingresos)}</strong></td>
+                    <td style="color:#f59e0b;text-align:right">$${fmt(v.comb)}</td>
+                    <td style="color:#8b5cf6;text-align:right">$${fmt(v.mant)}</td>
+                    <td style="color:#ef4444;text-align:right">$${fmt(totalCostos)}</td>
+                    <td style="color:${util>=0?'#10b981':'#ef4444'};text-align:right"><strong>$${fmt(util)}</strong></td>
+                    <td style="color:${mColor};text-align:center;font-weight:700">${margen}%</td>
                 </tr>`;
               }).join('')
-            : '<tr class="empty-row"><td colspan="5">Sin viajes este mes</td></tr>';
+            : '<tr class="empty-row"><td colspan="8">Sin actividad este mes</td></tr>';
+
+        // Comparativa mes anterior
+        const _pct = (cur, prev) => {
+            if (!prev) return cur > 0 ? '+∞' : '0';
+            const p = Math.round((cur - prev) / prev * 100);
+            return (p >= 0 ? '+' : '') + p + '%';
+        };
+        const _arrow = (cur, prev, inverted) => {
+            if (cur === prev) return '';
+            const up = cur > prev;
+            const good = inverted ? !up : up;
+            return `<span style="color:${good?'#10b981':'#ef4444'};font-size:18px;line-height:1">${up?'▲':'▼'}</span>`;
+        };
+        const _mNombre = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+        const prevLabel = _mNombre[hoy.getMonth() === 0 ? 11 : hoy.getMonth() - 1];
+        const compItems = [
+            { label:'Ingresos', cur: ingresos, prev: ingPrev, prefix:'$', inverted: false },
+            { label:'Total Gastos', cur: gastos+comb+bitTotal, prev: gasPrev, prefix:'$', inverted: true },
+            { label:'Utilidad', cur: utilidad, prev: utilPrev, prefix:'$', inverted: false },
+            { label:'Viajes', cur: vMes.length, prev: (viajesPrev||[]).length, prefix:'', inverted: false }
+        ];
+        const compEl = document.getElementById('dashComparativa');
+        if (compEl) compEl.innerHTML = compItems.map(it => `
+            <div class="kpi-card">
+                <div class="kpi-label">${it.label} vs ${prevLabel}</div>
+                <div class="kpi-value" style="font-size:18px">${it.prefix}${fmt(it.cur)}</div>
+                <div style="display:flex;align-items:center;gap:6px;margin-top:4px">
+                    ${_arrow(it.cur, it.prev, it.inverted)}
+                    <span style="font-size:12px;color:#6b7280">${_pct(it.cur, it.prev)} vs ${it.prefix}${fmt(it.prev)}</span>
+                </div>
+            </div>`).join('');
 
         // ── GRÁFICOS (silencioso si Chart.js no está disponible) ──
         if (typeof Chart === 'undefined') return;
@@ -2945,7 +3109,7 @@ async function renderDashboard() {
         const ultEl = document.getElementById('dashUltViajes');
         if (ultEl) ultEl.innerHTML = `<tr class="empty-row"><td colspan="5">${msgErr}</td></tr>`;
         const patEl = document.getElementById('dashPatentes');
-        if (patEl) patEl.innerHTML = `<tr class="empty-row"><td colspan="5">${msgErr}</td></tr>`;
+        if (patEl) patEl.innerHTML = `<tr class="empty-row"><td colspan="8">${msgErr}</td></tr>`;
         const alEl = document.getElementById('dashAlertas');
         if (alEl) alEl.innerHTML = `<div style="padding:10px;background:#fee2e2;border-radius:8px;font-size:12px;color:#dc2626">${msgErr} — Recarga la página (F5) o contacta soporte.</div>`;
         try { toast(msgErr); } catch(_) {}
@@ -7472,29 +7636,42 @@ function filtrarAlmacenaje() {
     const estado = document.getElementById('fAlmEstado')?.value||'';
     const hoy = new Date();
     const colEst = { recibido:'badge-info', en_bodega:'badge-success', asignado_a_viaje:'badge-warning', en_transito:'badge-warning', entregado:'badge-success', 'dañado':'badge-danger', perdido:'badge-danger' };
+    const priCol = { normal:'#6b7280', urgente:'#f59e0b', critico:'#ef4444' };
+    const tipIcon = { contenedor:'📦', palletizado:'🏗️', granel_solido:'⛏️', granel_liquido:'🛢️', frigorifico:'❄️', sobredimensionado:'🏋️', peligroso:'☢️', vehiculos:'🚗', general:'📋' };
     const rows = _almData.filter(u => {
-        const txt = [u.numero_bl, u.descripcion, u.clientes?.razon_social, u.bodega].join(' ').toLowerCase();
+        const txt = [u.numero_bl, u.descripcion, u.clientes?.razon_social, u.bodega, u.direccion_destino, u.numero_contenedor].join(' ').toLowerCase();
         return (!buscar || txt.includes(buscar)) && (!estado || u.estado === estado);
     });
     t.innerHTML = rows.length ? rows.map(u => {
         const dias = u.fecha_ingreso ? Math.max(0, Math.ceil((hoy - new Date(u.fecha_ingreso)) / 86400000)) : 0;
         const costoAlm = dias * (u.tarifa_almacenaje||0);
-        return `<tr>
-            <td><strong>${u.numero_bl||'—'}</strong></td>
+        const vencido = u.fecha_entrega_comprometida && new Date(u.fecha_entrega_comprometida) < hoy && u.estado !== 'entregado';
+        const prioLabel = u.prioridad && u.prioridad !== 'normal' ? `<span style="color:${priCol[u.prioridad]||'#6b7280'};font-weight:700;font-size:10px">● ${u.prioridad.toUpperCase()}</span> ` : '';
+        const destLabel = u.direccion_destino ? `<div style="font-size:10px;color:#6b7280;margin-top:2px">📍 ${u.direccion_destino.substring(0,40)}${u.direccion_destino.length>40?'…':''}</div>` : '';
+        return `<tr style="${vencido?'background:#fff7ed':''}" title="${u.instrucciones_especiales||''}">
+            <td>
+                ${prioLabel}<strong>${u.numero_bl||'—'}</strong>
+                ${u.numero_contenedor ? `<div style="font-size:10px;color:#6366f1">${u.numero_contenedor}</div>` : ''}
+            </td>
+            <td style="font-size:12px">${tipIcon[u.tipo_carga]||'📋'} ${u.tipo_carga?.replace(/_/g,' ')||'general'}</td>
             <td style="font-size:12px">${u.clientes?.razon_social||'—'}</td>
-            <td style="font-size:12px">${u.descripcion||'—'}</td>
-            <td>${u.peso ? u.peso+'kg' : '—'}</td>
-            <td>${u.volumen ? u.volumen+'m³' : '—'}</td>
+            <td style="font-size:12px">
+                ${u.descripcion||'—'}
+                ${u.numero_bultos > 1 ? `<div style="font-size:10px;color:#6b7280">${u.numero_bultos} bultos</div>` : ''}
+                ${destLabel}
+            </td>
+            <td style="text-align:right">${u.peso ? fmt(u.peso)+'kg' : '—'}</td>
             <td><span class="badge ${colEst[u.estado]||'badge-info'}" style="font-size:10px">${u.estado?.replace(/_/g,' ')||'—'}</span></td>
-            <td style="font-size:12px">${fmtDate(u.fecha_ingreso)}</td>
-            <td style="text-align:center">${dias}</td>
-            <td>${costoAlm ? '<strong>$'+fmt(costoAlm)+'</strong>' : '—'}</td>
+            <td style="font-size:11px">${fmtDate(u.fecha_ingreso)}</td>
+            <td style="text-align:center${vencido?';color:#ef4444;font-weight:700':''}">${fmtDate(u.fecha_entrega_comprometida)||'—'}</td>
+            <td style="text-align:center">${dias}d</td>
+            <td>${costoAlm ? '$'+fmt(costoAlm) : '—'}</td>
             <td style="white-space:nowrap">
                 <button class="btn btn-sm" style="background:#0891b2;color:#fff;margin-right:3px" onclick="cambiarEstadoUnidad('${u.id}')">↕ Estado</button>
                 <button class="btn btn-sm btn-danger" onclick="registrarIncidencia('${u.id}')">⚠️</button>
             </td>
         </tr>`;
-    }).join('') : '<tr class="empty-row"><td colspan="10">Sin unidades registradas</td></tr>';
+    }).join('') : '<tr class="empty-row"><td colspan="11">Sin unidades registradas</td></tr>';
 }
 
 async function _renderAlmMovimientos() {
@@ -7528,9 +7705,13 @@ async function _renderAlmDespacho() {
     const colEst = { recibido:'badge-info', en_bodega:'badge-success' };
     t.innerHTML = (data||[]).length ? (data||[]).map(u=>`<tr>
         <td><input type="checkbox" class="chkAlmUnit" value="${u.id}"></td>
-        <td><strong>${u.numero_bl||'—'}</strong></td>
+        <td><strong>${u.numero_bl||'—'}</strong>${u.numero_contenedor?`<div style="font-size:10px;color:#6366f1">${u.numero_contenedor}</div>`:''}</td>
         <td style="font-size:12px">${u.clientes?.razon_social||'—'}</td>
-        <td style="font-size:12px">${u.descripcion||'—'}</td>
+        <td style="font-size:12px">
+            ${u.descripcion||'—'} ${u.numero_bultos>1?`(${u.numero_bultos} bultos)`:''}
+            ${u.direccion_destino?`<div style="font-size:10px;color:#6b7280">📍 ${u.direccion_destino}</div>`:''}
+            ${u.contacto_descarga?`<div style="font-size:10px;color:#6b7280">👤 ${u.contacto_descarga} ${u.telefono_descarga||''}</div>`:''}
+        </td>
         <td><span class="badge ${colEst[u.estado]||'badge-info'}">${u.estado?.replace(/_/g,' ')}</span></td>
     </tr>`).join('') : '<tr class="empty-row"><td colspan="5">Sin unidades disponibles para despacho</td></tr>';
     // Load viajes
@@ -7623,34 +7804,58 @@ async function saveIncidencia(e) {
     finally { if (btn) btn.disabled = false; }
 }
 
+function _ulTipoCargaChange(sel) {
+    const v = sel.value;
+    const fg = document.getElementById('fgContenedor');
+    const fgT = document.getElementById('fgTemp');
+    if (fg) fg.style.display = (v === 'contenedor') ? '' : 'none';
+    if (fgT) fgT.style.display = (v === 'frigorifico') ? '' : 'none';
+}
+
 async function saveUnidadLogistica(e) {
     e.preventDefault();
     const btn = e.submitter || e.target.querySelector('button[type="submit"]');
     if (btn) btn.disabled = true;
     try {
+        const _v = id => document.getElementById(id)?.value || null;
+        const _n = id => parseFloat(document.getElementById(id)?.value) || null;
         const payload = {
-            empresa_id:       currentEmpresa.id,
-            numero_bl:        document.getElementById('iULBL').value,
-            cliente_id:       document.getElementById('iULCliente').value || null,
-            descripcion:      document.getElementById('iULDesc').value,
-            peso:             parseFloat(document.getElementById('iULPeso').value)    || null,
-            volumen:          parseFloat(document.getElementById('iULVolumen').value) || null,
-            fecha_ingreso:    document.getElementById('iULFechaIngreso').value,
-            bodega:           document.getElementById('iULBodega').value  || null,
-            tarifa_almacenaje:parseFloat(document.getElementById('iULTarifa').value)  || 0,
-            observaciones:    document.getElementById('iULObs').value     || null,
-            estado:           'recibido'
+            empresa_id:                   currentEmpresa.id,
+            numero_bl:                    _v('iULBL'),
+            cliente_id:                   _v('iULCliente') || null,
+            descripcion:                  _v('iULDesc'),
+            tipo_carga:                   _v('iULTipoCarga') || 'general',
+            numero_contenedor:            _v('iULContenedor'),
+            numero_bultos:                parseInt(_v('iULBultos')) || 1,
+            peso:                         _n('iULPeso'),
+            volumen:                      _n('iULVolumen'),
+            tipo_vehiculo_req:            _v('iULVehReq'),
+            temp_min:                     _n('iULTempMin'),
+            temp_max:                     _n('iULTempMax'),
+            valor_declarado:              _n('iULValor') || 0,
+            requiere_seguro:              document.getElementById('iULSeguro')?.checked || false,
+            direccion_origen:             _v('iULDirOrigen'),
+            direccion_destino:            _v('iULDirDestino'),
+            contacto_descarga:            _v('iULContacto'),
+            telefono_descarga:            _v('iULTelefono'),
+            fecha_ingreso:                _v('iULFechaIngreso'),
+            fecha_entrega_comprometida:   _v('iULFechaEntrega') || null,
+            bodega:                       _v('iULBodega'),
+            tarifa_almacenaje:            _n('iULTarifa') || 0,
+            instrucciones_especiales:     _v('iULObs'),
+            estado:                       'recibido'
         };
         const { data: unit, error } = await sb.from('unidades_logisticas').insert([payload]).select().single();
         if (error) throw error;
         await sb.from('movimientos_unidad_logistica').insert([{
             empresa_id: currentEmpresa.id, unidad_id: unit.id,
             tipo_evento: 'recepcion', fecha: payload.fecha_ingreso,
-            descripcion: `Recepción: ${payload.descripcion}`, usuario: currentUser?.nombre||'Sistema'
+            descripcion: `Recepción: ${payload.descripcion} (${payload.numero_bultos} bultos)`,
+            usuario: currentUser?.nombre||'Sistema',
+            metadata: { tipo_carga: payload.tipo_carga, peso: payload.peso, dir_destino: payload.direccion_destino }
         }]).catch(()=>{});
         closeModal('mUnidadLogistica');
-        toast('✅ Unidad recibida');
-        // Cargar clientes para el modal
+        toast('✅ Carga recibida en bodega');
         await renderAlmacenaje();
     } catch(err) { toast('❌ ' + err.message); }
     finally { if (btn) btn.disabled = false; }
