@@ -7219,7 +7219,7 @@ async function renderResumenMensual() {
         sb.from('facturas').select('monto').eq('empresa_id',eid).eq('estado','pendiente'),
         sb.from('vehiculos').select('id,patente,marca,modelo').eq('empresa_id',eid).order('patente'),
         sb.from('combustible').select('vehiculo_id,total').eq('empresa_id',eid).gte('fecha',inicio).lte('fecha',finStr),
-        sb.from('bitacora_mantencion').select('vehiculo_id,costo').eq('empresa_id',eid).gte('fecha',inicio).lte('fecha',finStr).then(r => r).catch(()=>({data:[]}))
+        sb.from('bitacora_mantencion').select('vehiculo_id,costo').eq('empresa_id',eid).gte('fecha',inicio).lte('fecha',finStr)
     ]);
 
     const ingresos = (viajes||[]).reduce((s,v)=>s+(v.tarifa||0),0);
@@ -7511,7 +7511,7 @@ async function _renderAlmMovimientos() {
     t.innerHTML = (data||[]).length ? (data||[]).map(m=>`<tr>
         <td>${fmtDate(m.fecha)}</td>
         <td><strong>${m.unidades_logisticas?.numero_bl||'—'}</strong></td>
-        <td><span class="badge ${evColor[m.tipo_evento]||'badge-info'} style="font-size:10px">${m.tipo_evento}</span></td>
+        <td><span class="badge ${evColor[m.tipo_evento]||'badge-info'}" style="font-size:10px">${m.tipo_evento}</span></td>
         <td style="font-size:12px">${m.descripcion||'—'}</td>
         <td style="font-size:12px">${m.usuario||'—'}</td>
     </tr>`).join('') : '<tr class="empty-row"><td colspan="5">Sin movimientos</td></tr>';
