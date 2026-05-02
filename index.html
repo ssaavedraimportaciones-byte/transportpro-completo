@@ -81,6 +81,9 @@
         }
         .tab-btn:hover { background: #e0e7ff; color: var(--primary); }
         .tab-btn.active { background: var(--primary); color: white; }
+        .alm-tab-btn { padding:7px 14px;border:none;background:#f3f4f6;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600;color:#555;transition:all 0.2s; }
+        .alm-tab-btn:hover { background:#e0e7ff;color:var(--primary); }
+        .alm-tab-btn.alm-active { background:var(--primary);color:white; }
 
         /* ── Section ────────────────────────── */
         .section { display: none; }
@@ -333,6 +336,7 @@
         <button class="tab-btn" onclick="switchTab('remuneraciones',this)">💵 Remuneraciones</button>
         <button class="tab-btn" onclick="switchTab('mantenimiento',this)">🔧 Mantenimiento</button>
         <button class="tab-btn" onclick="switchTab('resumen',this)">📊 Resumen Mensual</button>
+        <button class="tab-btn" onclick="switchTab('almacenaje',this)">📦 Almacenaje</button>
         <button class="tab-btn" onclick="switchTab('cotizaciones',this)">📋 Cotizaciones</button>
         <button class="tab-btn" onclick="switchTab('documentos',this)">🗂️ Documentos</button>
         <button class="tab-btn" onclick="switchTab('rentabilidad',this)">📈 Rentabilidad</button>
@@ -737,6 +741,17 @@
                 </div>
             </div>
             <div class="kpi-grid" id="resKpi" style="margin-bottom:18px"></div>
+            <h3 style="font-size:13px;color:#555;margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px">Detalle por Patente</h3>
+            <div style="overflow-x:auto;margin-bottom:20px">
+            <table>
+                <thead><tr>
+                    <th>Patente</th><th>Vehículo</th><th>Viajes</th><th>Ingresos</th><th>Combustible</th><th>Mantenciones</th><th>Total Costos</th><th>Utilidad</th>
+                </tr></thead>
+                <tbody id="resTablaPatentes">
+                    <tr class="loading-row"><td colspan="8">Selecciona un mes...</td></tr>
+                </tbody>
+            </table>
+            </div>
             <h3 style="font-size:13px;color:#555;margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px">Viajes del mes</h3>
             <table>
                 <thead><tr>
@@ -746,6 +761,83 @@
                     <tr class="loading-row"><td colspan="6">Selecciona un mes...</td></tr>
                 </tbody>
             </table>
+        </div>
+    </div>
+
+    <!-- ── ALMACENAJE LOGÍSTICO ──────────────────── -->
+    <div id="sec-almacenaje" class="section">
+        <div class="section-card">
+            <div class="section-header">
+                <h2>📦 Almacenaje Logístico</h2>
+                <button class="btn btn-primary" onclick="openModal('mUnidadLogistica')">+ Recibir Unidad</button>
+            </div>
+            <!-- KPIs -->
+            <div class="kpi-grid" id="almKpis" style="margin-bottom:16px"></div>
+            <!-- Sub-tabs -->
+            <div style="display:flex;gap:4px;margin-bottom:16px;flex-wrap:wrap;border-bottom:2px solid #e5e7eb;padding-bottom:8px">
+                <button class="alm-tab-btn alm-active" onclick="switchAlmTab('inventario',this)">📦 Inventario</button>
+                <button class="alm-tab-btn" onclick="switchAlmTab('movimientos',this)">📋 Movimientos</button>
+                <button class="alm-tab-btn" onclick="switchAlmTab('despacho',this)">🚚 Despacho</button>
+                <button class="alm-tab-btn" onclick="switchAlmTab('incidencias',this)">⚠️ Incidencias</button>
+            </div>
+            <!-- Inventario -->
+            <div id="alm-inventario">
+                <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+                    <input type="text" id="fAlmBuscar" placeholder="🔍 BL, cliente, descripción..." oninput="filtrarAlmacenaje()"
+                        style="flex:1;min-width:180px;padding:7px 10px;border:2px solid #e5e7eb;border-radius:7px;font-size:13px">
+                    <select id="fAlmEstado" onchange="filtrarAlmacenaje()" style="padding:7px 10px;border:2px solid #e5e7eb;border-radius:7px;font-size:13px">
+                        <option value="">Todos los estados</option>
+                        <option value="recibido">Recibido</option>
+                        <option value="en_bodega">En bodega</option>
+                        <option value="asignado_a_viaje">Asignado a viaje</option>
+                        <option value="en_transito">En tránsito</option>
+                        <option value="entregado">Entregado</option>
+                        <option value="dañado">Dañado</option>
+                        <option value="perdido">Perdido</option>
+                    </select>
+                </div>
+                <table>
+                    <thead><tr>
+                        <th>BL / Ref.</th><th>Cliente</th><th>Descripción</th><th>Peso</th><th>Volumen</th><th>Estado</th><th>Ingreso</th><th>Días</th><th>Costo Alm.</th><th>Acciones</th>
+                    </tr></thead>
+                    <tbody id="tAlmInventario"><tr class="loading-row"><td colspan="10">Cargando...</td></tr></tbody>
+                </table>
+            </div>
+            <!-- Movimientos -->
+            <div id="alm-movimientos" style="display:none">
+                <table>
+                    <thead><tr>
+                        <th>Fecha</th><th>BL / Ref.</th><th>Evento</th><th>Descripción</th><th>Usuario</th>
+                    </tr></thead>
+                    <tbody id="tAlmMovimientos"><tr class="loading-row"><td colspan="5">Cargando...</td></tr></tbody>
+                </table>
+            </div>
+            <!-- Despacho -->
+            <div id="alm-despacho" style="display:none">
+                <p style="color:#6b7280;font-size:13px;margin-bottom:12px">Selecciona unidades listas para despachar y asígnalas a un viaje.</p>
+                <table>
+                    <thead><tr>
+                        <th><input type="checkbox" id="chkAlmTodo" onchange="toggleAlmTodo(this)"></th>
+                        <th>BL / Ref.</th><th>Cliente</th><th>Descripción</th><th>Estado</th>
+                    </tr></thead>
+                    <tbody id="tAlmDespacho"><tr class="loading-row"><td colspan="5">Cargando...</td></tr></tbody>
+                </table>
+                <div style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+                    <select id="sAlmViaje" style="flex:1;min-width:200px;padding:8px 10px;border:2px solid #e5e7eb;border-radius:7px;font-size:13px">
+                        <option value="">Seleccionar viaje destino...</option>
+                    </select>
+                    <button class="btn btn-primary" onclick="despacharUnidades()">🚚 Despachar seleccionadas</button>
+                </div>
+            </div>
+            <!-- Incidencias -->
+            <div id="alm-incidencias" style="display:none">
+                <table>
+                    <thead><tr>
+                        <th>Fecha</th><th>BL / Ref.</th><th>Tipo</th><th>Motivo</th><th>Responsable</th>
+                    </tr></thead>
+                    <tbody id="tAlmIncidencias"><tr class="loading-row"><td colspan="5">Cargando...</td></tr></tbody>
+                </table>
+            </div>
         </div>
     </div>
 
@@ -1995,7 +2087,8 @@
             <h2 id="mBitacoraTitle">🔧 Bitácora — Vehículo</h2>
             <button class="close-modal" onclick="closeModal('mBitacora')">&times;</button>
         </div>
-        <div style="max-height:260px;overflow-y:auto;margin-bottom:18px;border:1px solid #e5e7eb;border-radius:8px">
+        <div id="bitFiltroTabs" style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px"></div>
+        <div style="max-height:240px;overflow-y:auto;margin-bottom:18px;border:1px solid #e5e7eb;border-radius:8px">
             <table style="margin:0">
                 <thead><tr>
                     <th>Fecha</th><th>Tipo</th><th>Descripción</th><th>KM</th><th>Costo</th><th>Taller</th><th></th>
@@ -2010,7 +2103,7 @@
             <div class="form-grid" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr))">
                 <div class="form-group"><label>Fecha *</label><input type="date" id="iBitFecha" required></div>
                 <div class="form-group"><label>Tipo *</label>
-                    <select id="iBitTipo" required>
+                    <select id="iBitTipo" required onchange="bitTipoChange(this)">
                         <option value="aceite">Cambio aceite</option>
                         <option value="frenos">Frenos</option>
                         <option value="neumaticos">Neumáticos</option>
@@ -2018,8 +2111,12 @@
                         <option value="electrico">Eléctrico</option>
                         <option value="motor">Motor</option>
                         <option value="transmision">Transmisión</option>
-                        <option value="otro">Otro</option>
+                        <option value="suspension">Suspensión</option>
+                        <option value="carroceria">Carrocería</option>
+                        <option value="documentos">Documentos/Permisos</option>
+                        <option value="__custom__">+ Tipo personalizado...</option>
                     </select>
+                    <input type="text" id="iBitTipoCustom" placeholder="Ej: Refrigeración, GPS, Tapizado..." style="display:none;margin-top:6px;width:100%;padding:7px 10px;border:1.5px solid #6366f1;border-radius:7px;font-size:13px">
                 </div>
                 <div class="form-group"><label>Descripción</label><input type="text" id="iBitDesc" placeholder="Detalle del trabajo"></div>
                 <div class="form-group"><label>KM al momento</label><input type="number" id="iBitKm" placeholder="0" min="0"></div>
@@ -2027,6 +2124,58 @@
                 <div class="form-group"><label>Taller / Proveedor</label><input type="text" id="iBitTaller" placeholder="Nombre taller"></div>
             </div>
             <button type="submit" class="btn btn-success">Guardar en Bitácora</button>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Unidad Logística -->
+<div id="mUnidadLogistica" class="modal">
+    <div class="modal-content" style="max-width:700px">
+        <div class="modal-header">
+            <h2 id="mULTitle">📦 Recibir Unidad Logística</h2>
+            <button class="close-modal" onclick="closeModal('mUnidadLogistica')">&times;</button>
+        </div>
+        <form onsubmit="saveUnidadLogistica(event)">
+            <div class="form-grid">
+                <div class="form-group"><label>BL / Referencia *</label><input type="text" id="iULBL" required placeholder="BL-2025-001"></div>
+                <div class="form-group"><label>Cliente *</label><select id="iULCliente" required><option value="">Seleccionar...</option></select></div>
+                <div class="form-group"><label>Descripción / Marca *</label><input type="text" id="iULDesc" required placeholder="Pallet electrónicos, Caja fragil..."></div>
+                <div class="form-group"><label>Peso (kg)</label><input type="number" id="iULPeso" placeholder="0" min="0" step="0.1"></div>
+                <div class="form-group"><label>Volumen (m³)</label><input type="number" id="iULVolumen" placeholder="0" min="0" step="0.01"></div>
+                <div class="form-group"><label>Fecha ingreso *</label><input type="date" id="iULFechaIngreso" required></div>
+                <div class="form-group"><label>Bodega</label><input type="text" id="iULBodega" placeholder="Bodega principal"></div>
+                <div class="form-group"><label>Tarifa almacenaje ($/día)</label><input type="number" id="iULTarifa" placeholder="0" min="0"></div>
+            </div>
+            <div class="form-group" style="margin-bottom:14px"><label>Observaciones</label>
+                <input type="text" id="iULObs" placeholder="Notas adicionales" style="width:100%;padding:9px 12px;border:2px solid #e5e7eb;border-radius:7px;font-size:13px">
+            </div>
+            <button type="submit" class="btn btn-success">📦 Registrar Recepción</button>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Incidencia -->
+<div id="mIncidencia" class="modal">
+    <div class="modal-content" style="max-width:500px">
+        <div class="modal-header">
+            <h2>⚠️ Registrar Incidencia</h2>
+            <button class="close-modal" onclick="closeModal('mIncidencia')">&times;</button>
+        </div>
+        <form onsubmit="saveIncidencia(event)">
+            <input type="hidden" id="iIncUnitId">
+            <div class="form-grid">
+                <div class="form-group"><label>Tipo *</label>
+                    <select id="iIncTipo" required>
+                        <option value="dañado">Dañado</option>
+                        <option value="perdido">Perdido</option>
+                    </select>
+                </div>
+                <div class="form-group"><label>Responsable</label><input type="text" id="iIncResp" placeholder="Nombre responsable"></div>
+            </div>
+            <div class="form-group" style="margin-bottom:14px"><label>Motivo *</label>
+                <input type="text" id="iIncMotivo" required placeholder="Descripción del daño o pérdida" style="width:100%;padding:9px 12px;border:2px solid #e5e7eb;border-radius:7px;font-size:13px">
+            </div>
+            <button type="submit" class="btn btn-danger">Registrar Incidencia</button>
         </form>
     </div>
 </div>
@@ -2480,6 +2629,7 @@ const moduloRender = {
     conductores: renderConductores, combustible: renderCombustible,
     gastos: renderGastos, remuneraciones: (...a) => renderRemuneraciones(...a), mantenimiento: renderMantenimiento,
     resumen: (...a) => renderResumenMensual(...a),
+    almacenaje: (...a) => renderAlmacenaje(...a),
     cotizaciones: renderCotizaciones,
     documentos:   (...a) => renderDocumentos(...a),
     rentabilidad: renderRentabilidad, configuracion: renderConfiguracion,
@@ -2551,6 +2701,10 @@ function openModal(id) {
             if (_editingMantenimientoId && _editingMantenimientoData)
                 document.getElementById('iMVeh').value = _editingMantenimientoData.vehiculo_id || '';
         });
+    }
+    if (id === 'mUnidadLogistica') {
+        document.getElementById('iULFechaIngreso').value = t;
+        _cargarClientesUL();
     }
     if (id === 'mCotizacion') {
         if (!_editingCotizacionId) {
@@ -7046,19 +7200,26 @@ async function renderResumenMensual() {
     document.getElementById('resMesLabel').textContent = `${_MESES[month]} ${year}${esMesActual ? ' ★' : ''}`;
     document.getElementById('resKpi').innerHTML = '<div style="padding:12px;color:#999">Cargando datos...</div>';
     document.getElementById('resTablaViajes').innerHTML = '<tr class="loading-row"><td colspan="6">Cargando...</td></tr>';
+    document.getElementById('resTablaPatentes').innerHTML = '<tr class="loading-row"><td colspan="8">Cargando...</td></tr>';
 
     const [
         { data: viajes },
         { data: gastos },
         { data: combustible },
         { count: nVeh },
-        { data: factPend }
+        { data: factPend },
+        { data: vehiculos },
+        { data: combVeh },
+        { data: bitVeh }
     ] = await Promise.all([
-        sb.from('viajes').select('*, clientes(razon_social), conductores(nombre)').eq('empresa_id',eid).gte('fecha',inicio).lte('fecha',finStr).order('fecha',{ascending:false}),
+        sb.from('viajes').select('*, clientes(razon_social), conductores(nombre), vehiculos(patente,marca,modelo)').eq('empresa_id',eid).gte('fecha',inicio).lte('fecha',finStr).order('fecha',{ascending:false}),
         sb.from('gastos').select('monto').eq('empresa_id',eid).gte('fecha',inicio).lte('fecha',finStr),
         sb.from('combustible').select('total').eq('empresa_id',eid).gte('fecha',inicio).lte('fecha',finStr),
         sb.from('vehiculos').select('*',{count:'exact',head:true}).eq('empresa_id',eid).eq('estado','operativo'),
-        sb.from('facturas').select('monto').eq('empresa_id',eid).eq('estado','pendiente')
+        sb.from('facturas').select('monto').eq('empresa_id',eid).eq('estado','pendiente'),
+        sb.from('vehiculos').select('id,patente,marca,modelo').eq('empresa_id',eid).order('patente'),
+        sb.from('combustible').select('vehiculo_id,total').eq('empresa_id',eid).gte('fecha',inicio).lte('fecha',finStr),
+        sb.from('bitacora_mantencion').select('vehiculo_id,costo').eq('empresa_id',eid).gte('fecha',inicio).lte('fecha',finStr).then(r => r).catch(()=>({data:[]}))
     ]);
 
     const ingresos = (viajes||[]).reduce((s,v)=>s+(v.tarifa||0),0);
@@ -7069,34 +7230,52 @@ async function renderResumenMensual() {
 
     document.getElementById('resKpi').innerHTML = `
         <div class="kpi-card" style="border-left-color:#2563eb">
-            <div class="kpi-label">Viajes</div>
-            <div class="kpi-value" style="color:#2563eb">${(viajes||[]).length}</div>
+            <div class="kpi-label">Viajes</div><div class="kpi-value" style="color:#2563eb">${(viajes||[]).length}</div>
         </div>
         <div class="kpi-card" style="border-left-color:#10b981">
-            <div class="kpi-label">Ingresos</div>
-            <div class="kpi-value" style="color:#10b981">$${fmt(ingresos)}</div>
+            <div class="kpi-label">Ingresos</div><div class="kpi-value" style="color:#10b981">$${fmt(ingresos)}</div>
         </div>
         <div class="kpi-card" style="border-left-color:#ef4444">
-            <div class="kpi-label">Gastos</div>
-            <div class="kpi-value" style="color:#ef4444">$${fmt(totalGastos)}</div>
+            <div class="kpi-label">Gastos</div><div class="kpi-value" style="color:#ef4444">$${fmt(totalGastos)}</div>
         </div>
         <div class="kpi-card" style="border-left-color:#f59e0b">
-            <div class="kpi-label">Combustible</div>
-            <div class="kpi-value" style="color:#f59e0b">$${fmt(totalComb)}</div>
+            <div class="kpi-label">Combustible</div><div class="kpi-value" style="color:#f59e0b">$${fmt(totalComb)}</div>
         </div>
         <div class="kpi-card" style="border-left-color:${utilidad>=0?'#10b981':'#ef4444'}">
-            <div class="kpi-label">Utilidad</div>
-            <div class="kpi-value" style="color:${utilidad>=0?'#10b981':'#ef4444'}">$${fmt(utilidad)}</div>
+            <div class="kpi-label">Utilidad</div><div class="kpi-value" style="color:${utilidad>=0?'#10b981':'#ef4444'}">$${fmt(utilidad)}</div>
         </div>
         <div class="kpi-card" style="border-left-color:#6366f1">
-            <div class="kpi-label">Por Cobrar</div>
-            <div class="kpi-value" style="color:#6366f1">$${fmt(porCobrar)}</div>
+            <div class="kpi-label">Por Cobrar</div><div class="kpi-value" style="color:#6366f1">$${fmt(porCobrar)}</div>
         </div>
         <div class="kpi-card" style="border-left-color:#0891b2">
-            <div class="kpi-label">Vehículos Operativos</div>
-            <div class="kpi-value" style="color:#0891b2">${nVeh||0}</div>
+            <div class="kpi-label">Vehículos Operativos</div><div class="kpi-value" style="color:#0891b2">${nVeh||0}</div>
         </div>
     `;
+
+    // ── Por patente
+    const stats = {};
+    (vehiculos||[]).forEach(v => { stats[v.id] = { patente:v.patente, vehiculo:`${v.marca} ${v.modelo}`, viajes:0, ingresos:0, combustible:0, mantencion:0 }; });
+    (viajes||[]).forEach(v => { if (stats[v.vehiculo_id]) { stats[v.vehiculo_id].viajes++; stats[v.vehiculo_id].ingresos += v.tarifa||0; }});
+    (combVeh||[]).forEach(c => { if (stats[c.vehiculo_id]) stats[c.vehiculo_id].combustible += c.total||0; });
+    (bitVeh||[]).forEach(b => { if (stats[b.vehiculo_id]) stats[b.vehiculo_id].mantencion += b.costo||0; });
+
+    const filas = Object.values(stats).sort((a,b)=>b.ingresos-a.ingresos);
+    document.getElementById('resTablaPatentes').innerHTML = filas.length
+        ? filas.map(s => {
+            const costos = s.combustible + s.mantencion;
+            const util   = s.ingresos - costos;
+            return `<tr>
+                <td><strong>${s.patente}</strong></td>
+                <td style="font-size:12px;color:#6b7280">${s.vehiculo}</td>
+                <td style="text-align:center">${s.viajes}</td>
+                <td style="color:#10b981;font-weight:700">$${fmt(s.ingresos)}</td>
+                <td style="color:#f59e0b">$${fmt(s.combustible)}</td>
+                <td style="color:#8b5cf6">$${fmt(s.mantencion)}</td>
+                <td style="color:#ef4444">$${fmt(costos)}</td>
+                <td style="font-weight:700;color:${util>=0?'#10b981':'#ef4444'}">$${fmt(util)}</td>
+            </tr>`;
+          }).join('')
+        : '<tr class="empty-row"><td colspan="8">Sin datos en este mes</td></tr>';
 
     const colorEst = { pendiente:'badge-warning', pagada:'badge-success', cancelada:'badge-danger', entregado:'badge-success' };
     document.getElementById('resTablaViajes').innerHTML = (viajes&&viajes.length)
@@ -7115,11 +7294,22 @@ async function renderResumenMensual() {
 // MÓDULO: BITÁCORA DE MANTENCIÓN POR VEHÍCULO
 // ═══════════════════════════════════════════════════════════
 let _bitacoraVehiculoId = null;
+let _bitacoraFiltro = null;
+let _bitacoraData = [];
+
+function bitTipoChange(sel) {
+    const custom = document.getElementById('iBitTipoCustom');
+    custom.style.display = sel.value === '__custom__' ? 'block' : 'none';
+    if (sel.value === '__custom__') custom.focus();
+}
 
 async function abrirBitacora(vehiculoId, patente) {
     _bitacoraVehiculoId = vehiculoId;
+    _bitacoraFiltro = null;
     document.getElementById('mBitacoraTitle').textContent = `🔧 Bitácora — ${patente}`;
     document.getElementById('iBitFecha').value  = today();
+    document.getElementById('iBitTipo').value   = 'aceite';
+    document.getElementById('iBitTipoCustom').style.display = 'none';
     document.getElementById('iBitDesc').value   = '';
     document.getElementById('iBitKm').value     = '';
     document.getElementById('iBitCosto').value  = '';
@@ -7133,22 +7323,49 @@ async function renderBitacora() {
     const t = document.getElementById('tBitacora');
     t.innerHTML = '<tr class="loading-row"><td colspan="7">Cargando...</td></tr>';
     const { data, error } = await sb
-        .from('bitacora_mantencion')
-        .select('*')
+        .from('bitacora_mantencion').select('*')
         .eq('empresa_id', currentEmpresa.id)
         .eq('vehiculo_id', _bitacoraVehiculoId)
         .order('fecha', { ascending: false });
     if (error) { t.innerHTML = `<tr class="empty-row"><td colspan="7">⚠️ ${error.message}</td></tr>`; return; }
-    t.innerHTML = data.length ? data.map(r=>`<tr>
+    _bitacoraData = data || [];
+
+    // Render filter tabs
+    const tipos = [...new Set(_bitacoraData.map(r=>r.tipo))];
+    const tabsEl = document.getElementById('bitFiltroTabs');
+    if (tabsEl) {
+        tabsEl.innerHTML = tipos.length > 1
+            ? [`<button onclick="filtrarBitacora(null,this)" style="padding:4px 10px;border:none;border-radius:6px;cursor:pointer;font-size:11px;font-weight:700;background:${_bitacoraFiltro===null?'#2563eb':'#e5e7eb'};color:${_bitacoraFiltro===null?'white':'#374151'}">Todos</button>`,
+               ...tipos.map(tp=>`<button onclick="filtrarBitacora('${tp}',this)" style="padding:4px 10px;border:none;border-radius:6px;cursor:pointer;font-size:11px;font-weight:700;background:${_bitacoraFiltro===tp?'#2563eb':'#e5e7eb'};color:${_bitacoraFiltro===tp?'white':'#374151'}">${tp}</button>`)
+              ].join('')
+            : '';
+    }
+    _renderBitacoraTabla();
+}
+
+function filtrarBitacora(tipo, btn) {
+    _bitacoraFiltro = tipo;
+    // Update button styles
+    document.querySelectorAll('#bitFiltroTabs button').forEach(b => {
+        b.style.background = '#e5e7eb'; b.style.color = '#374151';
+    });
+    if (btn) { btn.style.background = '#2563eb'; btn.style.color = 'white'; }
+    _renderBitacoraTabla();
+}
+
+function _renderBitacoraTabla() {
+    const t = document.getElementById('tBitacora');
+    const rows = _bitacoraFiltro ? _bitacoraData.filter(r=>r.tipo===_bitacoraFiltro) : _bitacoraData;
+    t.innerHTML = rows.length ? rows.map(r=>`<tr>
         <td>${fmtDate(r.fecha)}</td>
-        <td><span class="badge badge-info">${r.tipo}</span></td>
+        <td><span class="badge badge-info" style="font-size:10px">${r.tipo}</span></td>
         <td style="font-size:12px">${r.descripcion||'—'}</td>
         <td>${r.km ? fmt(r.km)+' km' : '—'}</td>
-        <td>${r.costo ? '$'+fmt(r.costo) : '—'}</td>
+        <td>${r.costo ? '<strong>$'+fmt(r.costo)+'</strong>' : '—'}</td>
         <td style="font-size:12px">${r.taller||'—'}</td>
         <td><button class="btn btn-danger btn-sm" onclick="eliminarBitacora('${r.id}')">✕</button></td>
     </tr>`).join('')
-    : '<tr class="empty-row"><td colspan="7">Sin registros aún</td></tr>';
+    : '<tr class="empty-row"><td colspan="7">Sin registros</td></tr>';
 }
 
 async function saveBitacoraEntry(e) {
@@ -7156,23 +7373,30 @@ async function saveBitacoraEntry(e) {
     const btn = e.submitter || e.target.querySelector('button[type="submit"]');
     if (btn) btn.disabled = true;
     try {
+        const tipoSel = document.getElementById('iBitTipo').value;
+        const tipoCustom = document.getElementById('iBitTipoCustom').value.trim();
+        const tipo = tipoSel === '__custom__' ? (tipoCustom || 'otro') : tipoSel;
         const payload = {
             empresa_id:  currentEmpresa.id,
             vehiculo_id: _bitacoraVehiculoId,
             fecha:       document.getElementById('iBitFecha').value,
-            tipo:        document.getElementById('iBitTipo').value,
+            tipo,
             descripcion: document.getElementById('iBitDesc').value || null,
-            km:          parseInt(document.getElementById('iBitKm').value)    || 0,
+            km:          parseInt(document.getElementById('iBitKm').value)      || 0,
             costo:       parseFloat(document.getElementById('iBitCosto').value) || 0,
             taller:      document.getElementById('iBitTaller').value || null
         };
         const { error } = await sb.from('bitacora_mantencion').insert([payload]);
         if (error) throw error;
-        toast('✅ Registro guardado en bitácora');
+        toast('✅ Registro guardado');
         document.getElementById('iBitDesc').value   = '';
         document.getElementById('iBitKm').value     = '';
         document.getElementById('iBitCosto').value  = '';
         document.getElementById('iBitTaller').value = '';
+        document.getElementById('iBitTipoCustom').value = '';
+        document.getElementById('iBitTipoCustom').style.display = 'none';
+        document.getElementById('iBitTipo').value = 'aceite';
+        _bitacoraFiltro = null;
         await renderBitacora();
     } catch (err) { toast('❌ ' + err.message); }
     finally { if (btn) btn.disabled = false; }
@@ -7182,8 +7406,261 @@ async function eliminarBitacora(id) {
     if (!confirm('¿Eliminar este registro?')) return;
     const { error } = await sb.from('bitacora_mantencion').delete().eq('id', id).eq('empresa_id', currentEmpresa.id);
     if (error) { toast('❌ ' + error.message); return; }
-    toast('✅ Registro eliminado');
+    toast('✅ Eliminado');
     await renderBitacora();
+}
+
+// ═══════════════════════════════════════════════════════════
+// MÓDULO: ALMACENAJE LOGÍSTICO (WMS)
+// ═══════════════════════════════════════════════════════════
+let _almTab = 'inventario';
+let _almData = [];
+let _incUnitId = null;
+
+function switchAlmTab(tab, btn) {
+    _almTab = tab;
+    ['inventario','movimientos','despacho','incidencias'].forEach(t => {
+        const el = document.getElementById('alm-' + t);
+        if (el) el.style.display = t === tab ? 'block' : 'none';
+    });
+    document.querySelectorAll('.alm-tab-btn').forEach(b => b.classList.remove('alm-active'));
+    if (btn) btn.classList.add('alm-active');
+    if (tab === 'inventario')  _renderAlmInventario();
+    if (tab === 'movimientos') _renderAlmMovimientos();
+    if (tab === 'despacho')    _renderAlmDespacho();
+    if (tab === 'incidencias') _renderAlmIncidencias();
+}
+
+async function renderAlmacenaje() {
+    if (!currentEmpresa) return;
+    const eid = currentEmpresa.id;
+    // KPIs
+    const { data: all } = await sb.from('unidades_logisticas').select('estado').eq('empresa_id', eid).catch(()=>({data:[]}));
+    const enBodega   = (all||[]).filter(u=>u.estado==='en_bodega'||u.estado==='recibido').length;
+    const enTransito = (all||[]).filter(u=>u.estado==='en_transito'||u.estado==='asignado_a_viaje').length;
+    const incidencias= (all||[]).filter(u=>u.estado==='dañado'||u.estado==='perdido').length;
+    const total      = (all||[]).length;
+    const kpiEl = document.getElementById('almKpis');
+    if (kpiEl) kpiEl.innerHTML = `
+        <div class="kpi-card" style="border-left-color:#2563eb"><div class="kpi-label">Total Unidades</div><div class="kpi-value" style="color:#2563eb">${total}</div></div>
+        <div class="kpi-card" style="border-left-color:#10b981"><div class="kpi-label">En Bodega</div><div class="kpi-value" style="color:#10b981">${enBodega}</div></div>
+        <div class="kpi-card" style="border-left-color:#f59e0b"><div class="kpi-label">En Tránsito</div><div class="kpi-value" style="color:#f59e0b">${enTransito}</div></div>
+        <div class="kpi-card" style="border-left-color:#ef4444"><div class="kpi-label">Incidencias</div><div class="kpi-value" style="color:#ef4444">${incidencias}</div></div>
+    `;
+    // Load active tab
+    switchAlmTab(_almTab, null);
+}
+
+async function _renderAlmInventario() {
+    const t = document.getElementById('tAlmInventario');
+    if (!t || !currentEmpresa) return;
+    t.innerHTML = '<tr class="loading-row"><td colspan="10">Cargando...</td></tr>';
+    const { data, error } = await sb.from('unidades_logisticas')
+        .select('*, clientes(razon_social)')
+        .eq('empresa_id', currentEmpresa.id)
+        .order('created_at', {ascending:false})
+        .catch(()=>({data:null,error:{message:'Tabla no encontrada — ejecuta el SQL de migración'}}));
+    if (error) { t.innerHTML = `<tr class="empty-row"><td colspan="10">⚠️ ${error.message}</td></tr>`; return; }
+    _almData = data || [];
+    filtrarAlmacenaje();
+}
+
+function filtrarAlmacenaje() {
+    const t = document.getElementById('tAlmInventario');
+    if (!t) return;
+    const buscar = (document.getElementById('fAlmBuscar')?.value||'').toLowerCase();
+    const estado = document.getElementById('fAlmEstado')?.value||'';
+    const hoy = new Date();
+    const colEst = { recibido:'badge-info', en_bodega:'badge-success', asignado_a_viaje:'badge-warning', en_transito:'badge-warning', entregado:'badge-success', 'dañado':'badge-danger', perdido:'badge-danger' };
+    const rows = _almData.filter(u => {
+        const txt = [u.numero_bl, u.descripcion, u.clientes?.razon_social, u.bodega].join(' ').toLowerCase();
+        return (!buscar || txt.includes(buscar)) && (!estado || u.estado === estado);
+    });
+    t.innerHTML = rows.length ? rows.map(u => {
+        const dias = u.fecha_ingreso ? Math.max(0, Math.ceil((hoy - new Date(u.fecha_ingreso)) / 86400000)) : 0;
+        const costoAlm = dias * (u.tarifa_almacenaje||0);
+        return `<tr>
+            <td><strong>${u.numero_bl||'—'}</strong></td>
+            <td style="font-size:12px">${u.clientes?.razon_social||'—'}</td>
+            <td style="font-size:12px">${u.descripcion||'—'}</td>
+            <td>${u.peso ? u.peso+'kg' : '—'}</td>
+            <td>${u.volumen ? u.volumen+'m³' : '—'}</td>
+            <td><span class="badge ${colEst[u.estado]||'badge-info'}" style="font-size:10px">${u.estado?.replace(/_/g,' ')||'—'}</span></td>
+            <td style="font-size:12px">${fmtDate(u.fecha_ingreso)}</td>
+            <td style="text-align:center">${dias}</td>
+            <td>${costoAlm ? '<strong>$'+fmt(costoAlm)+'</strong>' : '—'}</td>
+            <td style="white-space:nowrap">
+                <button class="btn btn-sm" style="background:#0891b2;color:#fff;margin-right:3px" onclick="cambiarEstadoUnidad('${u.id}')">↕ Estado</button>
+                <button class="btn btn-sm btn-danger" onclick="registrarIncidencia('${u.id}')">⚠️</button>
+            </td>
+        </tr>`;
+    }).join('') : '<tr class="empty-row"><td colspan="10">Sin unidades registradas</td></tr>';
+}
+
+async function _renderAlmMovimientos() {
+    const t = document.getElementById('tAlmMovimientos');
+    if (!t || !currentEmpresa) return;
+    t.innerHTML = '<tr class="loading-row"><td colspan="5">Cargando...</td></tr>';
+    const { data, error } = await sb.from('movimientos_unidad_logistica')
+        .select('*, unidades_logisticas(numero_bl)')
+        .eq('empresa_id', currentEmpresa.id)
+        .order('fecha', {ascending:false}).limit(100)
+        .catch(()=>({data:null,error:{message:'Tabla no encontrada'}}));
+    if (error) { t.innerHTML = `<tr class="empty-row"><td colspan="5">⚠️ ${error.message}</td></tr>`; return; }
+    const evColor = { recepcion:'badge-success', traslado:'badge-info', asignacion:'badge-warning', despacho:'badge-info', 'daño':'badge-danger', 'pérdida':'badge-danger' };
+    t.innerHTML = (data||[]).length ? (data||[]).map(m=>`<tr>
+        <td>${fmtDate(m.fecha)}</td>
+        <td><strong>${m.unidades_logisticas?.numero_bl||'—'}</strong></td>
+        <td><span class="badge ${evColor[m.tipo_evento]||'badge-info'} style="font-size:10px">${m.tipo_evento}</span></td>
+        <td style="font-size:12px">${m.descripcion||'—'}</td>
+        <td style="font-size:12px">${m.usuario||'—'}</td>
+    </tr>`).join('') : '<tr class="empty-row"><td colspan="5">Sin movimientos</td></tr>';
+}
+
+async function _renderAlmDespacho() {
+    const t = document.getElementById('tAlmDespacho');
+    if (!t || !currentEmpresa) return;
+    t.innerHTML = '<tr class="loading-row"><td colspan="5">Cargando...</td></tr>';
+    const { data } = await sb.from('unidades_logisticas').select('*, clientes(razon_social)')
+        .eq('empresa_id', currentEmpresa.id)
+        .in('estado', ['en_bodega','recibido'])
+        .order('numero_bl').catch(()=>({data:[]}));
+    const colEst = { recibido:'badge-info', en_bodega:'badge-success' };
+    t.innerHTML = (data||[]).length ? (data||[]).map(u=>`<tr>
+        <td><input type="checkbox" class="chkAlmUnit" value="${u.id}"></td>
+        <td><strong>${u.numero_bl||'—'}</strong></td>
+        <td style="font-size:12px">${u.clientes?.razon_social||'—'}</td>
+        <td style="font-size:12px">${u.descripcion||'—'}</td>
+        <td><span class="badge ${colEst[u.estado]||'badge-info'}">${u.estado?.replace(/_/g,' ')}</span></td>
+    </tr>`).join('') : '<tr class="empty-row"><td colspan="5">Sin unidades disponibles para despacho</td></tr>';
+    // Load viajes
+    const sel = document.getElementById('sAlmViaje');
+    if (sel) {
+        const { data: viajes } = await sb.from('viajes').select('id,origen,destino,fecha')
+            .eq('empresa_id',currentEmpresa.id).order('fecha',{ascending:false}).limit(50).catch(()=>({data:[]}));
+        sel.innerHTML = '<option value="">Seleccionar viaje destino...</option>' +
+            (viajes||[]).map(v=>`<option value="${v.id}">${fmtDate(v.fecha)} — ${v.origen||'?'} → ${v.destino||'?'}</option>`).join('');
+    }
+}
+
+async function _renderAlmIncidencias() {
+    const t = document.getElementById('tAlmIncidencias');
+    if (!t || !currentEmpresa) return;
+    t.innerHTML = '<tr class="loading-row"><td colspan="5">Cargando...</td></tr>';
+    const { data } = await sb.from('unidades_logisticas').select('*, clientes(razon_social)')
+        .eq('empresa_id', currentEmpresa.id)
+        .in('estado', ['dañado','perdido'])
+        .order('updated_at',{ascending:false}).catch(()=>({data:[]}));
+    t.innerHTML = (data||[]).length ? (data||[]).map(u=>`<tr>
+        <td>${fmtDate(u.updated_at||u.created_at)}</td>
+        <td><strong>${u.numero_bl||'—'}</strong></td>
+        <td><span class="badge badge-danger">${u.estado}</span></td>
+        <td style="font-size:12px">${u.motivo_incidencia||'—'}</td>
+        <td style="font-size:12px">${u.responsable_incidencia||'—'}</td>
+    </tr>`).join('') : '<tr class="empty-row"><td colspan="5">Sin incidencias registradas</td></tr>';
+}
+
+function toggleAlmTodo(chk) {
+    document.querySelectorAll('.chkAlmUnit').forEach(c => c.checked = chk.checked);
+}
+
+async function despacharUnidades() {
+    const viajeId = document.getElementById('sAlmViaje').value;
+    if (!viajeId) { toast('⚠️ Selecciona un viaje'); return; }
+    const ids = [...document.querySelectorAll('.chkAlmUnit:checked')].map(c=>c.value);
+    if (!ids.length) { toast('⚠️ Selecciona al menos una unidad'); return; }
+    const { error } = await sb.from('unidades_logisticas').update({ estado:'asignado_a_viaje', viaje_id:viajeId }).in('id', ids).eq('empresa_id',currentEmpresa.id);
+    if (error) { toast('❌ ' + error.message); return; }
+    // Registrar movimientos
+    const movs = ids.map(id=>({ empresa_id:currentEmpresa.id, unidad_id:id, tipo_evento:'asignacion', fecha:today(), descripcion:`Asignado a viaje`, usuario: currentUser?.nombre||'Sistema' }));
+    await sb.from('movimientos_unidad_logistica').insert(movs).catch(()=>{});
+    toast(`✅ ${ids.length} unidad(es) asignadas al viaje`);
+    await renderAlmacenaje();
+}
+
+async function cambiarEstadoUnidad(unitId) {
+    const estados = ['recibido','en_bodega','asignado_a_viaje','en_transito','entregado'];
+    const unit = _almData.find(u=>u.id===unitId);
+    if (!unit) return;
+    const idx = estados.indexOf(unit.estado);
+    const next = estados[Math.min(idx+1, estados.length-1)];
+    if (next === unit.estado) { toast('ℹ️ Ya está en el estado final'); return; }
+    const { error } = await sb.from('unidades_logisticas').update({estado:next}).eq('id',unitId).eq('empresa_id',currentEmpresa.id);
+    if (error) { toast('❌ '+error.message); return; }
+    await sb.from('movimientos_unidad_logistica').insert([{ empresa_id:currentEmpresa.id, unidad_id:unitId, tipo_evento:'traslado', fecha:today(), descripcion:`Estado cambiado a: ${next}`, usuario:currentUser?.nombre||'Sistema' }]).catch(()=>{});
+    toast(`✅ Estado → ${next.replace(/_/g,' ')}`);
+    await renderAlmacenaje();
+}
+
+function registrarIncidencia(unitId) {
+    _incUnitId = unitId;
+    document.getElementById('iIncMotivo').value = '';
+    document.getElementById('iIncResp').value   = '';
+    openModal('mIncidencia');
+}
+
+async function saveIncidencia(e) {
+    e.preventDefault();
+    const btn = e.submitter || e.target.querySelector('button[type="submit"]');
+    if (btn) btn.disabled = true;
+    try {
+        const tipo    = document.getElementById('iIncTipo').value;
+        const motivo  = document.getElementById('iIncMotivo').value;
+        const resp    = document.getElementById('iIncResp').value;
+        const { error } = await sb.from('unidades_logisticas').update({
+            estado: tipo, motivo_incidencia: motivo, responsable_incidencia: resp
+        }).eq('id', _incUnitId).eq('empresa_id', currentEmpresa.id);
+        if (error) throw error;
+        await sb.from('movimientos_unidad_logistica').insert([{
+            empresa_id: currentEmpresa.id, unidad_id: _incUnitId,
+            tipo_evento: tipo === 'dañado' ? 'daño' : 'pérdida',
+            fecha: today(), descripcion: motivo, usuario: currentUser?.nombre||'Sistema'
+        }]).catch(()=>{});
+        closeModal('mIncidencia');
+        toast('⚠️ Incidencia registrada');
+        await renderAlmacenaje();
+    } catch(err) { toast('❌ '+err.message); }
+    finally { if (btn) btn.disabled = false; }
+}
+
+async function saveUnidadLogistica(e) {
+    e.preventDefault();
+    const btn = e.submitter || e.target.querySelector('button[type="submit"]');
+    if (btn) btn.disabled = true;
+    try {
+        const payload = {
+            empresa_id:       currentEmpresa.id,
+            numero_bl:        document.getElementById('iULBL').value,
+            cliente_id:       document.getElementById('iULCliente').value || null,
+            descripcion:      document.getElementById('iULDesc').value,
+            peso:             parseFloat(document.getElementById('iULPeso').value)    || null,
+            volumen:          parseFloat(document.getElementById('iULVolumen').value) || null,
+            fecha_ingreso:    document.getElementById('iULFechaIngreso').value,
+            bodega:           document.getElementById('iULBodega').value  || null,
+            tarifa_almacenaje:parseFloat(document.getElementById('iULTarifa').value)  || 0,
+            observaciones:    document.getElementById('iULObs').value     || null,
+            estado:           'recibido'
+        };
+        const { data: unit, error } = await sb.from('unidades_logisticas').insert([payload]).select().single();
+        if (error) throw error;
+        await sb.from('movimientos_unidad_logistica').insert([{
+            empresa_id: currentEmpresa.id, unidad_id: unit.id,
+            tipo_evento: 'recepcion', fecha: payload.fecha_ingreso,
+            descripcion: `Recepción: ${payload.descripcion}`, usuario: currentUser?.nombre||'Sistema'
+        }]).catch(()=>{});
+        closeModal('mUnidadLogistica');
+        toast('✅ Unidad recibida');
+        // Cargar clientes para el modal
+        await renderAlmacenaje();
+    } catch(err) { toast('❌ ' + err.message); }
+    finally { if (btn) btn.disabled = false; }
+}
+
+async function _cargarClientesUL() {
+    const sel = document.getElementById('iULCliente');
+    if (!sel || !currentEmpresa) return;
+    const { data } = await sb.from('clientes').select('id,razon_social').eq('empresa_id',currentEmpresa.id).order('razon_social');
+    sel.innerHTML = '<option value="">Seleccionar...</option>' + (data||[]).map(c=>`<option value="${c.id}">${c.razon_social}</option>`).join('');
 }
 
 // ── Enter para enviar (Shift+Enter = nueva línea)
