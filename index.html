@@ -2887,7 +2887,7 @@ async function renderDashboard() {
                 sb.from('conductores').select('id, vencimiento_licencia').eq('empresa_id', eid).eq('estado', 'activo'),
                 sb.from('mantenimiento').select('tipo, vehiculos(patente), fecha_programada').eq('empresa_id', eid).eq('estado', 'pendiente'),
                 sb.from('remuneraciones').select('monto').eq('empresa_id', eid).gte('fecha', mesInicio),
-                sb.from('bitacora_mantencion').select('vehiculo_id, costo').eq('empresa_id', eid).gte('fecha', mesInicio).catch(()=>({data:[]})),
+                sb.from('bitacora_mantencion').select('vehiculo_id, costo').eq('empresa_id', eid).gte('fecha', mesInicio).then(r=>r,()=>({data:[]})),
                 sb.from('gastos').select('monto').eq('empresa_id', eid).gte('fecha', prevInicio).lte('fecha', prevFin),
                 sb.from('combustible').select('total').eq('empresa_id', eid).gte('fecha', prevInicio).lte('fecha', prevFin),
                 sb.from('viajes').select('tarifa').eq('empresa_id', eid).gte('fecha', prevInicio).lte('fecha', prevFin)
@@ -7599,7 +7599,7 @@ async function renderAlmacenaje() {
     if (!currentEmpresa) return;
     const eid = currentEmpresa.id;
     // KPIs
-    const { data: all } = await sb.from('unidades_logisticas').select('estado').eq('empresa_id', eid).catch(()=>({data:[]}));
+    const { data: all } = await sb.from('unidades_logisticas').select('estado').eq('empresa_id', eid).then(r=>r,()=>({data:[]}));
     const enBodega   = (all||[]).filter(u=>u.estado==='en_bodega'||u.estado==='recibido').length;
     const enTransito = (all||[]).filter(u=>u.estado==='en_transito'||u.estado==='asignado_a_viaje').length;
     const incidencias= (all||[]).filter(u=>u.estado==='dañado'||u.estado==='perdido').length;
@@ -7623,7 +7623,7 @@ async function _renderAlmInventario() {
         .select('*, clientes(razon_social)')
         .eq('empresa_id', currentEmpresa.id)
         .order('created_at', {ascending:false})
-        .catch(()=>({data:null,error:{message:'Tabla no encontrada — ejecuta el SQL de migración'}}));
+        .then(r=>r, ()=>({data:null,error:{message:'Tabla no encontrada — ejecuta el SQL de migración'}}));
     if (error) { t.innerHTML = `<tr class="empty-row"><td colspan="11">⚠️ ${error.message}</td></tr>`; return; }
     _almData = data || [];
     filtrarAlmacenaje();
@@ -7682,7 +7682,7 @@ async function _renderAlmMovimientos() {
         .select('*, unidades_logisticas(numero_bl)')
         .eq('empresa_id', currentEmpresa.id)
         .order('fecha', {ascending:false}).limit(100)
-        .catch(()=>({data:null,error:{message:'Tabla no encontrada'}}));
+        .then(r=>r, ()=>({data:null,error:{message:'Tabla no encontrada'}}));
     if (error) { t.innerHTML = `<tr class="empty-row"><td colspan="5">⚠️ ${error.message}</td></tr>`; return; }
     const evColor = { recepcion:'badge-success', traslado:'badge-info', asignacion:'badge-warning', despacho:'badge-info', 'daño':'badge-danger', 'pérdida':'badge-danger' };
     t.innerHTML = (data||[]).length ? (data||[]).map(m=>`<tr>
@@ -7701,7 +7701,7 @@ async function _renderAlmDespacho() {
     const { data } = await sb.from('unidades_logisticas').select('*, clientes(razon_social)')
         .eq('empresa_id', currentEmpresa.id)
         .in('estado', ['en_bodega','recibido'])
-        .order('numero_bl').catch(()=>({data:[]}));
+        .order('numero_bl').then(r=>r,()=>({data:[]}));
     const colEst = { recibido:'badge-info', en_bodega:'badge-success' };
     t.innerHTML = (data||[]).length ? (data||[]).map(u=>`<tr>
         <td><input type="checkbox" class="chkAlmUnit" value="${u.id}"></td>
@@ -7718,7 +7718,7 @@ async function _renderAlmDespacho() {
     const sel = document.getElementById('sAlmViaje');
     if (sel) {
         const { data: viajes } = await sb.from('viajes').select('id,origen,destino,fecha')
-            .eq('empresa_id',currentEmpresa.id).order('fecha',{ascending:false}).limit(50).catch(()=>({data:[]}));
+            .eq('empresa_id',currentEmpresa.id).order('fecha',{ascending:false}).limit(50).then(r=>r,()=>({data:[]}));
         sel.innerHTML = '<option value="">Seleccionar viaje destino...</option>' +
             (viajes||[]).map(v=>`<option value="${v.id}">${fmtDate(v.fecha)} — ${v.origen||'?'} → ${v.destino||'?'}</option>`).join('');
     }
@@ -7731,7 +7731,7 @@ async function _renderAlmIncidencias() {
     const { data } = await sb.from('unidades_logisticas').select('*, clientes(razon_social)')
         .eq('empresa_id', currentEmpresa.id)
         .in('estado', ['dañado','perdido'])
-        .order('updated_at',{ascending:false}).catch(()=>({data:[]}));
+        .order('updated_at',{ascending:false}).then(r=>r,()=>({data:[]}));
     t.innerHTML = (data||[]).length ? (data||[]).map(u=>`<tr>
         <td>${fmtDate(u.updated_at||u.created_at)}</td>
         <td><strong>${u.numero_bl||'—'}</strong></td>
@@ -7754,7 +7754,7 @@ async function despacharUnidades() {
     if (error) { toast('❌ ' + error.message); return; }
     // Registrar movimientos
     const movs = ids.map(id=>({ empresa_id:currentEmpresa.id, unidad_id:id, tipo_evento:'asignacion', fecha:today(), descripcion:`Asignado a viaje`, usuario: currentUser?.nombre||'Sistema' }));
-    await sb.from('movimientos_unidad_logistica').insert(movs).catch(()=>{});
+    await sb.from('movimientos_unidad_logistica').insert(movs).then(r=>r,()=>{});
     toast(`✅ ${ids.length} unidad(es) asignadas al viaje`);
     await renderAlmacenaje();
 }
@@ -7768,7 +7768,7 @@ async function cambiarEstadoUnidad(unitId) {
     if (next === unit.estado) { toast('ℹ️ Ya está en el estado final'); return; }
     const { error } = await sb.from('unidades_logisticas').update({estado:next}).eq('id',unitId).eq('empresa_id',currentEmpresa.id);
     if (error) { toast('❌ '+error.message); return; }
-    await sb.from('movimientos_unidad_logistica').insert([{ empresa_id:currentEmpresa.id, unidad_id:unitId, tipo_evento:'traslado', fecha:today(), descripcion:`Estado cambiado a: ${next}`, usuario:currentUser?.nombre||'Sistema' }]).catch(()=>{});
+    await sb.from('movimientos_unidad_logistica').insert([{ empresa_id:currentEmpresa.id, unidad_id:unitId, tipo_evento:'traslado', fecha:today(), descripcion:`Estado cambiado a: ${next}`, usuario:currentUser?.nombre||'Sistema' }]).then(r=>r,()=>{});
     toast(`✅ Estado → ${next.replace(/_/g,' ')}`);
     await renderAlmacenaje();
 }
@@ -7796,7 +7796,7 @@ async function saveIncidencia(e) {
             empresa_id: currentEmpresa.id, unidad_id: _incUnitId,
             tipo_evento: tipo === 'dañado' ? 'daño' : 'pérdida',
             fecha: today(), descripcion: motivo, usuario: currentUser?.nombre||'Sistema'
-        }]).catch(()=>{});
+        }]).then(r=>r,()=>{});
         closeModal('mIncidencia');
         toast('⚠️ Incidencia registrada');
         await renderAlmacenaje();
@@ -7853,7 +7853,7 @@ async function saveUnidadLogistica(e) {
             descripcion: `Recepción: ${payload.descripcion} (${payload.numero_bultos} bultos)`,
             usuario: currentUser?.nombre||'Sistema',
             metadata: { tipo_carga: payload.tipo_carga, peso: payload.peso, dir_destino: payload.direccion_destino }
-        }]).catch(()=>{});
+        }]).then(r=>r,()=>{});
         closeModal('mUnidadLogistica');
         toast('✅ Carga recibida en bodega');
         await renderAlmacenaje();
