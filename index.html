@@ -2869,6 +2869,8 @@ async function renderDashboard() {
     if (!currentEmpresa) return;
     const eid = currentEmpresa.id;
     const hoy  = new Date();
+    // _dashMes puede no estar definido aún si block5 no cargó (init temprana)
+    if (typeof _dashMes === 'undefined') window._dashMes = { year: hoy.getFullYear(), month: hoy.getMonth() };
     const { year: dYear, month: dMonth } = _dashMes;
     const mesInicio  = new Date(dYear, dMonth, 1).toISOString().split('T')[0];
     const mesFin     = new Date(dYear, dMonth + 1, 0).toISOString().split('T')[0];
@@ -7350,7 +7352,8 @@ async function solicitarCambioPlan(planKey) {
 // MÓDULO: RESUMEN MENSUAL
 // ═══════════════════════════════════════════════════════════
 let _resMes  = { year: new Date().getFullYear(), month: new Date().getMonth() };
-let _dashMes = { year: new Date().getFullYear(), month: new Date().getMonth() };
+// _dashMes se inicializa en renderDashboard si no existe aún; aquí solo se sincroniza
+if (typeof _dashMes === 'undefined') window._dashMes = { year: new Date().getFullYear(), month: new Date().getMonth() };
 
 function navDashMes(delta) {
     _dashMes.month += delta;
