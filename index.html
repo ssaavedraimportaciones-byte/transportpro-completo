@@ -387,7 +387,7 @@
                 <div style="background:linear-gradient(135deg,#2563eb,#1d4ed8);border-radius:12px;padding:16px 18px;color:white;box-shadow:0 4px 15px rgba(37,99,235,.3)">
                     <div style="font-size:11px;opacity:.85;text-transform:uppercase;letter-spacing:.8px">Utilidad neta</div>
                     <div style="font-size:26px;font-weight:800;margin:4px 0" id="dUtilidad">—</div>
-                    <div style="font-size:11px;opacity:.7">ingresos − gastos</div>
+                    <div style="font-size:11px;opacity:.7">ingresos − gastos − rem</div>
                 </div>
                 <div style="background:linear-gradient(135deg,#0ea5e9,#0284c7);border-radius:12px;padding:16px 18px;color:white;box-shadow:0 4px 15px rgba(14,165,233,.3)">
                     <div style="font-size:11px;opacity:.85;text-transform:uppercase;letter-spacing:.8px">Vehículos activos</div>
@@ -408,9 +408,9 @@
                     <div style="font-size:13px;font-weight:700;color:#374151;margin-bottom:14px">📈 Ingresos últimos 6 meses</div>
                     <canvas id="chartIngresos" height="120"></canvas>
                 </div>
-                <!-- Estado de viajes donut -->
+                <!-- Combustible por Patente -->
                 <div style="background:#f8fafc;border-radius:12px;padding:18px;border:1px solid #e2e8f0">
-                    <div style="font-size:13px;font-weight:700;color:#374151;margin-bottom:14px">🥧 Estado de viajes</div>
+                    <div style="font-size:13px;font-weight:700;color:#374151;margin-bottom:14px">⛽ Combustible por Patente</div>
                     <canvas id="chartEstados" height="160"></canvas>
                 </div>
             </div>
@@ -627,13 +627,19 @@
                     <button class="btn btn-primary" onclick="openModal('mCombustible')">+ Registrar Carga</button>
                 </div>
             </div>
+            <!-- Barra de búsqueda por factura -->
+            <div style="margin-bottom:10px;display:flex;gap:8px;align-items:center">
+                <input type="text" id="filtroFacturaComb" placeholder="🔍 Filtrar por N° Factura..." oninput="filtrarCombustible()"
+                    style="padding:7px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:13px;width:240px;outline:none">
+                <button onclick="filtrarCombustible(true)" class="btn btn-sm" style="background:#f3f4f6;color:#374151">✕ Limpiar</button>
+            </div>
             <table>
                 <thead><tr>
-                    <th>Fecha</th><th>Vehículo</th><th>Litros</th>
+                    <th>Fecha</th><th>Vehículo</th><th>N° Factura</th><th>Litros</th>
                     <th>Precio/L</th><th>Total</th><th>Odómetro</th><th>Acciones</th>
                 </tr></thead>
                 <tbody id="tCombustible">
-                    <tr class="loading-row"><td colspan="7">Cargando combustible...</td></tr>
+                    <tr class="loading-row"><td colspan="8">Cargando combustible...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -757,7 +763,7 @@
             <div style="overflow-x:auto;margin-bottom:20px">
             <table>
                 <thead><tr>
-                    <th>Patente</th><th>Vehículo</th><th>Viajes</th><th>Ingresos</th><th>Combustible</th><th>Mantenciones</th><th>Total Costos</th><th>Utilidad</th>
+                    <th>Patente</th><th>Vehículo</th><th>Viajes</th><th>Ingresos</th><th>Combustible</th><th>Remuneraciones</th><th>Total Costos</th><th>Utilidad</th>
                 </tr></thead>
                 <tbody id="resTablaPatentes">
                     <tr class="loading-row"><td colspan="8">Selecciona un mes...</td></tr>
@@ -1651,6 +1657,37 @@
     </div>
 </div>
 
+<!-- Modal Registrar Cobro Factura -->
+<div id="mPago" class="modal">
+    <div class="modal-content" style="max-width:440px">
+        <div class="modal-header">
+            <h2 id="mPagoTitle">Registrar Cobro</h2>
+            <button class="close-modal" onclick="closeModal('mPago')">&times;</button>
+        </div>
+        <form onsubmit="savePago(event)">
+            <input type="hidden" id="iPagoFacturaId">
+            <div class="form-grid">
+                <div class="form-group"><label>Fecha de Pago *</label><input type="date" id="iPagoFecha" required></div>
+                <div class="form-group"><label>Monto Recibido ($) *</label><input type="number" id="iPagoMonto" required placeholder="0"></div>
+                <div class="form-group"><label>Tipo de Pago</label>
+                    <select id="iPagoTipo">
+                        <option value="transferencia">Transferencia</option>
+                        <option value="cheque">Cheque</option>
+                        <option value="efectivo">Efectivo</option>
+                        <option value="credito">Crédito</option>
+                        <option value="otro">Otro</option>
+                    </select>
+                </div>
+                <div class="form-group" style="grid-column:1/-1"><label>Notas (opcional)</label><input type="text" id="iPagoNotas" placeholder="Ej: cheque N°123, transferencia banco..."></div>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:4px">
+                <button type="submit" class="btn btn-success" style="flex:1">✅ Guardar Cobro</button>
+                <button type="button" class="btn" style="background:#f59e0b;color:#fff;flex:1" onclick="savePago(event,true)">⚡ Pago Parcial</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <!-- Modal Vehículo -->
 <div id="mVehiculo" class="modal">
     <div class="modal-content">
@@ -1724,6 +1761,7 @@
                 <div class="form-group"><label>Litros *</label><input type="number" step="0.1" id="iCoLit" required placeholder="0.0"></div>
                 <div class="form-group"><label>Precio/L ($) *</label><input type="number" id="iCoPrecio" required placeholder="0"></div>
                 <div class="form-group"><label>Odómetro (km)</label><input type="number" id="iCoOdo" placeholder="0"></div>
+                <div class="form-group"><label>N° Factura</label><input type="text" id="iCoFactura" placeholder="Ej: 5555 (para evitar duplicados)"></div>
             </div>
             <button type="submit" class="btn btn-success">Guardar Carga</button>
         </form>
@@ -2369,7 +2407,7 @@ function shortId(id) { return id ? id.slice(-6).toUpperCase() : '???'; }
 
 const colorEstado = {
     planificado: 'badge-info',  en_ruta: 'badge-warning', completado: 'badge-success',
-    pendiente:   'badge-warning', pagada: 'badge-success',  vencida:    'badge-danger',
+    pendiente:   'badge-warning', pagada: 'badge-success',  vencida:    'badge-danger', parcial: 'badge-info',
     operativo:   'badge-success', mantenimiento: 'badge-warning', baja: 'badge-danger',
     activo:      'badge-success', inactivo: 'badge-danger',
     realizado:   'badge-success', preventivo: 'badge-info', correctivo: 'badge-danger'
@@ -2847,6 +2885,7 @@ function closeModal(id) {
         mMantenimiento: () => { _editingMantenimientoId = null; _editingMantenimientoData = null; document.querySelector('#mMantenimiento .modal-header h2').textContent = 'Programar Mantención'; },
         mCotizacion:    () => { _editingCotizacionId = null; document.querySelector('#mCotizacion .modal-header h2').textContent = '📋 Nueva Cotización'; cotResetForm(); },
         mRemuneracion:  () => { _editingRemId = null; _editingRemData = null; document.getElementById('mRemTitle').textContent = 'Nueva Remuneración'; },
+        mPago:          () => { document.getElementById('iPagoFacturaId').value = ''; },
     };
     if (resets[id]) resets[id]();
     // Reset OCR status in viaje form
@@ -2918,7 +2957,7 @@ async function renderDashboard() {
         const bitTotal = (bitMes||[]).reduce((s,b) => s+(b.costo||0), 0);
         const cobrar   = (fPend||[]).reduce((s,f) => s+(f.monto||0), 0);
         const remTotal = (remMes||[]).reduce((s,r) => s+Number(r.monto||0), 0);
-        const utilidad = ingresos - gastos - comb - bitTotal;
+        const utilidad = ingresos - gastos - comb - remTotal;
 
         // Mes anterior para comparativa
         const ingPrev  = (viajesPrev||[]).reduce((s,v) => s+(v.tarifa||0), 0);
@@ -3021,7 +3060,7 @@ async function renderDashboard() {
         const prevLabel = _MESES_D[dMonth === 0 ? 11 : dMonth - 1];
         const compItems = [
             { label:'Ingresos', cur: ingresos, prev: ingPrev, prefix:'$', inverted: false },
-            { label:'Total Gastos', cur: gastos+comb+bitTotal, prev: gasPrev, prefix:'$', inverted: true },
+            { label:'Total Gastos', cur: gastos+comb+remTotal, prev: gasPrev, prefix:'$', inverted: true },
             { label:'Utilidad', cur: utilidad, prev: utilPrev, prefix:'$', inverted: false },
             { label:'Viajes', cur: vMes.length, prev: (viajesPrev||[]).length, prefix:'', inverted: false }
         ];
@@ -3074,19 +3113,22 @@ async function renderDashboard() {
                           x: { ticks: { font:{size:11} }, grid:{display:false} } } }
         });
 
-        // 2. Donut estados
-        const estadosMap = {};
-        vMes.forEach(v => { estadosMap[v.estado||'otro'] = (estadosMap[v.estado||'otro']||0) + 1; });
-        const estLabels = Object.keys(estadosMap);
-        const estColors = { completado:'#10b981', planificado:'#6366f1', en_ruta:'#f59e0b', cancelado:'#ef4444', otro:'#94a3b8' };
+        // 2. Combustible por Patente (horizontal bar)
+        const combPorPat = {};
+        (vehiculos||[]).forEach(v => { combPorPat[v.id] = { patente: v.patente, total: 0 }; });
+        cMesArr.forEach(c => { if (c.vehiculo_id && combPorPat[c.vehiculo_id]) combPorPat[c.vehiculo_id].total += c.total || 0; });
+        const combPatArr = Object.values(combPorPat).filter(x => x.total > 0).sort((a,b) => b.total - a.total).slice(0, 8);
         const c2 = document.getElementById('chartEstados');
         if (c2) new Chart(c2, {
-            type: 'doughnut',
-            data: { labels: estLabels.length ? estLabels : ['Sin viajes'],
-                    datasets: [{ data: estLabels.length ? estLabels.map(e=>estadosMap[e]) : [1],
-                        backgroundColor: estLabels.length ? estLabels.map(e=>estColors[e]||'#94a3b8') : ['#e5e7eb'],
-                        borderWidth:2, borderColor:'#fff' }]},
-            options: { responsive:true, cutout:'65%', plugins:{legend:{position:'bottom',labels:{font:{size:11},padding:8}}} }
+            type: 'bar',
+            data: { labels: combPatArr.length ? combPatArr.map(x=>x.patente) : ['Sin datos'],
+                    datasets: [{ label:'Combustible ($)',
+                        data: combPatArr.length ? combPatArr.map(x=>x.total) : [0],
+                        backgroundColor: ['#f59e0b','#fb923c','#f97316','#fbbf24','#fde68a','#fcd34d','#fef08a','#fed7aa'].slice(0, combPatArr.length||1),
+                        borderRadius: 4 }]},
+            options: { indexAxis:'y', responsive:true, plugins:{legend:{display:false}},
+                scales: { x:{ticks:{callback:v=>'$'+(v/1000).toFixed(0)+'K',font:{size:10}},grid:{color:'#f1f5f9'}},
+                          y:{ticks:{font:{size:11}},grid:{display:false}} } }
         });
 
         // 3. Barras ingresos vs gastos
@@ -3556,18 +3598,22 @@ async function renderFacturacion() {
     document.getElementById('kFact2').textContent = '$' + fmt(porCobrar);
     document.getElementById('kFact3').textContent = '$' + fmt(cobrado);
 
-    t.innerHTML = data.length ? data.map(f => `<tr>
+    t.innerHTML = data.length ? data.map(f => {
+        const pagoInfo = f.fecha_pago ? `<div style="font-size:10px;color:#6b7280;margin-top:2px">${fmtDate(f.fecha_pago)} · ${f.tipo_pago||'—'}</div>` : '';
+        const montoPagado = f.monto_pagado > 0 ? `<div style="font-size:10px;color:#10b981">Cobrado: $${fmt(f.monto_pagado)}</div>` : '';
+        return `<tr>
         <td><strong>${f.numero ? 'F-'+f.numero : 'FC-'+shortId(f.id)}</strong></td>
         <td>${fmtDate(f.fecha)}</td>
         <td>${f.clientes?.razon_social || '—'}</td>
-        <td><strong>$${fmt(f.monto)}</strong></td>
+        <td><strong>$${fmt(f.monto)}</strong>${montoPagado}</td>
         <td>${fmtDate(f.vencimiento)}</td>
-        <td><span class="badge ${colorEstado[f.estado] || 'badge-info'}">${f.estado}</span></td>
+        <td><span class="badge ${colorEstado[f.estado] || 'badge-info'}">${f.estado}</span>${pagoInfo}</td>
         <td style="white-space:nowrap">
-            ${f.estado !== 'pagada' ? `<button class="btn btn-success btn-sm" style="margin-right:4px" onclick="marcarPagada('${f.id}')">✓ Pagada</button>` : ''}
+            ${f.estado !== 'pagada' ? `<button class="btn btn-success btn-sm" style="margin-right:4px;font-size:11px" onclick="abrirRegistrarCobro('${f.id}','${f.monto}')">💳 Cobro</button>` : ''}
             <button class="btn btn-danger btn-sm" onclick="eliminarRegistro('facturas','${f.id}',renderFacturacion)">✕</button>
         </td>
-    </tr>`).join('') : '<tr class="empty-row"><td colspan="7">Sin facturas registradas</td></tr>';
+    </tr>`;
+    }).join('') : '<tr class="empty-row"><td colspan="7">Sin facturas registradas</td></tr>';
 }
 
 async function saveFactura(e) {
@@ -3606,6 +3652,40 @@ async function cargarSelectsFactura(clienteId) {
             if (opt) opt.selected = true;
         }
     }
+}
+
+function abrirRegistrarCobro(facturaId, montoTotal) {
+    document.getElementById('iPagoFacturaId').value = facturaId;
+    document.getElementById('iPagoMonto').value     = montoTotal || '';
+    document.getElementById('iPagoFecha').value     = new Date().toISOString().split('T')[0];
+    document.getElementById('iPagoNotas').value     = '';
+    document.getElementById('iPagoTipo').value      = 'transferencia';
+    document.getElementById('mPagoTitle').textContent = 'Registrar Cobro';
+    openModal('mPago');
+}
+
+async function savePago(e, parcial) {
+    e.preventDefault();
+    const btn = e.submitter || e.target?.querySelector('button[type="submit"]'); if (btn) btn.disabled = true;
+    try {
+        const facturaId  = document.getElementById('iPagoFacturaId').value;
+        const fecha_pago = document.getElementById('iPagoFecha').value;
+        const monto_pag  = parseFloat(document.getElementById('iPagoMonto').value) || 0;
+        const tipo_pago  = document.getElementById('iPagoTipo').value;
+        const notas      = document.getElementById('iPagoNotas').value.trim();
+        const estado     = parcial ? 'parcial' : 'pagada';
+        const { error } = await sb.from('facturas')
+            .update({ estado, fecha_pago, monto_pagado: monto_pag, tipo_pago, notas_cobro: notas || null })
+            .eq('id', facturaId)
+            .eq('empresa_id', currentEmpresa.id);
+        if (error) throw error;
+        closeModal('mPago');
+        toast(parcial ? '⚡ Pago parcial registrado' : '✅ Factura marcada como pagada');
+        await renderFacturacion();
+        await updateStats();
+    } catch (err) {
+        toast('❌ ' + err.message);
+    } finally { if (btn) btn.disabled = false; }
 }
 
 async function marcarPagada(facturaId) {
@@ -3769,12 +3849,13 @@ async function saveCombustible(e) {
         const litros = parseFloat(document.getElementById('iCoLit').value) || 0;
         const precio = parseInt(document.getElementById('iCoPrecio').value) || 0;
         const payload = {
-            vehiculo_id:  document.getElementById('iCoVeh').value || null,
-            fecha:        document.getElementById('iCoFecha').value,
+            vehiculo_id:   document.getElementById('iCoVeh').value || null,
+            fecha:         document.getElementById('iCoFecha').value,
             litros,
-            precio_litro: precio,
-            total:        Math.round(litros * precio),
-            odometro:     parseInt(document.getElementById('iCoOdo').value) || 0
+            precio_litro:  precio,
+            total:         Math.round(litros * precio),
+            odometro:      parseInt(document.getElementById('iCoOdo').value) || 0,
+            numero_factura: document.getElementById('iCoFactura').value.trim() || null
         };
         let error;
         if (_editingCombustibleId) {
@@ -6614,16 +6695,13 @@ function editarConductor(id) {
 var _editingCombustibleId = null;
 var _combustibleData = [];
 const _origRenderCombustible = renderCombustible;
-renderCombustible = async function() {
-    if (!currentEmpresa) return;
+function _renderCombRows(rows) {
     const t = document.getElementById('tCombustible');
-    t.innerHTML = '<tr class="loading-row"><td colspan="7">Cargando...</td></tr>';
-    const { data, error } = await sb.from('combustible').select('*, vehiculos(patente)').eq('empresa_id', currentEmpresa.id).order('fecha', { ascending: false });
-    if (error) { t.innerHTML = `<tr class="empty-row"><td colspan="7">⚠️ ${error.message}</td></tr>`; return; }
-    _combustibleData = data || [];
-    t.innerHTML = _combustibleData.length ? _combustibleData.map(c => `<tr>
+    if (!t) return;
+    t.innerHTML = rows.length ? rows.map(c => `<tr>
         <td>${fmtDate(c.fecha)}</td>
         <td>${c.vehiculos?.patente || '—'}</td>
+        <td style="color:#6366f1;font-weight:600">${c.numero_factura || '—'}</td>
         <td>${(c.litros || 0).toFixed(1)} L</td>
         <td>$${fmt(c.precio_litro)}</td>
         <td><strong>$${fmt(c.total)}</strong></td>
@@ -6632,7 +6710,27 @@ renderCombustible = async function() {
             <button class="btn btn-sm" style="background:#6c757d;color:#fff;margin-right:4px" onclick="editarCombustible('${c.id}')">✏️</button>
             <button class="btn btn-danger btn-sm" onclick="eliminarRegistro('combustible','${c.id}',renderCombustible)">✕</button>
         </td>
-    </tr>`).join('') : '<tr class="empty-row"><td colspan="7">Sin cargas registradas</td></tr>';
+    </tr>`).join('') : '<tr class="empty-row"><td colspan="8">Sin cargas registradas</td></tr>';
+}
+function filtrarCombustible(limpiar) {
+    const inp = document.getElementById('filtroFacturaComb');
+    if (!inp) return;
+    if (limpiar) { inp.value = ''; }
+    const q = (inp.value || '').trim().toLowerCase();
+    const rows = q ? _combustibleData.filter(c => (c.numero_factura||'').toLowerCase().includes(q)) : _combustibleData;
+    _renderCombRows(rows);
+}
+renderCombustible = async function() {
+    if (!currentEmpresa) return;
+    const t = document.getElementById('tCombustible');
+    t.innerHTML = '<tr class="loading-row"><td colspan="8">Cargando...</td></tr>';
+    const { data, error } = await sb.from('combustible').select('*, vehiculos(patente)').eq('empresa_id', currentEmpresa.id).order('fecha', { ascending: false });
+    if (error) { t.innerHTML = `<tr class="empty-row"><td colspan="8">⚠️ ${error.message}</td></tr>`; return; }
+    _combustibleData = data || [];
+    const inp = document.getElementById('filtroFacturaComb');
+    const q = inp ? (inp.value || '').trim().toLowerCase() : '';
+    const rows = q ? _combustibleData.filter(c => (c.numero_factura||'').toLowerCase().includes(q)) : _combustibleData;
+    _renderCombRows(rows);
 };
 
 var _editingCombustibleData = null;
@@ -6642,10 +6740,11 @@ function editarCombustible(id) {
     _editingCombustibleId = id;
     _editingCombustibleData = c;
     document.querySelector('#mCombustible .modal-header h2').textContent = 'Editar Carga de Combustible';
-    document.getElementById('iCoFecha').value  = c.fecha || '';
-    document.getElementById('iCoLit').value    = c.litros || '';
-    document.getElementById('iCoPrecio').value = c.precio_litro || '';
-    document.getElementById('iCoOdo').value    = c.odometro || '';
+    document.getElementById('iCoFecha').value   = c.fecha || '';
+    document.getElementById('iCoLit').value     = c.litros || '';
+    document.getElementById('iCoPrecio').value  = c.precio_litro || '';
+    document.getElementById('iCoOdo').value     = c.odometro || '';
+    document.getElementById('iCoFactura').value = c.numero_factura || '';
     openModal('mCombustible');
 }
 
@@ -7403,7 +7502,7 @@ async function renderResumenMensual() {
         { data: factPend },
         { data: vehiculos },
         { data: combVeh },
-        { data: bitVeh }
+        { data: remMesRes }
     ] = await Promise.all([
         sb.from('viajes').select('*, clientes(razon_social), conductores(nombre), vehiculos(patente,marca,modelo)').eq('empresa_id',eid).gte('fecha',inicio).lte('fecha',finStr).order('fecha',{ascending:false}),
         sb.from('gastos').select('monto').eq('empresa_id',eid).gte('fecha',inicio).lte('fecha',finStr),
@@ -7412,14 +7511,15 @@ async function renderResumenMensual() {
         sb.from('facturas').select('monto').eq('empresa_id',eid).eq('estado','pendiente'),
         sb.from('vehiculos').select('id,patente,marca,modelo').eq('empresa_id',eid).order('patente'),
         sb.from('combustible').select('vehiculo_id,total').eq('empresa_id',eid).gte('fecha',inicio).lte('fecha',finStr),
-        sb.from('bitacora_mantencion').select('vehiculo_id,costo').eq('empresa_id',eid).gte('fecha',inicio).lte('fecha',finStr)
+        sb.from('remuneraciones').select('monto').eq('empresa_id',eid).gte('fecha',inicio).lte('fecha',finStr)
     ]);
 
-    const ingresos = (viajes||[]).reduce((s,v)=>s+(v.tarifa||0),0);
+    const ingresos    = (viajes||[]).reduce((s,v)=>s+(v.tarifa||0),0);
     const totalGastos = (gastos||[]).reduce((s,g)=>s+(g.monto||0),0);
     const totalComb   = (combustible||[]).reduce((s,c)=>s+(c.total||0),0);
+    const totalRem    = (remMesRes||[]).reduce((s,r)=>s+(r.monto||0),0);
     const porCobrar   = (factPend||[]).reduce((s,f)=>s+(f.monto||0),0);
-    const utilidad    = ingresos - totalGastos - totalComb;
+    const utilidad    = ingresos - totalGastos - totalComb - totalRem;
 
     document.getElementById('resKpi').innerHTML = `
         <div class="kpi-card" style="border-left-color:#2563eb">
@@ -7434,8 +7534,11 @@ async function renderResumenMensual() {
         <div class="kpi-card" style="border-left-color:#f59e0b">
             <div class="kpi-label">Combustible</div><div class="kpi-value" style="color:#f59e0b">$${fmt(totalComb)}</div>
         </div>
+        <div class="kpi-card" style="border-left-color:#7c3aed">
+            <div class="kpi-label">Remuneraciones</div><div class="kpi-value" style="color:#7c3aed">$${fmt(totalRem)}</div>
+        </div>
         <div class="kpi-card" style="border-left-color:${utilidad>=0?'#10b981':'#ef4444'}">
-            <div class="kpi-label">Utilidad</div><div class="kpi-value" style="color:${utilidad>=0?'#10b981':'#ef4444'}">$${fmt(utilidad)}</div>
+            <div class="kpi-label">Utilidad Neta</div><div class="kpi-value" style="color:${utilidad>=0?'#10b981':'#ef4444'}">$${fmt(utilidad)}</div>
         </div>
         <div class="kpi-card" style="border-left-color:#6366f1">
             <div class="kpi-label">Por Cobrar</div><div class="kpi-value" style="color:#6366f1">$${fmt(porCobrar)}</div>
@@ -7447,15 +7550,21 @@ async function renderResumenMensual() {
 
     // ── Por patente
     const stats = {};
-    (vehiculos||[]).forEach(v => { stats[v.id] = { patente:v.patente, vehiculo:`${v.marca} ${v.modelo}`, viajes:0, ingresos:0, combustible:0, mantencion:0 }; });
+    (vehiculos||[]).forEach(v => { stats[v.id] = { patente:v.patente, vehiculo:`${v.marca} ${v.modelo}`, viajes:0, ingresos:0, combustible:0, remuneraciones:0 }; });
     (viajes||[]).forEach(v => { if (stats[v.vehiculo_id]) { stats[v.vehiculo_id].viajes++; stats[v.vehiculo_id].ingresos += v.tarifa||0; }});
     (combVeh||[]).forEach(c => { if (stats[c.vehiculo_id]) stats[c.vehiculo_id].combustible += c.total||0; });
-    (bitVeh||[]).forEach(b => { if (stats[b.vehiculo_id]) stats[b.vehiculo_id].mantencion += b.costo||0; });
+    // Prorratear remuneraciones por % de ingresos de cada vehículo
+    if (totalRem > 0 && ingresos > 0) {
+        Object.values(stats).forEach(s => { s.remuneraciones = Math.round(totalRem * (s.ingresos / ingresos)); });
+    } else if (totalRem > 0) {
+        const activos = Object.values(stats).filter(s => s.viajes > 0).length || 1;
+        Object.values(stats).filter(s => s.viajes > 0).forEach(s => { s.remuneraciones = Math.round(totalRem / activos); });
+    }
 
     const filas = Object.values(stats).sort((a,b)=>b.ingresos-a.ingresos);
     document.getElementById('resTablaPatentes').innerHTML = filas.length
         ? filas.map(s => {
-            const costos = s.combustible + s.mantencion;
+            const costos = s.combustible + s.remuneraciones;
             const util   = s.ingresos - costos;
             return `<tr>
                 <td><strong>${s.patente}</strong></td>
@@ -7463,7 +7572,7 @@ async function renderResumenMensual() {
                 <td style="text-align:center">${s.viajes}</td>
                 <td style="color:#10b981;font-weight:700">$${fmt(s.ingresos)}</td>
                 <td style="color:#f59e0b">$${fmt(s.combustible)}</td>
-                <td style="color:#8b5cf6">$${fmt(s.mantencion)}</td>
+                <td style="color:#7c3aed">$${fmt(s.remuneraciones)}</td>
                 <td style="color:#ef4444">$${fmt(costos)}</td>
                 <td style="font-weight:700;color:${util>=0?'#10b981':'#ef4444'}">$${fmt(util)}</td>
             </tr>`;
