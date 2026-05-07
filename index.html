@@ -1010,7 +1010,7 @@ setInterval(function() {
             <h3 style="margin:18px 0 10px;font-size:14px;color:#555">RENTABILIDAD POR VEHÍCULO (PATENTE)</h3>
             <table>
                 <thead><tr>
-                    <th>Patente</th><th>Viajes</th><th>Ingresos</th><th>Combustible</th><th>Gastos</th><th>Utilidad</th><th>Margen</th>
+                    <th>Patente</th><th>Viajes</th><th>Ingresos</th><th>Combustible</th><th>Gastos</th><th>Remuneraciones</th><th>Utilidad</th><th>Margen</th>
                 </tr></thead>
                 <tbody id="tRentPatente">
                     <tr class="loading-row"><td colspan="7">Calculando...</td></tr>
@@ -3911,19 +3911,21 @@ async function renderRentabilidad() {
     if (!currentEmpresa) return;
     const eid = currentEmpresa.id;
 
-    const [{ data: viajes }, { data: gastos }, { data: combustible }, { data: vehiculos }, { data: facturas }] = await Promise.all([
+    const [{ data: viajes }, { data: gastos }, { data: combustible }, { data: vehiculos }, { data: facturas }, { data: remuneraciones }] = await Promise.all([
         sb.from('viajes').select('origen, destino, tarifa, vehiculo_id, cliente_id, clientes(razon_social), vehiculos(patente)').eq('empresa_id', eid),
         sb.from('gastos').select('monto, vehiculo_id').eq('empresa_id', eid),
         sb.from('combustible').select('total, vehiculo_id').eq('empresa_id', eid),
         sb.from('vehiculos').select('id, patente, marca, modelo').eq('empresa_id', eid),
-        sb.from('facturas').select('monto, estado, cliente_id').eq('empresa_id', eid)
+        sb.from('facturas').select('monto, estado, cliente_id').eq('empresa_id', eid),
+        sb.from('remuneraciones').select('monto').eq('empresa_id', eid)
     ]);
 
     // KPIs globales
     const totalIngresos = (viajes||[]).reduce((s,v) => s+(v.tarifa||0), 0);
     const totalGastos   = (gastos||[]).reduce((s,g) => s+(g.monto||0), 0);
     const totalComb     = (combustible||[]).reduce((s,c) => s+(c.total||0), 0);
-    const totalCostos   = totalGastos + totalComb;
+    const totalRem      = (remuneraciones||[]).reduce((s,r) => s+Number(r.monto||0), 0);
+    const totalCostos   = totalGastos + totalComb + totalRem;
     const utilidad      = totalIngresos - totalCostos;
     const margen        = totalIngresos ? Math.round((utilidad / totalIngresos) * 100) : 0;
 
@@ -3934,28 +3936,37 @@ async function renderRentabilidad() {
             <div class="kpi-value" style="color:#f59e0b">$${fmt(totalComb)}</div></div>
         <div class="kpi-card"><div class="kpi-label">Gastos</div>
             <div class="kpi-value" style="color:#ef4444">$${fmt(totalGastos)}</div></div>
+        <div class="kpi-card"><div class="kpi-label">Remuneraciones</div>
+            <div class="kpi-value" style="color:#7c3aed">$${fmt(totalRem)}</div></div>
         <div class="kpi-card"><div class="kpi-label">Utilidad Neta</div>
             <div class="kpi-value" style="color:${utilidad>=0?'#10b981':'#ef4444'}">$${fmt(utilidad)}</div></div>
-        <div class="kpi-card"><div class="kpi-label">Margen %</div>
+        <div class="kpi-card"><div class="kpi-label">Margen Real %</div>
             <div class="kpi-value" style="color:${margen>=0?'var(--primary)':'#ef4444'}">${margen}%</div></div>
     `;
 
     // ── POR PATENTE ──────────────────────────────────────────
     const porVeh = {};
-    (vehiculos||[]).forEach(v => { porVeh[v.id] = { patente: v.patente, marca: v.marca, modelo: v.modelo, viajes: 0, ingresos: 0, comb: 0, gastos: 0 }; });
+    (vehiculos||[]).forEach(v => { porVeh[v.id] = { patente: v.patente, marca: v.marca, modelo: v.modelo, viajes: 0, ingresos: 0, comb: 0, gastos: 0, rem: 0 }; });
     (viajes||[]).forEach(v => {
         if (!v.vehiculo_id) return;
-        if (!porVeh[v.vehiculo_id]) porVeh[v.vehiculo_id] = { patente: v.vehiculos?.patente || v.vehiculo_id, viajes: 0, ingresos: 0, comb: 0, gastos: 0 };
+        if (!porVeh[v.vehiculo_id]) porVeh[v.vehiculo_id] = { patente: v.vehiculos?.patente || v.vehiculo_id, viajes: 0, ingresos: 0, comb: 0, gastos: 0, rem: 0 };
         porVeh[v.vehiculo_id].viajes++;
         porVeh[v.vehiculo_id].ingresos += v.tarifa || 0;
     });
     (combustible||[]).forEach(c => { if (c.vehiculo_id && porVeh[c.vehiculo_id]) porVeh[c.vehiculo_id].comb += c.total || 0; });
     (gastos||[]).forEach(g => { if (g.vehiculo_id && porVeh[g.vehiculo_id]) porVeh[g.vehiculo_id].gastos += g.monto || 0; });
+    // Prorratear remuneraciones por vehículo según proporción de ingresos
+    if (totalRem > 0 && totalIngresos > 0) {
+        Object.values(porVeh).forEach(v => { v.rem = Math.round(totalRem * (v.ingresos / totalIngresos)); });
+    } else if (totalRem > 0) {
+        const activos = Object.values(porVeh).filter(v => v.viajes > 0).length || 1;
+        Object.values(porVeh).filter(v => v.viajes > 0).forEach(v => { v.rem = Math.round(totalRem / activos); });
+    }
 
     const tPatente = document.getElementById('tRentPatente');
     const vehRows = Object.values(porVeh).sort((a,b) => b.ingresos - a.ingresos);
     tPatente.innerHTML = vehRows.length ? vehRows.map(v => {
-        const util = v.ingresos - v.comb - v.gastos;
+        const util = v.ingresos - v.comb - v.gastos - v.rem;
         const mg   = v.ingresos ? Math.round((util/v.ingresos)*100) : 0;
         return `<tr>
             <td><strong>${v.patente}</strong></td>
@@ -3963,10 +3974,11 @@ async function renderRentabilidad() {
             <td style="color:#10b981"><strong>$${fmt(v.ingresos)}</strong></td>
             <td style="color:#f59e0b">$${fmt(v.comb)}</td>
             <td style="color:#ef4444">$${fmt(v.gastos)}</td>
+            <td style="color:#7c3aed">$${fmt(v.rem)}</td>
             <td style="color:${util>=0?'#10b981':'#ef4444'}"><strong>$${fmt(util)}</strong></td>
             <td><span class="badge ${mg>=30?'badge-success':mg>=0?'badge-warning':'badge-danger'}">${mg}%</span></td>
         </tr>`;
-    }).join('') : '<tr class="empty-row"><td colspan="7">Sin datos de vehículos</td></tr>';
+    }).join('') : '<tr class="empty-row"><td colspan="8">Sin datos de vehículos</td></tr>';
 
     // ── TOP RUTAS ────────────────────────────────────────────
     const rutas = {};
