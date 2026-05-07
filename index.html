@@ -1681,8 +1681,8 @@
                 <div class="form-group" style="grid-column:1/-1"><label>Notas (opcional)</label><input type="text" id="iPagoNotas" placeholder="Ej: cheque N°123, transferencia banco..."></div>
             </div>
             <div style="display:flex;gap:8px;margin-top:4px">
-                <button type="submit" class="btn btn-success" style="flex:1">✅ Guardar Cobro</button>
-                <button type="button" class="btn" style="background:#f59e0b;color:#fff;flex:1" onclick="savePago(event,true)">⚡ Pago Parcial</button>
+                <button type="submit" value="completo" class="btn btn-success" style="flex:1">✅ Guardar Cobro</button>
+                <button type="submit" value="parcial" class="btn" style="background:#f59e0b;color:#fff;flex:1">⚡ Pago Parcial</button>
             </div>
         </form>
     </div>
@@ -3609,7 +3609,7 @@ async function renderFacturacion() {
         <td>${fmtDate(f.vencimiento)}</td>
         <td><span class="badge ${colorEstado[f.estado] || 'badge-info'}">${f.estado}</span>${pagoInfo}</td>
         <td style="white-space:nowrap">
-            ${f.estado !== 'pagada' ? `<button class="btn btn-success btn-sm" style="margin-right:4px;font-size:11px" onclick="abrirRegistrarCobro('${f.id}','${f.monto}')">💳 Cobro</button>` : ''}
+            ${(f.estado === 'pendiente' || f.estado === 'parcial') ? `<button class="btn btn-success btn-sm" style="margin-right:4px;font-size:11px" onclick="abrirRegistrarCobro('${f.id}','${f.monto}')">💳 Cobro</button>` : ''}
             <button class="btn btn-danger btn-sm" onclick="eliminarRegistro('facturas','${f.id}',renderFacturacion)">✕</button>
         </td>
     </tr>`;
@@ -3664,9 +3664,10 @@ function abrirRegistrarCobro(facturaId, montoTotal) {
     openModal('mPago');
 }
 
-async function savePago(e, parcial) {
+async function savePago(e) {
     e.preventDefault();
-    const btn = e.submitter || e.target?.querySelector('button[type="submit"]'); if (btn) btn.disabled = true;
+    const btn = e.submitter; if (btn) btn.disabled = true;
+    const parcial = (e.submitter?.value === 'parcial');
     try {
         const facturaId  = document.getElementById('iPagoFacturaId').value;
         const fecha_pago = document.getElementById('iPagoFecha').value;
