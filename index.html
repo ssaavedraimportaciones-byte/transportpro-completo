@@ -187,9 +187,7 @@
         /* ── SEGURIDAD: bloquear impresión ── */
         @media print { body * { visibility: hidden !important; } body::before { visibility: visible !important; content: "⛔ Impresión no autorizada — TransportPro © " attr(data-empresa); font-size: 24px; font-weight: bold; color: red; display: block; text-align: center; margin-top: 40px; } }
 
-        /* ── Pantalla bloqueo DevTools ── */
-        #_devlock { display:none; position:fixed; inset:0; background:#0f172a; z-index:99999; align-items:center; justify-content:center; flex-direction:column; gap:16px; }
-        #_devlock.on { display:flex; }
+        /* ── Pantalla bloqueo DevTools eliminada ── */
     </style>
 </head>
 <body>
@@ -197,11 +195,6 @@
 <!-- ══════════════════════════════════════════════════════════════
      CAPA DE SEGURIDAD TRANSPORTPRO — No modificar
 ══════════════════════════════════════════════════════════════ -->
-<div id="_devlock">
-    <div style="font-size:52px">🔒</div>
-    <div style="color:#f8fafc;font-size:20px;font-weight:700">Acceso suspendido</div>
-    <div style="color:#94a3b8;font-size:13px;text-align:center;max-width:340px">Se detectó apertura de herramientas de desarrollo.<br>Cierra las herramientas para continuar.</div>
-</div>
 <script>
 (function(){
 'use strict';
@@ -246,20 +239,6 @@ document.addEventListener('dragstart', function(e) {
     if (!['INPUT','TEXTAREA'].includes(e.target.tagName)) e.preventDefault();
 });
 
-// ── 6. Detección DevTools (método dimensiones de ventana) ─────
-var _dtOpen = false;
-var _dlk = document.getElementById('_devlock');
-function _checkDT() {
-    var wdiff = window.outerWidth  - window.innerWidth;
-    var hdiff = window.outerHeight - window.innerHeight;
-    var open  = (wdiff > 200 || hdiff > 200);
-    if (open !== _dtOpen) {
-        _dtOpen = open;
-        if (_dlk) _dlk.classList.toggle('on', open);
-        if (open) console.clear();
-    }
-}
-setInterval(_checkDT, 1200);
 
 // ── 7. Timeout sesión por inactividad (30 min) ────────────────
 var _lastAct = Date.now();
