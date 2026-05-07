@@ -179,9 +179,117 @@
             z-index: 9999; box-shadow: 0 5px 15px rgba(0,0,0,0.3);
         }
         .empty-row td, .loading-row td { text-align: center; padding: 40px; color: #999; font-style: italic; }
+
+        /* ── SEGURIDAD: anti-selección global (excepto campos editables) ── */
+        body { -webkit-user-select: none; -moz-user-select: none; user-select: none; }
+        input, textarea, select, [contenteditable] { -webkit-user-select: text; -moz-user-select: text; user-select: text; }
+
+        /* ── SEGURIDAD: bloquear impresión ── */
+        @media print { body * { visibility: hidden !important; } body::before { visibility: visible !important; content: "⛔ Impresión no autorizada — TransportPro © " attr(data-empresa); font-size: 24px; font-weight: bold; color: red; display: block; text-align: center; margin-top: 40px; } }
+
+        /* ── Marca de agua ── */
+        #_watermark { position: fixed; inset: 0; pointer-events: none; z-index: 9998; overflow: hidden; }
+        #_watermark span { position: absolute; opacity: .045; font-size: 17px; font-weight: 800; color: #1e40af; white-space: nowrap; transform: rotate(-35deg); letter-spacing: 1px; }
+
+        /* ── Pantalla bloqueo DevTools ── */
+        #_devlock { display:none; position:fixed; inset:0; background:#0f172a; z-index:99999; align-items:center; justify-content:center; flex-direction:column; gap:16px; }
+        #_devlock.on { display:flex; }
     </style>
 </head>
 <body>
+
+<!-- ══════════════════════════════════════════════════════════════
+     CAPA DE SEGURIDAD TRANSPORTPRO — No modificar
+══════════════════════════════════════════════════════════════ -->
+<div id="_devlock">
+    <div style="font-size:52px">🔒</div>
+    <div style="color:#f8fafc;font-size:20px;font-weight:700">Acceso suspendido</div>
+    <div style="color:#94a3b8;font-size:13px;text-align:center;max-width:340px">Se detectó apertura de herramientas de desarrollo.<br>Cierra las herramientas para continuar.</div>
+</div>
+<div id="_watermark"></div>
+
+<script>
+(function(){
+'use strict';
+
+// ── 1. Anti-iframe (clickjacking) ──────────────────────────────
+if (window.self !== window.top) {
+    try { window.top.location = window.self.location; } catch(_) {}
+    document.documentElement.innerHTML = '';
+}
+
+// ── 2. Mensaje disuasorio en consola ──────────────────────────
+setTimeout(function() {
+    console.clear();
+    console.log('%c⛔ ZONA RESTRINGIDA', 'color:#dc2626;font-size:32px;font-weight:900');
+    console.log('%cTransportPro — Sistema privado. Acceso no autorizado es delito informático (Ley 19.223, Chile). Tu IP, navegador y hora de acceso quedan registrados automáticamente.', 'color:#dc2626;font-size:13px;font-weight:600');
+    console.log('%c© TransportPro — Todos los derechos reservados', 'color:#6b7280;font-size:11px');
+}, 600);
+
+// ── 3. Bloquear atajos de teclado peligrosos ──────────────────
+document.addEventListener('keydown', function(e) {
+    var k = (e.key || '').toUpperCase();
+    // F12
+    if (e.key === 'F12') { e.preventDefault(); e.stopPropagation(); return false; }
+    // Ctrl+Shift+I / J / C / K  (DevTools)
+    if (e.ctrlKey && e.shiftKey && ['I','J','C','K'].includes(k)) { e.preventDefault(); return false; }
+    // Ctrl+U  (Ver código fuente)
+    if (e.ctrlKey && !e.shiftKey && k === 'U') { e.preventDefault(); return false; }
+    // Ctrl+S  (Guardar página)
+    if (e.ctrlKey && !e.shiftKey && k === 'S') { e.preventDefault(); return false; }
+    // Ctrl+P  (Imprimir)
+    if (e.ctrlKey && !e.shiftKey && k === 'P') { e.preventDefault(); return false; }
+}, true);
+
+// ── 4. Deshabilitar menú contextual (clic derecho) ────────────
+document.addEventListener('contextmenu', function(e) {
+    if (['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)) return;
+    e.preventDefault(); return false;
+});
+
+// ── 5. Deshabilitar arrastrar ─────────────────────────────────
+document.addEventListener('dragstart', function(e) {
+    if (!['INPUT','TEXTAREA'].includes(e.target.tagName)) e.preventDefault();
+});
+
+// ── 6. Detección DevTools (método dimensiones de ventana) ─────
+var _dtOpen = false;
+var _dlk = document.getElementById('_devlock');
+function _checkDT() {
+    var wdiff = window.outerWidth  - window.innerWidth;
+    var hdiff = window.outerHeight - window.innerHeight;
+    var open  = (wdiff > 200 || hdiff > 200);
+    if (open !== _dtOpen) {
+        _dtOpen = open;
+        if (_dlk) _dlk.classList.toggle('on', open);
+        if (open) console.clear();
+    }
+}
+setInterval(_checkDT, 1200);
+
+// ── 7. Timeout sesión por inactividad (30 min) ────────────────
+var _lastAct = Date.now();
+var _SESSION = 30 * 60 * 1000;
+['click','keydown','mousemove','touchstart','scroll'].forEach(function(ev) {
+    document.addEventListener(ev, function() { _lastAct = Date.now(); }, { passive: true });
+});
+setInterval(function() {
+    var appEl = document.getElementById('app');
+    if (!appEl || appEl.style.display === 'none') return;
+    if (Date.now() - _lastAct > _SESSION) {
+        try { if (typeof sb !== 'undefined') sb.auth.signOut(); } catch(_) {}
+        document.body.innerHTML =
+            '<div style="display:flex;height:100vh;align-items:center;justify-content:center;background:#0f172a;flex-direction:column;gap:16px">' +
+            '<div style="font-size:52px">⏱️</div>' +
+            '<div style="color:#f8fafc;font-size:22px;font-weight:700">Sesión expirada</div>' +
+            '<div style="color:#94a3b8;font-size:14px;text-align:center">Tu sesión fue cerrada automáticamente por inactividad (30 min).</div>' +
+            '<button onclick="location.reload()" style="margin-top:8px;padding:12px 32px;background:#2563eb;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer">🔐 Volver al inicio</button>' +
+            '</div>';
+    }
+}, 60000);
+
+})();
+</script>
 
 <!-- ══════════════════════════════════════════
      LOGIN
@@ -2688,8 +2796,19 @@ async function cargarSesion(userId) {
 async function iniciarApp() {
     document.getElementById('login').style.display = 'none';
     document.getElementById('app').style.display   = 'block';
-    document.getElementById('hdrEmpresa').textContent = currentEmpresa.razon_social || currentEmpresa.nombre || 'Mi Empresa';
+    const _empNom = currentEmpresa.razon_social || currentEmpresa.nombre || 'TransportPro';
+    document.getElementById('hdrEmpresa').textContent = _empNom;
     document.getElementById('hdrUser').textContent    = currentUser.nombre;
+    document.body.setAttribute('data-empresa', _empNom);
+    // Marca de agua con empresa + usuario
+    (function() {
+        var wm = document.getElementById('_watermark'); if (!wm) return;
+        var txt = _empNom + ' · ' + (currentUser.nombre || currentUser.email || '');
+        var html = '';
+        for (var r = -2; r < 16; r++) for (var c = -1; c < 6; c++)
+            html += '<span style="top:' + (r*160+80) + 'px;left:' + (c*320+60) + 'px">' + txt + '</span>';
+        wm.innerHTML = html;
+    })();
     _actualizarHdrLogo();
 
     // ── RBAC: separación absoluta superadmin vs clientes ──────
