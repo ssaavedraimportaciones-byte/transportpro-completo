@@ -2042,6 +2042,67 @@ setInterval(function() {
     </div>
 </div>
 
+<!-- Modal Mantenimiento -->
+<div id="mMantenimiento" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="mMantTitle">Programar Mantención</h2>
+            <button class="close-modal" onclick="closeModal('mMantenimiento')">&times;</button>
+        </div>
+        <form onsubmit="saveMantenimiento(event)">
+            <div class="form-grid">
+                <div class="form-group"><label>Vehículo *</label><select id="iMVeh" required><option value="">Seleccionar...</option></select></div>
+                <div class="form-group"><label>Tipo *</label>
+                    <select id="iMTipo" required>
+                        <option value="aceite">Cambio aceite</option>
+                        <option value="frenos">Frenos</option>
+                        <option value="neumaticos">Neumáticos</option>
+                        <option value="revision">Revisión técnica</option>
+                        <option value="electrico">Eléctrico</option>
+                        <option value="motor">Motor</option>
+                        <option value="transmision">Transmisión</option>
+                        <option value="suspension">Suspensión</option>
+                        <option value="general">General</option>
+                    </select>
+                </div>
+                <div class="form-group"><label>Descripción</label><input type="text" id="iMDesc" placeholder="Detalle del trabajo"></div>
+                <div class="form-group"><label>KM programado</label><input type="number" id="iMKm" placeholder="0" min="0"></div>
+                <div class="form-group"><label>Fecha programada</label><input type="date" id="iMFecha"></div>
+            </div>
+            <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
+                <button type="button" class="btn" onclick="closeModal('mMantenimiento')">Cancelar</button>
+                <button type="submit" class="btn btn-primary">💾 Guardar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Nuevo Ticket Soporte -->
+<div id="mNuevoTicket" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>🎫 Nuevo Ticket de Soporte</h2>
+            <button class="close-modal" onclick="closeModal('mNuevoTicket')">&times;</button>
+        </div>
+        <form onsubmit="guardarTicket(event)">
+            <div class="form-group"><label>Tipo *</label>
+                <select id="iTipoTicket">
+                    <option value="problema">🔴 Problema / Error</option>
+                    <option value="consulta">💬 Consulta</option>
+                    <option value="mejora">💡 Sugerencia de mejora</option>
+                    <option value="otro">📋 Otro</option>
+                </select>
+            </div>
+            <div class="form-group"><label>Título *</label><input type="text" id="iTituloTicket" required placeholder="Resumen breve del problema"></div>
+            <div class="form-group"><label>Descripción</label><textarea id="iDescTicket" rows="4" placeholder="Detalla el problema o consulta..." style="width:100%;resize:vertical;padding:8px;border:1px solid #e5e7eb;border-radius:6px;font-size:13px"></textarea></div>
+            <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
+                <button type="button" class="btn" onclick="closeModal('mNuevoTicket')">Cancelar</button>
+                <button type="submit" id="btnEnviarTicket" class="btn btn-primary">📤 Enviar Ticket</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <!-- Modal Unidad Logística -->
 <div id="mUnidadLogistica" class="modal">
     <div class="modal-content" style="max-width:860px;max-height:92vh;overflow-y:auto">
