@@ -187,10 +187,6 @@
         /* ── SEGURIDAD: bloquear impresión ── */
         @media print { body * { visibility: hidden !important; } body::before { visibility: visible !important; content: "⛔ Impresión no autorizada — TransportPro © " attr(data-empresa); font-size: 24px; font-weight: bold; color: red; display: block; text-align: center; margin-top: 40px; } }
 
-        /* ── Marca de agua ── */
-        #_watermark { position: fixed; inset: 0; pointer-events: none; z-index: 9998; overflow: hidden; }
-        #_watermark span { position: absolute; opacity: .045; font-size: 17px; font-weight: 800; color: #1e40af; white-space: nowrap; transform: rotate(-35deg); letter-spacing: 1px; }
-
         /* ── Pantalla bloqueo DevTools ── */
         #_devlock { display:none; position:fixed; inset:0; background:#0f172a; z-index:99999; align-items:center; justify-content:center; flex-direction:column; gap:16px; }
         #_devlock.on { display:flex; }
@@ -206,8 +202,6 @@
     <div style="color:#f8fafc;font-size:20px;font-weight:700">Acceso suspendido</div>
     <div style="color:#94a3b8;font-size:13px;text-align:center;max-width:340px">Se detectó apertura de herramientas de desarrollo.<br>Cierra las herramientas para continuar.</div>
 </div>
-<div id="_watermark"></div>
-
 <script>
 (function(){
 'use strict';
@@ -512,12 +506,28 @@ setInterval(function() {
             <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:20px">
                 <!-- Ingresos últimos 6 meses -->
                 <div style="background:#f8fafc;border-radius:12px;padding:18px;border:1px solid #e2e8f0">
-                    <div style="font-size:13px;font-weight:700;color:#374151;margin-bottom:14px">📈 Ingresos últimos 6 meses</div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+                        <div style="font-size:13px;font-weight:700;color:#374151">📈 Ingresos últimos 6 meses</div>
+                        <div style="display:flex;gap:3px">
+                            <button title="Línea" onclick="cambiarTipoGrafico('chartIngresos','line')" style="padding:2px 7px;border:1px solid #e2e8f0;border-radius:5px;background:#fff;cursor:pointer;font-size:12px">📈</button>
+                            <button title="Barra" onclick="cambiarTipoGrafico('chartIngresos','bar')" style="padding:2px 7px;border:1px solid #e2e8f0;border-radius:5px;background:#fff;cursor:pointer;font-size:12px">📊</button>
+                            <button title="Dona" onclick="cambiarTipoGrafico('chartIngresos','doughnut')" style="padding:2px 7px;border:1px solid #e2e8f0;border-radius:5px;background:#fff;cursor:pointer;font-size:12px">🍩</button>
+                            <button title="Pie" onclick="cambiarTipoGrafico('chartIngresos','pie')" style="padding:2px 7px;border:1px solid #e2e8f0;border-radius:5px;background:#fff;cursor:pointer;font-size:12px">🥧</button>
+                        </div>
+                    </div>
                     <canvas id="chartIngresos" height="120"></canvas>
                 </div>
                 <!-- Combustible por Patente -->
                 <div style="background:#f8fafc;border-radius:12px;padding:18px;border:1px solid #e2e8f0">
-                    <div style="font-size:13px;font-weight:700;color:#374151;margin-bottom:14px">⛽ Combustible por Patente</div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+                        <div style="font-size:13px;font-weight:700;color:#374151">⛽ Combustible por Patente</div>
+                        <div style="display:flex;gap:3px">
+                            <button title="Barra horiz." onclick="cambiarTipoGrafico('chartEstados','bar',true)" style="padding:2px 7px;border:1px solid #e2e8f0;border-radius:5px;background:#fff;cursor:pointer;font-size:12px">📊</button>
+                            <button title="Barra vert." onclick="cambiarTipoGrafico('chartEstados','bar',false)" style="padding:2px 7px;border:1px solid #e2e8f0;border-radius:5px;background:#fff;cursor:pointer;font-size:12px">📉</button>
+                            <button title="Dona" onclick="cambiarTipoGrafico('chartEstados','doughnut')" style="padding:2px 7px;border:1px solid #e2e8f0;border-radius:5px;background:#fff;cursor:pointer;font-size:12px">🍩</button>
+                            <button title="Pie" onclick="cambiarTipoGrafico('chartEstados','pie')" style="padding:2px 7px;border:1px solid #e2e8f0;border-radius:5px;background:#fff;cursor:pointer;font-size:12px">🥧</button>
+                        </div>
+                    </div>
                     <canvas id="chartEstados" height="160"></canvas>
                 </div>
             </div>
@@ -526,12 +536,27 @@ setInterval(function() {
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
                 <!-- Ingresos vs Gastos barchart -->
                 <div style="background:#f8fafc;border-radius:12px;padding:18px;border:1px solid #e2e8f0">
-                    <div style="font-size:13px;font-weight:700;color:#374151;margin-bottom:14px">📊 Ingresos vs Gastos (6 meses)</div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+                        <div style="font-size:13px;font-weight:700;color:#374151">📊 Ingresos vs Gastos (6 meses)</div>
+                        <div style="display:flex;gap:3px">
+                            <button title="Barra" onclick="cambiarTipoGrafico('chartIngGas','bar')" style="padding:2px 7px;border:1px solid #e2e8f0;border-radius:5px;background:#fff;cursor:pointer;font-size:12px">📊</button>
+                            <button title="Línea" onclick="cambiarTipoGrafico('chartIngGas','line')" style="padding:2px 7px;border:1px solid #e2e8f0;border-radius:5px;background:#fff;cursor:pointer;font-size:12px">📈</button>
+                            <button title="Dona" onclick="cambiarTipoGrafico('chartIngGas','doughnut')" style="padding:2px 7px;border:1px solid #e2e8f0;border-radius:5px;background:#fff;cursor:pointer;font-size:12px">🍩</button>
+                        </div>
+                    </div>
                     <canvas id="chartIngGas" height="130"></canvas>
                 </div>
                 <!-- Top vehículos -->
                 <div style="background:#f8fafc;border-radius:12px;padding:18px;border:1px solid #e2e8f0">
-                    <div style="font-size:13px;font-weight:700;color:#374151;margin-bottom:14px">🚛 Top vehículos por ingresos</div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+                        <div style="font-size:13px;font-weight:700;color:#374151">🚛 Top vehículos por ingresos</div>
+                        <div style="display:flex;gap:3px">
+                            <button title="Barra horiz." onclick="cambiarTipoGrafico('chartVehiculos','bar',true)" style="padding:2px 7px;border:1px solid #e2e8f0;border-radius:5px;background:#fff;cursor:pointer;font-size:12px">📊</button>
+                            <button title="Barra vert." onclick="cambiarTipoGrafico('chartVehiculos','bar',false)" style="padding:2px 7px;border:1px solid #e2e8f0;border-radius:5px;background:#fff;cursor:pointer;font-size:12px">📉</button>
+                            <button title="Dona" onclick="cambiarTipoGrafico('chartVehiculos','doughnut')" style="padding:2px 7px;border:1px solid #e2e8f0;border-radius:5px;background:#fff;cursor:pointer;font-size:12px">🍩</button>
+                            <button title="Pie" onclick="cambiarTipoGrafico('chartVehiculos','pie')" style="padding:2px 7px;border:1px solid #e2e8f0;border-radius:5px;background:#fff;cursor:pointer;font-size:12px">🥧</button>
+                        </div>
+                    </div>
                     <canvas id="chartVehiculos" height="130"></canvas>
                 </div>
             </div>
@@ -2541,15 +2566,6 @@ async function iniciarApp() {
     document.getElementById('hdrEmpresa').textContent = _empNom;
     document.getElementById('hdrUser').textContent    = currentUser.nombre;
     document.body.setAttribute('data-empresa', _empNom);
-    // Marca de agua con empresa + usuario
-    (function() {
-        var wm = document.getElementById('_watermark'); if (!wm) return;
-        var txt = _empNom + ' · ' + (currentUser.nombre || currentUser.email || '');
-        var html = '';
-        for (var r = -2; r < 16; r++) for (var c = -1; c < 6; c++)
-            html += '<span style="top:' + (r*160+80) + 'px;left:' + (c*320+60) + 'px">' + txt + '</span>';
-        wm.innerHTML = html;
-    })();
     _actualizarHdrLogo();
 
     // ── RBAC: separación absoluta superadmin vs clientes ──────
@@ -2756,6 +2772,32 @@ document.addEventListener('click', e => {
 // ═══════════════════════════════════════════════════════════
 // DASHBOARD
 // ═══════════════════════════════════════════════════════════
+var _dashChartsConfig = {};
+
+function cambiarTipoGrafico(chartId, tipo, hbar) {
+    const saved = _dashChartsConfig[chartId]; if (!saved) return;
+    const canvas = document.getElementById(chartId); if (!canvas) return;
+    try { const e = Chart.getChart(chartId); if (e) e.destroy(); } catch(_) {}
+    const isCircular = tipo === 'doughnut' || tipo === 'pie';
+    const useHBar = hbar === true || (hbar === undefined && saved.isHBar);
+    const cfg = {
+        type: tipo,
+        data: saved.data,
+        options: {
+            responsive: true,
+            plugins: { legend: { display: isCircular || saved.multiDataset, position: 'bottom', labels: { font: { size: 11 } } } }
+        }
+    };
+    if (!isCircular) {
+        if (useHBar && tipo === 'bar') cfg.options.indexAxis = 'y';
+        cfg.options.scales = {
+            y: { ticks: { callback: v => '$' + (Math.abs(v) >= 1000 ? (v/1000).toFixed(0)+'K' : v), font:{size:11} }, grid:{color:'#f1f5f9'} },
+            x: { ticks: { font:{size:11} }, grid:{display:false} }
+        };
+    }
+    new Chart(canvas, cfg);
+}
+
 async function renderDashboard() {
     if (!currentEmpresa) return;
     const eid = currentEmpresa.id;
@@ -2958,14 +3000,11 @@ async function renderDashboard() {
         });
 
         // 1. Línea ingresos 6 meses
+        _dashChartsConfig['chartIngresos'] = { isHBar: false, multiDataset: false, data: { labels: labels6, datasets: [{ label: 'Ingresos ($)', data: ingMes, borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,.08)', tension: 0.4, fill: true, pointBackgroundColor: '#10b981', pointRadius: 5 }]} };
         const c1 = document.getElementById('chartIngresos');
         if (c1) new Chart(c1, {
             type: 'line',
-            data: { labels: labels6, datasets: [{
-                label: 'Ingresos ($)', data: ingMes,
-                borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,.08)',
-                tension: 0.4, fill: true, pointBackgroundColor: '#10b981', pointRadius: 5
-            }]},
+            data: _dashChartsConfig['chartIngresos'].data,
             options: { responsive: true, plugins: { legend: { display: false } },
                 scales: { y: { ticks: { callback: v => '$'+(v/1000).toFixed(0)+'K', font:{size:11} }, grid:{color:'#f1f5f9'} },
                           x: { ticks: { font:{size:11} }, grid:{display:false} } } }
@@ -2976,27 +3015,22 @@ async function renderDashboard() {
         (vehiculos||[]).forEach(v => { combPorPat[v.id] = { patente: v.patente, total: 0 }; });
         cMesArr.forEach(c => { if (c.vehiculo_id && combPorPat[c.vehiculo_id]) combPorPat[c.vehiculo_id].total += c.total || 0; });
         const combPatArr = Object.values(combPorPat).filter(x => x.total > 0).sort((a,b) => b.total - a.total).slice(0, 8);
+        _dashChartsConfig['chartEstados'] = { isHBar: true, multiDataset: false, data: { labels: combPatArr.length ? combPatArr.map(x=>x.patente) : ['Sin datos'], datasets: [{ label:'Combustible ($)', data: combPatArr.length ? combPatArr.map(x=>x.total) : [0], backgroundColor: ['#f59e0b','#fb923c','#f97316','#fbbf24','#fde68a','#fcd34d','#fef08a','#fed7aa'].slice(0, combPatArr.length||1), borderRadius: 4 }]} };
         const c2 = document.getElementById('chartEstados');
         if (c2) new Chart(c2, {
             type: 'bar',
-            data: { labels: combPatArr.length ? combPatArr.map(x=>x.patente) : ['Sin datos'],
-                    datasets: [{ label:'Combustible ($)',
-                        data: combPatArr.length ? combPatArr.map(x=>x.total) : [0],
-                        backgroundColor: ['#f59e0b','#fb923c','#f97316','#fbbf24','#fde68a','#fcd34d','#fef08a','#fed7aa'].slice(0, combPatArr.length||1),
-                        borderRadius: 4 }]},
+            data: _dashChartsConfig['chartEstados'].data,
             options: { indexAxis:'y', responsive:true, plugins:{legend:{display:false}},
                 scales: { x:{ticks:{callback:v=>'$'+(v/1000).toFixed(0)+'K',font:{size:10}},grid:{color:'#f1f5f9'}},
                           y:{ticks:{font:{size:11}},grid:{display:false}} } }
         });
 
         // 3. Barras ingresos vs gastos
+        _dashChartsConfig['chartIngGas'] = { isHBar: false, multiDataset: true, data: { labels: labels6, datasets: [{ label:'Ingresos', data:ingMes, backgroundColor:'rgba(16,185,129,.75)', borderRadius:4 }, { label:'Gastos', data:gasMes, backgroundColor:'rgba(239,68,68,.65)', borderRadius:4 }]} };
         const c3 = document.getElementById('chartIngGas');
         if (c3) new Chart(c3, {
             type: 'bar',
-            data: { labels: labels6, datasets: [
-                { label:'Ingresos', data:ingMes, backgroundColor:'rgba(16,185,129,.75)', borderRadius:4 },
-                { label:'Gastos',   data:gasMes, backgroundColor:'rgba(239,68,68,.65)',  borderRadius:4 }
-            ]},
+            data: _dashChartsConfig['chartIngGas'].data,
             options: { responsive:true, plugins:{legend:{labels:{font:{size:11}}}},
                 scales: { y:{ticks:{callback:v=>'$'+(v/1000).toFixed(0)+'K',font:{size:11}},grid:{color:'#f1f5f9'}},
                           x:{ticks:{font:{size:11}},grid:{display:false}} } }
@@ -3004,14 +3038,11 @@ async function renderDashboard() {
 
         // 4. Barras horizontales top vehículos
         const topVeh = filasPat.slice(0, 6);
+        _dashChartsConfig['chartVehiculos'] = { isHBar: true, multiDataset: false, data: { labels: topVeh.length ? topVeh.map(v=>v.patente) : ['Sin datos'], datasets: [{ label:'Ingresos ($)', data: topVeh.length ? topVeh.map(v=>v.ingresos) : [0], backgroundColor: ['#6366f1','#8b5cf6','#0ea5e9','#10b981','#f59e0b','#ef4444'].slice(0, topVeh.length||1), borderRadius: 5 }]} };
         const c4 = document.getElementById('chartVehiculos');
         if (c4) new Chart(c4, {
             type: 'bar',
-            data: { labels: topVeh.length ? topVeh.map(v=>v.patente) : ['Sin datos'],
-                    datasets: [{ label:'Ingresos ($)',
-                        data: topVeh.length ? topVeh.map(v=>v.ingresos) : [0],
-                        backgroundColor: ['#6366f1','#8b5cf6','#0ea5e9','#10b981','#f59e0b','#ef4444'].slice(0, topVeh.length||1),
-                        borderRadius: 5 }]},
+            data: _dashChartsConfig['chartVehiculos'].data,
             options: { indexAxis:'y', responsive:true, plugins:{legend:{display:false}},
                 scales: { x:{ticks:{callback:v=>'$'+(v/1000).toFixed(0)+'K',font:{size:11}},grid:{color:'#f1f5f9'}},
                           y:{ticks:{font:{size:11}},grid:{display:false}} } }
@@ -3677,7 +3708,7 @@ async function saveConductor(e) {
 async function renderCombustible() {
     if (!currentEmpresa) return;
     const t = document.getElementById('tCombustible');
-    t.innerHTML = '<tr class="loading-row"><td colspan="7">Cargando...</td></tr>';
+    t.innerHTML = '<tr class="loading-row"><td colspan="8">Cargando...</td></tr>';
 
     const { data, error } = await sb
         .from('combustible')
@@ -3685,11 +3716,14 @@ async function renderCombustible() {
         .eq('empresa_id', currentEmpresa.id)
         .order('fecha', { ascending: false });
 
-    if (error) { t.innerHTML = `<tr class="empty-row"><td colspan="7">⚠️ ${error.message}</td></tr>`; return; }
+    if (error) { t.innerHTML = `<tr class="empty-row"><td colspan="8">⚠️ ${error.message}</td></tr>`; return; }
 
-    t.innerHTML = data.length ? data.map(c => `<tr>
+    if (typeof _combustibleData !== 'undefined') _combustibleData = data || [];
+    const rows = data || [];
+    t.innerHTML = rows.length ? rows.map(c => `<tr>
         <td>${fmtDate(c.fecha)}</td>
         <td>${c.vehiculos?.patente || '—'}</td>
+        <td style="color:#6366f1;font-weight:600">${c.numero_factura || '—'}</td>
         <td>${(c.litros || 0).toFixed(1)} L</td>
         <td>$${fmt(c.precio_litro)}</td>
         <td><strong>$${fmt(c.total)}</strong></td>
@@ -3698,7 +3732,7 @@ async function renderCombustible() {
             <button class="btn btn-sm" style="background:#6c757d;color:#fff;margin-right:4px" onclick="editarCombustible('${c.id}')">✏️</button>
             <button class="btn btn-danger btn-sm" onclick="eliminarRegistro('combustible','${c.id}',renderCombustible)">✕</button>
         </td>
-    </tr>`).join('') : '<tr class="empty-row"><td colspan="7">Sin cargas registradas</td></tr>';
+    </tr>`).join('') : '<tr class="empty-row"><td colspan="8">Sin cargas registradas</td></tr>';
 }
 
 async function saveCombustible(e) {
