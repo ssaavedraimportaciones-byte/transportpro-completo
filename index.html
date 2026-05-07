@@ -807,7 +807,10 @@ setInterval(function() {
         <div class="section-card">
             <div class="section-header">
                 <h2>💵 Remuneraciones</h2>
-                <button class="btn btn-primary" onclick="openNuevaRemuneracion()">+ Nueva Remuneración</button>
+                <div style="display:flex;gap:6px;align-items:center">
+                    <button class="btn btn-sm" style="background:#f3f4f6;color:#374151" onclick="exportarModulo('remuneraciones',false)">📥 Excel</button>
+                    <button class="btn btn-primary" onclick="openNuevaRemuneracion()">+ Nueva Remuneración</button>
+                </div>
             </div>
             <!-- Filtros -->
             <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:flex-end">
@@ -918,7 +921,10 @@ setInterval(function() {
         <div class="section-card">
             <div class="section-header">
                 <h2>📦 Almacenaje Logístico</h2>
-                <button class="btn btn-primary" onclick="openModal('mUnidadLogistica')">+ Recibir Unidad</button>
+                <div style="display:flex;gap:6px;align-items:center">
+                    <button class="btn btn-sm" style="background:#f3f4f6;color:#374151" onclick="exportarModulo('unidades_logisticas',false)">📥 Excel</button>
+                    <button class="btn btn-primary" onclick="openModal('mUnidadLogistica')">+ Recibir Unidad</button>
+                </div>
             </div>
             <!-- KPIs -->
             <div class="kpi-grid" id="almKpis" style="margin-bottom:16px"></div>
@@ -2760,6 +2766,7 @@ function closeModal(id) {
         mMantenimiento: () => { _editingMantenimientoId = null; _editingMantenimientoData = null; document.querySelector('#mMantenimiento .modal-header h2').textContent = 'Programar Mantención'; },
         mCotizacion:    () => { _editingCotizacionId = null; document.querySelector('#mCotizacion .modal-header h2').textContent = '📋 Nueva Cotización'; cotResetForm(); },
         mRemuneracion:  () => { _editingRemId = null; _editingRemData = null; document.getElementById('mRemTitle').textContent = 'Nueva Remuneración'; },
+        mFactura:       () => { _editingFacturaId = null; document.querySelector('#mFactura .modal-header h2').textContent = 'Nueva Factura'; },
         mPago:          () => { document.getElementById('iPagoFacturaId').value = ''; },
     };
     if (resets[id]) resets[id]();
@@ -3423,11 +3430,11 @@ async function renderClientes() {
 
     _clientesData = data || [];
     t.innerHTML = _clientesData.length ? _clientesData.map(c => `<tr>
-        <td>${c.rut}</td>
-        <td><strong>${c.razon_social}</strong></td>
-        <td>${c.contacto || '—'}</td>
-        <td>${c.telefono || '—'}</td>
-        <td>${c.email || '—'}</td>
+        <td>${_escapeHtml(c.rut)}</td>
+        <td><strong>${_escapeHtml(c.razon_social)}</strong></td>
+        <td>${_escapeHtml(c.contacto || '—')}</td>
+        <td>${_escapeHtml(c.telefono || '—')}</td>
+        <td>${_escapeHtml(c.email || '—')}</td>
         <td style="white-space:nowrap">
             <button class="btn btn-sm" style="background:#6c757d;color:#fff;margin-right:4px" onclick="editarCliente('${c.id}')">✏️</button>
             <button class="btn btn-danger btn-sm" onclick="eliminarRegistro('clientes','${c.id}',renderClientes)">✕</button>
@@ -3465,6 +3472,8 @@ async function saveCliente(e) {
 // ═══════════════════════════════════════════════════════════
 // MÓDULO: FACTURACIÓN
 // ═══════════════════════════════════════════════════════════
+var _facturasData = [];
+var _editingFacturaId = null;
 async function renderFacturacion() {
     if (!currentEmpresa) return;
     const t = document.getElementById('tFacturas');
@@ -3478,6 +3487,7 @@ async function renderFacturacion() {
 
     if (error) { t.innerHTML = `<tr class="empty-row"><td colspan="7">⚠️ ${error.message}</td></tr>`; return; }
 
+    _facturasData = data || [];
     const mes       = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
     const factMes   = data.filter(f => new Date(f.fecha) >= mes).reduce((s,f) => s+(f.monto||0), 0);
     const porCobrar = data.filter(f => f.estado === 'pendiente').reduce((s,f) => s+(f.monto||0), 0);
@@ -3493,11 +3503,12 @@ async function renderFacturacion() {
         return `<tr>
         <td><strong>${f.numero ? 'F-'+f.numero : 'FC-'+shortId(f.id)}</strong></td>
         <td>${fmtDate(f.fecha)}</td>
-        <td>${f.clientes?.razon_social || '—'}</td>
+        <td>${_escapeHtml(f.clientes?.razon_social || '—')}</td>
         <td><strong>$${fmt(f.monto)}</strong>${montoPagado}</td>
         <td>${fmtDate(f.vencimiento)}</td>
         <td><span class="badge ${colorEstado[f.estado] || 'badge-info'}">${f.estado}</span>${pagoInfo}</td>
         <td style="white-space:nowrap">
+            <button class="btn btn-sm" style="background:#6c757d;color:#fff;margin-right:4px;font-size:11px" onclick="editarFactura('${f.id}')">✏️</button>
             ${(f.estado === 'pendiente' || f.estado === 'parcial') ? `<button class="btn btn-success btn-sm" style="margin-right:4px;font-size:11px" onclick="abrirRegistrarCobro('${f.id}','${f.monto}')">💳 Cobro</button>` : ''}
             <button class="btn btn-danger btn-sm" onclick="eliminarRegistro('facturas','${f.id}',renderFacturacion)">✕</button>
         </td>
@@ -3509,22 +3520,39 @@ async function saveFactura(e) {
     e.preventDefault();
     const btn = e.submitter || e.target?.querySelector('button[type="submit"]'); if (btn) btn.disabled = true;
     try {
-        const { error } = await sb.from('facturas').insert([{
-            empresa_id: currentEmpresa.id,
+        const payload = {
             cliente_id: document.getElementById('iFCliente').value  || null,
             fecha:      document.getElementById('iFFecha').value,
             vencimiento:document.getElementById('iFVenc').value,
-            monto:      parseInt(document.getElementById('iFMonto').value) || 0,
-            estado:     'pendiente'
-        }]);
+            monto:      parseInt(document.getElementById('iFMonto').value) || 0
+        };
+        let error;
+        if (_editingFacturaId) {
+            ({ error } = await sb.from('facturas').update(payload).eq('id', _editingFacturaId).eq('empresa_id', currentEmpresa.id));
+        } else {
+            ({ error } = await sb.from('facturas').insert([{ ...payload, empresa_id: currentEmpresa.id, estado: 'pendiente' }]));
+        }
         if (error) throw error;
+        _editingFacturaId = null;
         closeModal('mFactura');
-        toast('✅ Factura registrada');
+        toast(_editingFacturaId ? '✅ Factura actualizada' : '✅ Factura registrada');
         await renderFacturacion();
         await updateStats();
     } catch (err) {
         toast('❌ Error: ' + err.message);
     } finally { if (btn) btn.disabled = false; }
+}
+
+function editarFactura(id) {
+    const f = _facturasData.find(x => x.id === id);
+    if (!f) return;
+    _editingFacturaId = id;
+    document.querySelector('#mFactura .modal-header h2').textContent = 'Editar Factura';
+    cargarSelectsFactura(f.cliente_id);
+    document.getElementById('iFFecha').value  = f.fecha || '';
+    document.getElementById('iFVenc').value   = f.vencimiento || '';
+    document.getElementById('iFMonto').value  = f.monto || '';
+    openModal('mFactura');
 }
 
 async function cargarSelectsFactura(clienteId) {
@@ -3604,8 +3632,8 @@ async function renderVehiculos() {
     if (error) { t.innerHTML = `<tr class="empty-row"><td colspan="6">⚠️ ${error.message}</td></tr>`; return; }
 
     t.innerHTML = data.length ? data.map(v => `<tr>
-        <td><strong>${v.patente}</strong></td>
-        <td>${v.marca} ${v.modelo}</td>
+        <td><strong>${_escapeHtml(v.patente)}</strong></td>
+        <td>${_escapeHtml(v.marca)} ${_escapeHtml(v.modelo)}</td>
         <td>${v.ano}</td>
         <td>${fmt(v.km)} km</td>
         <td><span class="badge ${colorEstado[v.estado] || 'badge-info'}">${v.estado}</span></td>
@@ -5572,11 +5600,11 @@ renderClientes = async function() {
     if (error) { t.innerHTML = `<tr class="empty-row"><td colspan="6">⚠️ ${error.message}</td></tr>`; return; }
     _clientesData = data || [];
     t.innerHTML = _clientesData.length ? _clientesData.map(c => `<tr>
-        <td>${c.rut}</td>
-        <td><strong>${c.razon_social}</strong></td>
-        <td>${c.contacto || '—'}</td>
-        <td>${c.telefono || '—'}</td>
-        <td>${c.email || '—'}</td>
+        <td>${_escapeHtml(c.rut)}</td>
+        <td><strong>${_escapeHtml(c.razon_social)}</strong></td>
+        <td>${_escapeHtml(c.contacto || '—')}</td>
+        <td>${_escapeHtml(c.telefono || '—')}</td>
+        <td>${_escapeHtml(c.email || '—')}</td>
         <td style="white-space:nowrap">
             <button class="btn btn-sm" style="background:#6c757d;color:#fff;margin-right:4px" onclick="editarCliente('${c.id}')">✏️</button>
             <button class="btn btn-danger btn-sm" onclick="eliminarRegistro('clientes','${c.id}',renderClientes)">✕</button>
@@ -5603,7 +5631,6 @@ function editarCliente(id) {
 // ═══════════════════════════════════════════════════════════
 var _editingVehiculoId = null;
 var _vehiculosData = [];
-const _origRenderVehiculos = renderVehiculos;
 renderVehiculos = async function() {
     if (!currentEmpresa) return;
     const t = document.getElementById('tVehiculos');
@@ -5612,8 +5639,8 @@ renderVehiculos = async function() {
     if (error) { t.innerHTML = `<tr class="empty-row"><td colspan="6">⚠️ ${error.message}</td></tr>`; return; }
     _vehiculosData = data || [];
     t.innerHTML = _vehiculosData.length ? _vehiculosData.map(v => `<tr>
-        <td><strong>${v.patente}</strong></td>
-        <td>${v.marca} ${v.modelo}</td>
+        <td><strong>${_escapeHtml(v.patente)}</strong></td>
+        <td>${_escapeHtml(v.marca)} ${_escapeHtml(v.modelo)}</td>
         <td>${v.ano}</td>
         <td>${fmt(v.km)} km</td>
         <td><span class="badge ${colorEstado[v.estado] || 'badge-info'}">${v.estado}</span></td>
@@ -5644,7 +5671,6 @@ function editarVehiculo(id) {
 // ═══════════════════════════════════════════════════════════
 var _editingConductorId = null;
 var _conductoresData = [];
-const _origRenderConductores = renderConductores;
 renderConductores = async function() {
     if (!currentEmpresa) return;
     const t = document.getElementById('tConductores');
@@ -5684,7 +5710,6 @@ function editarConductor(id) {
 // ═══════════════════════════════════════════════════════════
 var _editingCombustibleId = null;
 var _combustibleData = [];
-const _origRenderCombustible = renderCombustible;
 function _renderCombRows(rows) {
     const t = document.getElementById('tCombustible');
     if (!t) return;
@@ -5743,7 +5768,6 @@ function editarCombustible(id) {
 // ═══════════════════════════════════════════════════════════
 var _editingGastoId = null;
 var _gastosData = [];
-const _origRenderGastos = renderGastos;
 renderGastos = async function() {
     if (!currentEmpresa) return;
     const t = document.getElementById('tGastos');
@@ -5783,7 +5807,6 @@ function editarGasto(id) {
 // ═══════════════════════════════════════════════════════════
 var _editingMantenimientoId = null;
 var _mantenimientoData = [];
-const _origRenderMantenimiento = renderMantenimiento;
 renderMantenimiento = async function() {
     if (!currentEmpresa) return;
     const t = document.getElementById('tMantenimiento');
