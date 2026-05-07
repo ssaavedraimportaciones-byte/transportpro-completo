@@ -557,7 +557,7 @@ setInterval(function() {
             <h3 id="dashPatentesTitle" style="font-size:13px;font-weight:700;color:#374151;margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px">Rendimiento por Vehículo — Mes Actual</h3>
             <div style="overflow-x:auto">
             <table style="font-size:12px">
-                <thead><tr><th>Patente</th><th>Viajes</th><th>Ingresos</th><th>Combustible</th><th>Mantenciones</th><th>Total Costos</th><th>Utilidad</th><th>Margen</th></tr></thead>
+                <thead><tr><th>Patente</th><th>Viajes</th><th>Ingresos</th><th>Combustible</th><th>Remuneraciones</th><th>Total Costos</th><th>Utilidad</th><th>Margen</th></tr></thead>
                 <tbody id="dashPatentes"><tr class="loading-row"><td colspan="8">Cargando...</td></tr></tbody>
             </table>
             </div>
@@ -2868,7 +2868,7 @@ async function renderDashboard() {
 
         // Rendimiento por patente (8 columnas)
         const porVeh = {};
-        (vehiculos||[]).forEach(v => { porVeh[v.id] = { patente: v.patente, viajes: 0, ingresos: 0, comb: 0, gastos_: 0, mant: 0 }; });
+        (vehiculos||[]).forEach(v => { porVeh[v.id] = { patente: v.patente, viajes: 0, ingresos: 0, comb: 0, gastos_: 0, rem: 0 }; });
         vMes.forEach(v => {
             if (!v.vehiculo_id || !porVeh[v.vehiculo_id]) return;
             porVeh[v.vehiculo_id].viajes++;
@@ -2876,11 +2876,17 @@ async function renderDashboard() {
         });
         cMesArr.forEach(c => { if (c.vehiculo_id && porVeh[c.vehiculo_id]) porVeh[c.vehiculo_id].comb += c.total || 0; });
         gMesArr.forEach(g => { if (g.vehiculo_id && porVeh[g.vehiculo_id]) porVeh[g.vehiculo_id].gastos_ += g.monto || 0; });
-        (bitMes||[]).forEach(b => { if (b.vehiculo_id && porVeh[b.vehiculo_id]) porVeh[b.vehiculo_id].mant += b.costo || 0; });
-        const filasPat = Object.values(porVeh).filter(v => v.viajes > 0 || v.comb > 0 || v.mant > 0).sort((a,b) => b.ingresos - a.ingresos);
+        // Prorratear remuneraciones por vehículo según proporción de ingresos
+        if (remTotal > 0 && ingresos > 0) {
+            Object.values(porVeh).forEach(v => { v.rem = Math.round(remTotal * (v.ingresos / ingresos)); });
+        } else if (remTotal > 0) {
+            const actPat = Object.values(porVeh).filter(v => v.viajes > 0).length || 1;
+            Object.values(porVeh).filter(v => v.viajes > 0).forEach(v => { v.rem = Math.round(remTotal / actPat); });
+        }
+        const filasPat = Object.values(porVeh).filter(v => v.viajes > 0 || v.comb > 0).sort((a,b) => b.ingresos - a.ingresos);
         document.getElementById('dashPatentes').innerHTML = filasPat.length
             ? filasPat.map(v => {
-                const totalCostos = v.comb + v.gastos_ + v.mant;
+                const totalCostos = v.comb + v.gastos_ + v.rem;
                 const util = v.ingresos - totalCostos;
                 const margen = v.ingresos > 0 ? Math.round(util / v.ingresos * 100) : 0;
                 const mColor = margen >= 20 ? '#10b981' : margen >= 0 ? '#f59e0b' : '#ef4444';
@@ -2889,7 +2895,7 @@ async function renderDashboard() {
                     <td style="text-align:center">${v.viajes}</td>
                     <td style="color:#10b981;text-align:right"><strong>$${fmt(v.ingresos)}</strong></td>
                     <td style="color:#f59e0b;text-align:right">$${fmt(v.comb)}</td>
-                    <td style="color:#8b5cf6;text-align:right">$${fmt(v.mant)}</td>
+                    <td style="color:#8b5cf6;text-align:right">$${fmt(v.rem)}</td>
                     <td style="color:#ef4444;text-align:right">$${fmt(totalCostos)}</td>
                     <td style="color:${util>=0?'#10b981':'#ef4444'};text-align:right"><strong>$${fmt(util)}</strong></td>
                     <td style="color:${mColor};text-align:center;font-weight:700">${margen}%</td>
