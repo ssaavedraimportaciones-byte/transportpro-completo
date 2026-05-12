@@ -10,6 +10,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Crear tablas en Supabase
+        run: |
+          psql "postgresql://postgres.ozmnfdndauyzcsxunxig:TransportPro2026DB@aws-0-sa-east-1.pooler.supabase.com:6543/postgres" \
+            -f supabase/migrations/20260512_crear_tablas_faltantes.sql || echo "⚠️ DB ya existía o error ignorado"
+
       - name: Instalar Node
         uses: actions/setup-node@v4
         with:
