@@ -1,0 +1,17 @@
+name: Setup DB — Crear tablas faltantes
+
+on:
+  workflow_dispatch:
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Ejecutar migración SQL en Supabase
+        env:
+          DATABASE_URL: postgresql://postgres.ozmnfdndauyzcsxunxig:TransportPro2026DB@aws-0-sa-east-1.pooler.supabase.com:6543/postgres
+        run: |
+          psql "$DATABASE_URL" -f supabase/migrations/20260512_crear_tablas_faltantes.sql
+          echo "✅ Migración ejecutada"
