@@ -1,0 +1,1 @@
+$(cat /home/user/transportpro-completo/supabase/migrations/20260512_crear_tablas_faltantes.sql)
