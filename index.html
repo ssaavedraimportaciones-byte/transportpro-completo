@@ -135,13 +135,16 @@
         .badge-danger  { background: #fee2e2; color: #991b1b; }
 
         /* ── Forms ──────────────────────────── */
-        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(195px, 1fr)); gap: 14px; margin-bottom: 18px; }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(195px, 1fr)); gap: 14px; margin-bottom: 18px; overflow: visible; }
         .form-group label { display: block; margin-bottom: 5px; font-size: 12px; font-weight: 600; color: #555; }
         .form-group input, .form-group select {
             width: 100%; padding: 9px 12px; border: 2px solid #e5e7eb;
             border-radius: 7px; font-size: 13px; transition: border 0.2s;
         }
         .form-group input:focus, .form-group select:focus { outline: none; border-color: var(--primary); }
+        .form-group select { position: relative; z-index: 10001; }
+        .modal-content > form { position: relative; z-index: 1; }
+        select { overflow: visible !important; }
 
         /* ── Modal ──────────────────────────── */
         .modal {
@@ -152,8 +155,10 @@
         .modal.open { display: flex; }
         .modal-content {
             background: white; border-radius: 15px; padding: 28px;
-            max-width: 620px; width: 100%; max-height: 88vh; overflow-y: auto;
+            max-width: 620px; width: 100%; max-height: 88vh;
+            display: flex; flex-direction: column;
         }
+        .modal-content form { overflow: visible; flex: 1; }
         .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 22px; }
         .modal-header h2 { font-size: 17px; }
         .close-modal { background: none; border: none; font-size: 24px; cursor: pointer; color: #666; }
@@ -3835,18 +3840,21 @@ async function saveCombustible(e) {
 }
 
 // ═══════════════════════════════════════════════════════════
-// MÓDULO: GASTOS
-// ═══════════════════════════════════════════════════════════
+async function saveGasto(e) {
     e.preventDefault();
+    if (!currentEmpresa) { toast('❌ Sin empresa activa'); return; }
     const btn = e.submitter || e.target?.querySelector('button[type="submit"]'); if (btn) btn.disabled = true;
     try {
         const payload = {
             vehiculo_id: document.getElementById('iGVeh').value  || null,
             fecha:       document.getElementById('iGFecha').value,
-            categoria:   document.getElementById('iGCat').value,
+            categoria:   document.getElementById('iGCat').value.toLowerCase().trim(),
             descripcion: document.getElementById('iGDesc').value,
             monto:       parseInt(document.getElementById('iGMonto').value) || 0
         };
+        if (!payload.fecha)      throw new Error('La fecha es obligatoria');
+        if (!payload.categoria)  throw new Error('Debes seleccionar una categoría');
+        if (!payload.descripcion.trim()) throw new Error('La descripción es obligatoria');
         let error;
         if (_editingGastoId) {
             ({ error } = await sb.from('gastos').update(payload).eq('id', _editingGastoId).eq('empresa_id', currentEmpresa.id));
@@ -5822,10 +5830,9 @@ function editarGasto(id) {
     _editingGastoData = g;
     document.querySelector('#mGasto .modal-header h2').textContent = 'Editar Gasto';
     document.getElementById('iGFecha').value = g.fecha || '';
-    document.getElementById('iGCat').value   = g.categoria || '';
+    document.getElementById('iGCat').value   = (g.categoria || '').toLowerCase().trim();
     document.getElementById('iGDesc').value  = g.descripcion || '';
     document.getElementById('iGMonto').value = g.monto || '';
-    document.getElementById('iGVeh').value = g.vehiculo_id || '';
     openModal('mGasto');
 }
 
