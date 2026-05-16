@@ -3835,45 +3835,21 @@ async function saveCombustible(e) {
 }
 
 // ═══════════════════════════════════════════════════════════
-// MÓDULO: GASTOS
-// ═══════════════════════════════════════════════════════════
-async function renderGastos() {
-    if (!currentEmpresa) return;
-    const t = document.getElementById('tGastos');
-    t.innerHTML = '<tr class="loading-row"><td colspan="6">Cargando...</td></tr>';
-
-    const { data, error } = await sb
-        .from('gastos')
-        .select('*, vehiculos(patente)')
-        .eq('empresa_id', currentEmpresa.id)
-        .order('fecha', { ascending: false });
-
-    if (error) { t.innerHTML = `<tr class="empty-row"><td colspan="6">⚠️ ${error.message}</td></tr>`; return; }
-
-    t.innerHTML = data.length ? data.map(g => `<tr>
-        <td>${fmtDate(g.fecha)}</td>
-        <td>${g.vehiculos?.patente || '—'}</td>
-        <td><span class="badge badge-info">${g.categoria}</span></td>
-        <td>${g.descripcion}</td>
-        <td><strong>$${fmt(g.monto)}</strong></td>
-        <td style="white-space:nowrap">
-            <button class="btn btn-sm" style="background:#6c757d;color:#fff;margin-right:4px" onclick="editarGasto('${g.id}')">✏️</button>
-            <button class="btn btn-danger btn-sm" onclick="eliminarRegistro('gastos','${g.id}',renderGastos)">✕</button>
-        </td>
-    </tr>`).join('') : '<tr class="empty-row"><td colspan="6">Sin gastos registrados</td></tr>';
-}
-
 async function saveGasto(e) {
     e.preventDefault();
+    if (!currentEmpresa) { toast('❌ Sin empresa activa'); return; }
     const btn = e.submitter || e.target?.querySelector('button[type="submit"]'); if (btn) btn.disabled = true;
     try {
         const payload = {
             vehiculo_id: document.getElementById('iGVeh').value  || null,
             fecha:       document.getElementById('iGFecha').value,
-            categoria:   document.getElementById('iGCat').value,
+            categoria:   document.getElementById('iGCat').value.toLowerCase().trim(),
             descripcion: document.getElementById('iGDesc').value,
             monto:       parseInt(document.getElementById('iGMonto').value) || 0
         };
+        if (!payload.fecha)      throw new Error('La fecha es obligatoria');
+        if (!payload.categoria)  throw new Error('Debes seleccionar una categoría');
+        if (!payload.descripcion.trim()) throw new Error('La descripción es obligatoria');
         let error;
         if (_editingGastoId) {
             ({ error } = await sb.from('gastos').update(payload).eq('id', _editingGastoId).eq('empresa_id', currentEmpresa.id));
@@ -5849,7 +5825,7 @@ function editarGasto(id) {
     _editingGastoData = g;
     document.querySelector('#mGasto .modal-header h2').textContent = 'Editar Gasto';
     document.getElementById('iGFecha').value = g.fecha || '';
-    document.getElementById('iGCat').value   = g.categoria || '';
+    document.getElementById('iGCat').value   = (g.categoria || '').toLowerCase().trim();
     document.getElementById('iGDesc').value  = g.descripcion || '';
     document.getElementById('iGMonto').value = g.monto || '';
     openModal('mGasto');
