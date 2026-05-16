@@ -3347,6 +3347,7 @@ function facturaDesdeViaje(viajeId) {
 
 async function saveViaje(e) {
     e.preventDefault();
+    if (!currentEmpresa) { toast('❌ Sin empresa activa'); return; }
     const btn = e.submitter || e.target?.querySelector('button[type="submit"]');
     if (btn) btn.disabled = true;
     try {
@@ -3489,6 +3490,7 @@ async function renderClientes() {
 
 async function saveCliente(e) {
     e.preventDefault();
+    if (!currentEmpresa) { toast('❌ Sin empresa activa'); return; }
     const btn = e.submitter || e.target?.querySelector('button[type="submit"]'); if (btn) btn.disabled = true;
     try {
         const payload = {
@@ -3563,6 +3565,7 @@ async function renderFacturacion() {
 
 async function saveFactura(e) {
     e.preventDefault();
+    if (!currentEmpresa) { toast('❌ Sin empresa activa'); return; }
     const btn = e.submitter || e.target?.querySelector('button[type="submit"]'); if (btn) btn.disabled = true;
     try {
         const payload = {
@@ -3629,6 +3632,7 @@ function abrirRegistrarCobro(facturaId, montoTotal) {
 
 async function savePago(e) {
     e.preventDefault();
+    if (!currentEmpresa) { toast('❌ Sin empresa activa'); return; }
     const btn = e.submitter; if (btn) btn.disabled = true;
     const parcial = (e.submitter?.value === 'parcial');
     try {
@@ -3692,6 +3696,7 @@ async function renderVehiculos() {
 
 async function saveVehiculo(e) {
     e.preventDefault();
+    if (!currentEmpresa) { toast('❌ Sin empresa activa'); return; }
     const btn = e.submitter || e.target?.querySelector('button[type="submit"]'); if (btn) btn.disabled = true;
     try {
         if (!_editingVehiculoId) {
@@ -3751,6 +3756,7 @@ async function renderConductores() {
 
 async function saveConductor(e) {
     e.preventDefault();
+    if (!currentEmpresa) { toast('❌ Sin empresa activa'); return; }
     const btn = e.submitter || e.target?.querySelector('button[type="submit"]'); if (btn) btn.disabled = true;
     try {
         const payload = {
@@ -3779,38 +3785,9 @@ async function saveConductor(e) {
 // ═══════════════════════════════════════════════════════════
 // MÓDULO: COMBUSTIBLE
 // ═══════════════════════════════════════════════════════════
-async function renderCombustible() {
-    if (!currentEmpresa) return;
-    const t = document.getElementById('tCombustible');
-    t.innerHTML = '<tr class="loading-row"><td colspan="8">Cargando...</td></tr>';
-
-    const { data, error } = await sb
-        .from('combustible')
-        .select('*, vehiculos(patente)')
-        .eq('empresa_id', currentEmpresa.id)
-        .order('fecha', { ascending: false });
-
-    if (error) { t.innerHTML = `<tr class="empty-row"><td colspan="8">⚠️ ${error.message}</td></tr>`; return; }
-
-    if (typeof _combustibleData !== 'undefined') _combustibleData = data || [];
-    const rows = data || [];
-    t.innerHTML = rows.length ? rows.map(c => `<tr>
-        <td>${fmtDate(c.fecha)}</td>
-        <td>${c.vehiculos?.patente || '—'}</td>
-        <td style="color:#6366f1;font-weight:600">${c.numero_factura || '—'}</td>
-        <td>${(c.litros || 0).toFixed(1)} L</td>
-        <td>$${fmt(c.precio_litro)}</td>
-        <td><strong>$${fmt(c.total)}</strong></td>
-        <td>${fmt(c.odometro)} km</td>
-        <td style="white-space:nowrap">
-            <button class="btn btn-sm" style="background:#6c757d;color:#fff;margin-right:4px" onclick="editarCombustible('${c.id}')">✏️</button>
-            <button class="btn btn-danger btn-sm" onclick="eliminarRegistro('combustible','${c.id}',renderCombustible)">✕</button>
-        </td>
-    </tr>`).join('') : '<tr class="empty-row"><td colspan="8">Sin cargas registradas</td></tr>';
-}
-
 async function saveCombustible(e) {
     e.preventDefault();
+    if (!currentEmpresa) { toast('❌ Sin empresa activa'); return; }
     const btn = e.submitter || e.target?.querySelector('button[type="submit"]'); if (btn) btn.disabled = true;
     try {
         const litros = parseFloat(document.getElementById('iCoLit').value) || 0;
@@ -3873,35 +3850,9 @@ async function saveGasto(e) {
 // ═══════════════════════════════════════════════════════════
 // MÓDULO: MANTENIMIENTO
 // ═══════════════════════════════════════════════════════════
-async function renderMantenimiento() {
-    if (!currentEmpresa) return;
-    const t = document.getElementById('tMantenimiento');
-    t.innerHTML = '<tr class="loading-row"><td colspan="7">Cargando...</td></tr>';
-
-    const { data, error } = await sb
-        .from('mantenimiento')
-        .select('*, vehiculos(patente)')
-        .eq('empresa_id', currentEmpresa.id)
-        .order('fecha_programada', { ascending: true });
-
-    if (error) { t.innerHTML = `<tr class="empty-row"><td colspan="7">⚠️ ${error.message}</td></tr>`; return; }
-
-    t.innerHTML = data.length ? data.map(m => `<tr>
-        <td>${m.vehiculos?.patente || '—'}</td>
-        <td>${m.tipo}</td>
-        <td>${m.descripcion}</td>
-        <td>${fmt(m.km_programado)} km</td>
-        <td>${fmtDate(m.fecha_programada)}</td>
-        <td><span class="badge ${m.estado === 'realizado' ? 'badge-success' : 'badge-warning'}">${m.estado || 'pendiente'}</span></td>
-        <td style="white-space:nowrap">
-            <button class="btn btn-sm" style="background:#6c757d;color:#fff;margin-right:4px" onclick="editarMantenimiento('${m.id}')">✏️</button>
-            <button class="btn btn-danger btn-sm" onclick="eliminarRegistro('mantenimiento','${m.id}',renderMantenimiento)">✕</button>
-        </td>
-    </tr>`).join('') : '<tr class="empty-row"><td colspan="7">Sin mantenciones programadas</td></tr>';
-}
-
 async function saveMantenimiento(e) {
     e.preventDefault();
+    if (!currentEmpresa) { toast('❌ Sin empresa activa'); return; }
     const btn = e.submitter || e.target?.querySelector('button[type="submit"]'); if (btn) btn.disabled = true;
     try {
         const payload = {
@@ -4560,6 +4511,7 @@ async function cargarSelectClienteEn(selectId) {
 
 async function saveCotizacion(e) {
     e.preventDefault();
+    if (!currentEmpresa) { toast('❌ Sin empresa activa'); return; }
     if (_cotItems.length === 0) { toast('❌ Agrega al menos un ítem'); return; }
     if (_cotItems.some(it => !it.descripcion.trim())) { toast('❌ Todos los ítems necesitan descripción'); return; }
 
@@ -6327,7 +6279,8 @@ async function renderMiPlan() {
         .select('*')
         .eq('empresa_id', currentEmpresa.id)
         .order('created_at', { ascending: false })
-        .limit(6);
+        .limit(6)
+        .then(r => r, () => ({ data: [] }));
 
     const histEl = document.getElementById('saasHistorialPagos');
     if (histEl) {
@@ -6585,6 +6538,7 @@ function _renderBitacoraTabla() {
 
 async function saveBitacoraEntry(e) {
     e.preventDefault();
+    if (!currentEmpresa) { toast('❌ Sin empresa activa'); return; }
     const btn = e.submitter || e.target.querySelector('button[type="submit"]');
     if (btn) btn.disabled = true;
     try {
@@ -6833,6 +6787,7 @@ function registrarIncidencia(unitId) {
 
 async function saveIncidencia(e) {
     e.preventDefault();
+    if (!currentEmpresa) { toast('❌ Sin empresa activa'); return; }
     const btn = e.submitter || e.target.querySelector('button[type="submit"]');
     if (btn) btn.disabled = true;
     try {
@@ -6865,6 +6820,7 @@ function _ulTipoCargaChange(sel) {
 
 async function saveUnidadLogistica(e) {
     e.preventDefault();
+    if (!currentEmpresa) { toast('❌ Sin empresa activa'); return; }
     const btn = e.submitter || e.target.querySelector('button[type="submit"]');
     if (btn) btn.disabled = true;
     try {
@@ -7045,8 +7001,9 @@ async function bloquearEmpresa(empresaId, bloquear) {
 
 function abrirResponderTicket(ticketId, titulo, desc, respuesta) {
     document.getElementById('iTicketId').value = ticketId;
+    const _esc = s => (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     document.getElementById('ticketDetalleAdmin').innerHTML =
-        `<strong>${titulo}</strong>${desc ? '<br><span style="color:#6b7280">'+desc+'</span>' : ''}`;
+        `<strong>${_esc(titulo)}</strong>${desc ? '<br><span style="color:#6b7280">'+_esc(desc)+'</span>' : ''}`;
     document.getElementById('iRespuestaTicket').value = respuesta || '';
     document.getElementById('iEstadoTicket').value = 'en_proceso';
     openModal('mResponderTicket');
@@ -7078,7 +7035,7 @@ async function renderTpAdmin() {
 
     const [{ data: empresas, error: e1 }, { data: tickets, error: e2 }] = await Promise.all([
         sb.from('empresas').select('id,razon_social,plan_name,sub_status,sub_end_date,max_vehicles,max_ops').order('razon_social'),
-        sb.from('support_tickets').select('*, empresas(razon_social)').order('created_at', { ascending: false }).limit(50)
+        sb.from('support_tickets').select('*, empresas(razon_social)').order('created_at', { ascending: false }).limit(50).then(r=>r,()=>({data:[],error:null}))
     ]);
 
     // Tabla empresas
@@ -7273,11 +7230,12 @@ async function editarRemuneracion(id) {
     document.getElementById('iRemMonto').value      = r.monto;
     document.getElementById('iRemFecha').value      = r.fecha;
     document.getElementById('iRemDesc').value       = r.descripcion || '';
-    document.getElementById(id ? 'mRemuneracion' : 'mRemuneracion').classList.add('open');
+    openModal('mRemuneracion');
 }
 
 async function saveRemuneracion(e) {
     e.preventDefault();
+    if (!currentEmpresa) { toast('❌ Sin empresa activa'); return; }
     const btn = document.getElementById('btnSaveRem');
     btn.disabled = true;
     try {
@@ -7516,6 +7474,7 @@ function _renderCamposEditor() {
 
 async function saveModuloConfig(e) {
     e.preventDefault();
+    if (!currentEmpresa) { toast('❌ Sin empresa activa'); return; }
     const nombre = document.getElementById('iModNombre').value.trim();
     const icono  = document.getElementById('iModIcono').value.trim() || '📋';
     const color  = document.getElementById('iModColor').value;
@@ -7611,6 +7570,7 @@ function _renderFormRegistro(datos) {
 
 async function saveRegistroModulo(e) {
     e.preventDefault();
+    if (!currentEmpresa) { toast('❌ Sin empresa activa'); return; }
     const m = _moduloActualData;
     const datos = {};
     (m.campos || []).forEach(c => {
