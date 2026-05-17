@@ -6404,14 +6404,14 @@ async function renderResumenMensual() {
         { data: combVeh },
         { data: remMesRes }
     ] = await Promise.all([
-        sb.from('viajes').select('*, clientes(razon_social), conductores(nombre), vehiculos(patente,marca,modelo)').eq('empresa_id',eid).gte('fecha',inicio).lte('fecha',finStr).order('fecha',{ascending:false}),
-        sb.from('gastos').select('monto').eq('empresa_id',eid).gte('fecha',inicio).lte('fecha',finStr),
-        sb.from('combustible').select('total').eq('empresa_id',eid).gte('fecha',inicio).lte('fecha',finStr),
-        sb.from('vehiculos').select('*',{count:'exact',head:true}).eq('empresa_id',eid).eq('estado','operativo'),
-        sb.from('facturas').select('monto').eq('empresa_id',eid).eq('estado','pendiente'),
-        sb.from('vehiculos').select('id,patente,marca,modelo').eq('empresa_id',eid).order('patente'),
-        sb.from('combustible').select('vehiculo_id,total').eq('empresa_id',eid).gte('fecha',inicio).lte('fecha',finStr),
-        sb.from('remuneraciones').select('monto').eq('empresa_id',eid).gte('fecha',inicio).lte('fecha',finStr).then(r=>r,()=>{return {data:[]}})
+        sb.from('viajes').select('*, clientes(razon_social), conductores(nombre), vehiculos(patente,marca,modelo)').eq('empresa_id',eid).gte('fecha',inicio).lte('fecha',finStr).order('fecha',{ascending:false}).then(r=>r,()=>({data:[]})),
+        sb.from('gastos').select('monto').eq('empresa_id',eid).gte('fecha',inicio).lte('fecha',finStr).then(r=>r,()=>({data:[]})),
+        sb.from('combustible').select('total').eq('empresa_id',eid).gte('fecha',inicio).lte('fecha',finStr).then(r=>r,()=>({data:[]})),
+        sb.from('vehiculos').select('*',{count:'exact',head:true}).eq('empresa_id',eid).eq('estado','operativo').then(r=>r,()=>({count:0})),
+        sb.from('facturas').select('monto').eq('empresa_id',eid).eq('estado','pendiente').then(r=>r,()=>({data:[]})),
+        sb.from('vehiculos').select('id,patente,marca,modelo').eq('empresa_id',eid).order('patente').then(r=>r,()=>({data:[]})),
+        sb.from('combustible').select('vehiculo_id,total').eq('empresa_id',eid).gte('fecha',inicio).lte('fecha',finStr).then(r=>r,()=>({data:[]})),
+        sb.from('remuneraciones').select('monto').eq('empresa_id',eid).gte('fecha',inicio).lte('fecha',finStr).then(r=>r,()=>({data:[]}))
     ]);
 
     const ingresos    = (viajes||[]).reduce((s,v)=>s+(v.tarifa||0),0);
@@ -6888,6 +6888,7 @@ async function saveUnidadLogistica(e) {
         };
         const { data: unit, error } = await sb.from('unidades_logisticas').insert([payload]).select().single();
         if (error) throw error;
+        if (!unit) { toast('❌ Error al crear unidad'); return; }
         await sb.from('movimientos_unidad_logistica').insert([{
             empresa_id: currentEmpresa.id, unidad_id: unit.id,
             tipo_evento: 'recepcion', fecha: payload.fecha_ingreso,
@@ -6924,6 +6925,7 @@ function abrirNuevoTicket() {
 
 async function guardarTicket(e) {
     e.preventDefault();
+    if (!currentEmpresa || !currentUser) { toast('❌ Sin empresa activa'); return; }
     const btn = document.getElementById('btnEnviarTicket');
     btn.disabled = true; btn.textContent = '⏳ Enviando...';
     try {
@@ -7044,6 +7046,7 @@ function abrirResponderTicket(ticketId, titulo, desc, respuesta) {
 }
 
 async function enviarRespuestaTicket() {
+    if (!currentUser) { toast('❌ Usuario no autenticado'); return; }
     const id        = document.getElementById('iTicketId').value;
     const respuesta = document.getElementById('iRespuestaTicket').value.trim();
     const estado    = document.getElementById('iEstadoTicket').value;
@@ -7056,7 +7059,7 @@ async function enviarRespuestaTicket() {
 }
 
 async function renderTpAdmin() {
-    if (!currentEmpresa && currentUser?.rol !== 'superadmin') return;
+    if (!currentUser || currentUser?.rol !== 'superadmin') return;
     _renderTpContacto();
 
     // Cargar empresas
@@ -7551,7 +7554,8 @@ async function eliminarCurrentModule() {
     _moduloActualId = null;
     _moduloActualData = null;
     await cargarModulosCustom();
-    document.querySelector('.tab-btn[onclick*="dashboard"]').click();
+    const _dashBtn = document.querySelector('.tab-btn[onclick*="dashboard"]');
+    if (_dashBtn) _dashBtn.click();
 }
 
 // ── Registros del módulo ──────────────────────────────────────
