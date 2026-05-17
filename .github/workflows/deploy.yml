@@ -19,11 +19,23 @@ jobs:
       - name: Instalar Surge
         run: npm install -g surge
 
-      - name: Deploy a transportpro-nuevo.surge.sh
+      - name: Verificar token
+        env:
+          SURGE_LOGIN: ssaavedra.importaciones@gmail.com
+          SURGE_TOKEN: 917ceb996e01d6f911baff79cde3ef7b
+        run: surge whoami
+
+      - name: Deploy principal transportpro-nuevo.surge.sh
         env:
           SURGE_LOGIN: ssaavedra.importaciones@gmail.com
           SURGE_TOKEN: 917ceb996e01d6f911baff79cde3ef7b
         run: surge . transportpro-nuevo.surge.sh
+
+      - name: Deploy alternativo transportpro-app.surge.sh
+        env:
+          SURGE_LOGIN: ssaavedra.importaciones@gmail.com
+          SURGE_TOKEN: 917ceb996e01d6f911baff79cde3ef7b
+        run: surge . transportpro-app.surge.sh
 
       - name: Crear tablas en Supabase
         run: |
