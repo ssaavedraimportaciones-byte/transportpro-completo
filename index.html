@@ -7379,7 +7379,7 @@ async function renderModuloCustom() {
     if (!_moduloActualData) return;
     const m = _moduloActualData;
     const titleEl = document.getElementById('modCustTitle');
-    titleEl.innerHTML = `<span style="color:${m.color||'#6366f1'}">${m.icono||'📋'}</span> ${m.nombre}`;
+    titleEl.innerHTML = `<span style="color:${m.color||'#6366f1'}">${m.icono||'📋'}</span> ${_escapeHtml(m.nombre)}`;
 
     const campos = m.campos || [];
     const thead = document.getElementById('theadModCust');
