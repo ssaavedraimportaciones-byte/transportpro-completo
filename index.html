@@ -2335,6 +2335,10 @@ function today()     { return new Date().toISOString().split('T')[0]; }
 function shortId(id) { return id ? id.slice(-6).toUpperCase() : '???'; }
 function _esc(s)     { const d = document.createElement('div'); d.textContent = String(s||''); return d.innerHTML; }
 
+// ── Global error handlers ──
+window.onunhandledrejection = (e) => { console.error('[Unhandled Promise]', e.reason); toast('❌ Error inesperado: ' + (e.reason?.message || String(e.reason))); };
+window.onerror = (msg, url, line) => { console.error('[Global Error]', msg, 'at', url, line); toast('❌ Error: ' + msg); return true; };
+
 const colorEstado = {
     planificado: 'badge-info',  en_ruta: 'badge-warning', completado: 'badge-success',
     pendiente:   'badge-warning', pagada: 'badge-success',  vencida:    'badge-danger', parcial: 'badge-info',
@@ -2742,7 +2746,7 @@ function openModal(id) {
                 setVal('iVVehiculo',  d.vehiculo_id);
                 setVal('iVConductor', d.conductor_id);
             }
-        });
+        }).catch((err) => { console.error('[openModal.mViaje]', err); });
         if (!_editingViajeId) document.getElementById('iVFecha').value = t;
         const extraLocal = _editingViajeId ? (() => { try { return JSON.parse(localStorage.getItem('tp_viaje_extra_' + _editingViajeId)); } catch(e) { return null; } })() : null;
         renderCasillasEnForm(_editingViajeData?.datos_extra || extraLocal || null);
@@ -2752,28 +2756,28 @@ function openModal(id) {
         cargarSelectVehiculo('iCoVeh', false).then(() => {
             if (_editingCombustibleId && _editingCombustibleData)
                 document.getElementById('iCoVeh').value = _editingCombustibleData.vehiculo_id || '';
-        });
+        }).catch((err) => { console.error('[openModal.mCombustible]', err); });
         if (!_editingCombustibleId) document.getElementById('iCoFecha').value = t;
     }
     if (id === 'mGasto') {
         cargarSelectVehiculo('iGVeh', true).then(() => {
             if (_editingGastoId && _editingGastoData)
                 document.getElementById('iGVeh').value = _editingGastoData.vehiculo_id || '';
-        });
+        }).catch((err) => { console.error('[openModal.mGasto]', err); });
         if (!_editingGastoId) document.getElementById('iGFecha').value = t;
     }
     if (id === 'mRemuneracion') {
         _cargarSelectConductorRem('iRemConductor', false).then(() => {
             if (_editingRemId && _editingRemData)
                 document.getElementById('iRemConductor').value = _editingRemData.conductor_id || '';
-        });
+        }).catch((err) => { console.error('[openModal.mRemuneracion]', err); });
         if (!_editingRemId) document.getElementById('iRemFecha').value = t;
     }
     if (id === 'mMantenimiento') {
         cargarSelectVehiculo('iMVeh', false).then(() => {
             if (_editingMantenimientoId && _editingMantenimientoData)
                 document.getElementById('iMVeh').value = _editingMantenimientoData.vehiculo_id || '';
-        });
+        }).catch((err) => { console.error('[openModal.mMantenimiento]', err); });
     }
     if (id === 'mUnidadLogistica') {
         document.getElementById('iULFechaIngreso').value = t;
@@ -3130,16 +3134,17 @@ async function exportarTodo() {
     toast('⏳ Generando Excel completo...');
     const eid = currentEmpresa.id;
 
+    const _fb = (def) => (r) => r.error ? def : r;
     const [{ data: viajes }, { data: facturas }, { data: clientes }, { data: vehiculos },
            { data: conductores }, { data: combustible }, { data: gastos }, { data: mantenimiento }] = await Promise.all([
-        sb.from('viajes').select('*, clientes(razon_social), vehiculos(patente), conductores(nombre)').eq('empresa_id', eid).order('fecha', { ascending: false }),
-        sb.from('facturas').select('*, clientes(razon_social)').eq('empresa_id', eid).order('fecha', { ascending: false }),
-        sb.from('clientes').select('*').eq('empresa_id', eid).order('razon_social'),
-        sb.from('vehiculos').select('*').eq('empresa_id', eid).order('patente'),
-        sb.from('conductores').select('*').eq('empresa_id', eid).order('nombre'),
-        sb.from('combustible').select('*, vehiculos(patente)').eq('empresa_id', eid).order('fecha', { ascending: false }),
-        sb.from('gastos').select('*, vehiculos(patente)').eq('empresa_id', eid).order('fecha', { ascending: false }),
-        sb.from('mantenimiento').select('*, vehiculos(patente)').eq('empresa_id', eid).order('fecha_programada', { ascending: false })
+        sb.from('viajes').select('*, clientes(razon_social), vehiculos(patente), conductores(nombre)').eq('empresa_id', eid).order('fecha', { ascending: false }).then(_fb({data:[]}),()=>({data:[]})),
+        sb.from('facturas').select('*, clientes(razon_social)').eq('empresa_id', eid).order('fecha', { ascending: false }).then(_fb({data:[]}),()=>({data:[]})),
+        sb.from('clientes').select('*').eq('empresa_id', eid).order('razon_social').then(_fb({data:[]}),()=>({data:[]})),
+        sb.from('vehiculos').select('*').eq('empresa_id', eid).order('patente').then(_fb({data:[]}),()=>({data:[]})),
+        sb.from('conductores').select('*').eq('empresa_id', eid).order('nombre').then(_fb({data:[]}),()=>({data:[]})),
+        sb.from('combustible').select('*, vehiculos(patente)').eq('empresa_id', eid).order('fecha', { ascending: false }).then(_fb({data:[]}),()=>({data:[]})),
+        sb.from('gastos').select('*, vehiculos(patente)').eq('empresa_id', eid).order('fecha', { ascending: false }).then(_fb({data:[]}),()=>({data:[]})),
+        sb.from('mantenimiento').select('*, vehiculos(patente)').eq('empresa_id', eid).order('fecha_programada', { ascending: false }).then(_fb({data:[]}),()=>({data:[]}))
     ]);
 
     const wb = XLSX.utils.book_new();
@@ -3405,21 +3410,27 @@ async function saveViaje(e) {
 }
 
 async function cargarSelectsViaje() {
-    const eid = currentEmpresa.id;
-    const [{ data: cls }, { data: vehs }, { data: conds }] = await Promise.all([
-        sb.from('clientes').select('id, razon_social').eq('empresa_id', eid).order('razon_social'),
-        sb.from('vehiculos').select('id, patente').eq('empresa_id', eid).order('patente'),
-        sb.from('conductores').select('id, nombre').eq('empresa_id', eid).order('nombre')
-    ]);
-    document.getElementById('iVCliente').innerHTML =
-        '<option value="">Seleccionar cliente...</option>' +
-        (cls||[]).map(c => `<option value="${c.id}">${c.razon_social}</option>`).join('');
-    document.getElementById('iVVehiculo').innerHTML =
-        '<option value="">Sin vehículo</option>' +
-        (vehs||[]).map(v => `<option value="${v.id}">${v.patente}</option>`).join('');
-    document.getElementById('iVConductor').innerHTML =
-        '<option value="">Sin conductor</option>' +
-        (conds||[]).map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
+    try {
+        const eid = currentEmpresa.id;
+        const _fb = (def) => (r) => r.error ? def : r;
+        const [{ data: cls }, { data: vehs }, { data: conds }] = await Promise.all([
+            sb.from('clientes').select('id, razon_social').eq('empresa_id', eid).order('razon_social').then(_fb({data:[]}),()=>({data:[]})),
+            sb.from('vehiculos').select('id, patente').eq('empresa_id', eid).order('patente').then(_fb({data:[]}),()=>({data:[]})),
+            sb.from('conductores').select('id, nombre').eq('empresa_id', eid).order('nombre').then(_fb({data:[]}),()=>({data:[]}))
+        ]);
+        document.getElementById('iVCliente').innerHTML =
+            '<option value="">Seleccionar cliente...</option>' +
+            (cls||[]).map(c => `<option value="${c.id}">${c.razon_social}</option>`).join('');
+        document.getElementById('iVVehiculo').innerHTML =
+            '<option value="">Sin vehículo</option>' +
+            (vehs||[]).map(v => `<option value="${v.id}">${v.patente}</option>`).join('');
+        document.getElementById('iVConductor').innerHTML =
+            '<option value="">Sin conductor</option>' +
+            (conds||[]).map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
+    } catch (err) {
+        console.error('[cargarSelectsViaje]', err);
+        toast('⚠️ Error cargando datos: ' + err.message);
+    }
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -4102,11 +4113,17 @@ async function eliminarRegistro(tabla, id, rerender) {
 // UTILIDAD COMPARTIDA: cargar select de vehículos
 // ═══════════════════════════════════════════════════════════
 async function cargarSelectVehiculo(selectId, opcional) {
-    const { data } = await sb.from('vehiculos').select('id, patente')
-        .eq('empresa_id', currentEmpresa.id).order('patente');
-    const first = opcional ? '<option value="">Sin vehículo</option>' : '<option value="">Seleccionar...</option>';
-    document.getElementById(selectId).innerHTML =
-        first + (data||[]).map(v => `<option value="${v.id}">${v.patente}</option>`).join('');
+    try {
+        const { data, error } = await sb.from('vehiculos').select('id, patente')
+            .eq('empresa_id', currentEmpresa.id).order('patente');
+        if (error) throw error;
+        const first = opcional ? '<option value="">Sin vehículo</option>' : '<option value="">Seleccionar...</option>';
+        document.getElementById(selectId).innerHTML =
+            first + (data||[]).map(v => `<option value="${v.id}">${v.patente}</option>`).join('');
+    } catch (err) {
+        console.error('[cargarSelectVehiculo]', err);
+        toast('❌ Error cargando vehículos: ' + err.message);
+    }
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -4521,14 +4538,20 @@ function cotResetForm() {
 }
 
 async function cargarSelectClienteEn(selectId) {
-    const { data: cls } = await sb.from('clientes')
-        .select('id, razon_social')
-        .eq('empresa_id', currentEmpresa.id)
-        .order('razon_social');
-    const el = document.getElementById(selectId);
-    if (!el) return;
-    el.innerHTML = '<option value="">Seleccionar cliente...</option>' +
-        (cls || []).map(c => `<option value="${c.id}">${c.razon_social}</option>`).join('');
+    try {
+        const { data: cls, error } = await sb.from('clientes')
+            .select('id, razon_social')
+            .eq('empresa_id', currentEmpresa.id)
+            .order('razon_social');
+        if (error) throw error;
+        const el = document.getElementById(selectId);
+        if (!el) return;
+        el.innerHTML = '<option value="">Seleccionar cliente...</option>' +
+            (cls || []).map(c => `<option value="${c.id}">${c.razon_social}</option>`).join('');
+    } catch (err) {
+        console.error('[cargarSelectClienteEn]', err);
+        toast('❌ Error cargando clientes: ' + err.message);
+    }
 }
 
 async function saveCotizacion(e) {
@@ -4609,7 +4632,8 @@ async function cambiarEstadoCotizacion(id, nuevoEstado) {
 async function deleteCotizacion(id) {
     if (!currentEmpresa) return;
     if (!confirm('¿Eliminar esta cotización?')) return;
-    await sb.from('cotizacion_items').delete().eq('cotizacion_id', id);
+    const { error: err1 } = await sb.from('cotizacion_items').delete().eq('cotizacion_id', id);
+    if (err1) { toast('❌ Error: ' + err1.message); return; }
     const { error } = await sb.from('cotizaciones').delete().eq('id', id).eq('empresa_id', currentEmpresa.id);
     if (error) { toast('❌ ' + error.message); return; }
     toast('🗑 Cotización eliminada');
@@ -7218,14 +7242,20 @@ function _renderRemSummary(data) {
 
 async function _cargarSelectConductorRem(selectId, opcional) {
     if (!currentEmpresa) return;
-    const { data } = await sb.from('conductores').select('id, nombre')
-        .eq('empresa_id', currentEmpresa.id).order('nombre');
-    const sel = document.getElementById(selectId);
-    if (!sel) return;
-    const current = sel.value;
-    const first = opcional ? '<option value="">Todos</option>' : '<option value="">Seleccionar...</option>';
-    sel.innerHTML = first + (data||[]).map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
-    if (current) sel.value = current;
+    try {
+        const { data, error } = await sb.from('conductores').select('id, nombre')
+            .eq('empresa_id', currentEmpresa.id).order('nombre');
+        if (error) throw error;
+        const sel = document.getElementById(selectId);
+        if (!sel) return;
+        const current = sel.value;
+        const first = opcional ? '<option value="">Todos</option>' : '<option value="">Seleccionar...</option>';
+        sel.innerHTML = first + (data||[]).map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
+        if (current) sel.value = current;
+    } catch (err) {
+        console.error('[_cargarSelectConductorRem]', err);
+        toast('❌ Error cargando conductores: ' + err.message);
+    }
 }
 
 function filtrarRemuneraciones() {
