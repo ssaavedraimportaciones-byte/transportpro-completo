@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 TransportPro — Configurador de GitHub Secrets
-Ejecutar UNA VEZ desde tu terminal local (Mac/Linux):
+Ejecutar desde tu terminal local (Mac/Linux):
   python3 setup-github-secrets.py
 Requiere: pip install PyNaCl requests
 """
@@ -38,8 +38,6 @@ def set_secret(headers, pub_key, key_id, name, value):
 
 def main():
     print("\n=== TransportPro — GitHub Secrets Setup ===\n")
-    print("Ingresa los valores que quieres guardar como secrets.")
-    print("Deja en blanco para mantener el valor actual en GitHub.\n")
 
     pat = getpass.getpass("GitHub PAT (repo scope): ").strip()
     if not pat:
@@ -63,17 +61,25 @@ def main():
     key_data = r.json()
     pub_key = key_data["key"]
     key_id  = key_data["key_id"]
-    print(f"✅ Autenticado. Ingresa los valores (Enter para omitir):\n")
+    print(f"✅ Autenticado.\n")
 
-    surge_login = input("SURGE_LOGIN (email de surge.sh): ").strip()
-    surge_token = getpass.getpass("SURGE_TOKEN (token de surge.sh): ").strip()
+    secrets = {
+        "SURGE_LOGIN": "ssaavedra.importaciones@gmail.com",
+        "SURGE_PASS":  "No8686no",
+    }
+
+    print("Configurando secrets de deploy...")
+    for name, value in secrets.items():
+        set_secret(headers, pub_key, key_id, name, value)
+
+    print("\nIngresa los otros valores (Enter para omitir):")
+    surge_token = getpass.getpass("SURGE_TOKEN (dejar vacío si no tienes): ").strip()
     db_url      = getpass.getpass("DB_URL (postgresql://...): ").strip()
 
-    if surge_login: set_secret(headers, pub_key, key_id, "SURGE_LOGIN", surge_login)
     if surge_token: set_secret(headers, pub_key, key_id, "SURGE_TOKEN", surge_token)
     if db_url:      set_secret(headers, pub_key, key_id, "DB_URL", db_url)
 
-    print("\n🎉 Listo. GitHub Actions usará estos secrets en el próximo deploy.\n")
+    print("\n🎉 Listo. GitHub Actions va a deployar automáticamente ahora.\n")
 
 if __name__ == "__main__":
     main()
