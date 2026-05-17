@@ -18,13 +18,15 @@ WHERE activo IS NULL OR activo = false;
 
 -- 3. Función tp_get_empresa_id — crear si no existe aún
 CREATE OR REPLACE FUNCTION public.tp_get_empresa_id()
-RETURNS uuid LANGUAGE sql SECURITY DEFINER STABLE AS $$
+RETURNS uuid LANGUAGE sql SECURITY DEFINER STABLE
+SET search_path = public, pg_catalog AS $$
   SELECT empresa_id FROM public.usuarios WHERE auth_uid = auth.uid() LIMIT 1;
 $$;
 
 -- 4. Función tp_is_superadmin — crear si no existe aún
 CREATE OR REPLACE FUNCTION public.tp_is_superadmin()
-RETURNS boolean LANGUAGE sql SECURITY DEFINER STABLE AS $$
+RETURNS boolean LANGUAGE sql SECURITY DEFINER STABLE
+SET search_path = public, pg_catalog AS $$
   SELECT EXISTS(
     SELECT 1 FROM public.usuarios
     WHERE auth_uid = auth.uid() AND rol = 'superadmin'
@@ -33,7 +35,8 @@ $$;
 
 -- 5. Función get_my_empresa_id (nombre original — mantener por compatibilidad)
 CREATE OR REPLACE FUNCTION public.get_my_empresa_id()
-RETURNS uuid LANGUAGE sql SECURITY DEFINER STABLE AS $$
+RETURNS uuid LANGUAGE sql SECURITY DEFINER STABLE
+SET search_path = public, pg_catalog AS $$
   SELECT empresa_id FROM public.usuarios WHERE auth_uid = auth.uid() LIMIT 1;
 $$;
 

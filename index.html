@@ -2333,6 +2333,7 @@ function fmt(n)      { return (n || 0).toLocaleString('es-CL'); }
 function fmtDate(d)  { return d ? new Date(d + 'T12:00:00').toLocaleDateString('es-CL') : '-'; }
 function today()     { return new Date().toISOString().split('T')[0]; }
 function shortId(id) { return id ? id.slice(-6).toUpperCase() : '???'; }
+function _esc(s)     { const d = document.createElement('div'); d.textContent = String(s||''); return d.innerHTML; }
 
 const colorEstado = {
     planificado: 'badge-info',  en_ruta: 'badge-warning', completado: 'badge-success',
@@ -2470,7 +2471,7 @@ async function registrarEmpresa(e) {
                 }
             }, 1000);
         } else {
-            alertEl.innerHTML = '❌ ' + (err.message || 'Error al crear la cuenta');
+            alertEl.textContent = '❌ ' + (err.message || 'Error al crear la cuenta');
             btn.disabled = false;
             btn.textContent = '🚀 Crear mi cuenta gratis (30 días)';
         }
@@ -3255,7 +3256,7 @@ async function renderViajes() {
             .eq('empresa_id', currentEmpresa.id).order('fecha', { ascending: false });
         data = r2.data; error = r2.error;
     }
-    if (error) { t.innerHTML = `<tr class="empty-row"><td colspan="10">⚠️ ${error.message}</td></tr>`; return; }
+    if (error) { t.innerHTML = `<tr class="empty-row"><td colspan="10">⚠️ ${_esc(error.message)}</td></tr>`; return; }
 
     _viajesData = data || [];
     filtrarViajes();
@@ -3483,7 +3484,7 @@ async function renderClientes() {
         .from('clientes').select('*')
         .eq('empresa_id', currentEmpresa.id).order('razon_social');
 
-    if (error) { t.innerHTML = `<tr class="empty-row"><td colspan="6">⚠️ ${error.message}</td></tr>`; return; }
+    if (error) { t.innerHTML = `<tr class="empty-row"><td colspan="6">⚠️ ${_esc(error.message)}</td></tr>`; return; }
 
     _clientesData = data || [];
     t.innerHTML = _clientesData.length ? _clientesData.map(c => `<tr>
@@ -3543,7 +3544,7 @@ async function renderFacturacion() {
         .eq('empresa_id', currentEmpresa.id)
         .order('fecha', { ascending: false });
 
-    if (error) { t.innerHTML = `<tr class="empty-row"><td colspan="7">⚠️ ${error.message}</td></tr>`; return; }
+    if (error) { t.innerHTML = `<tr class="empty-row"><td colspan="7">⚠️ ${_esc(error.message)}</td></tr>`; return; }
 
     _facturasData = data || [];
     const mes       = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
@@ -3690,7 +3691,7 @@ async function renderVehiculos() {
         .from('vehiculos').select('*')
         .eq('empresa_id', currentEmpresa.id).order('patente');
 
-    if (error) { t.innerHTML = `<tr class="empty-row"><td colspan="6">⚠️ ${error.message}</td></tr>`; return; }
+    if (error) { t.innerHTML = `<tr class="empty-row"><td colspan="6">⚠️ ${_esc(error.message)}</td></tr>`; return; }
 
     t.innerHTML = data.length ? data.map(v => `<tr>
         <td><strong>${_escapeHtml(v.patente)}</strong></td>
@@ -3750,7 +3751,7 @@ async function renderConductores() {
         .from('conductores').select('*')
         .eq('empresa_id', currentEmpresa.id).order('nombre');
 
-    if (error) { t.innerHTML = `<tr class="empty-row"><td colspan="6">⚠️ ${error.message}</td></tr>`; return; }
+    if (error) { t.innerHTML = `<tr class="empty-row"><td colspan="6">⚠️ ${_esc(error.message)}</td></tr>`; return; }
 
     t.innerHTML = data.length ? data.map(c => `<tr>
         <td>${c.rut}</td>
@@ -4368,7 +4369,7 @@ async function renderCotizaciones() {
         .order('fecha', { ascending: false });
 
     if (error) {
-        tbody.innerHTML = `<tr class="empty-row"><td colspan="8">Error: ${error.message}</td></tr>`;
+        tbody.innerHTML = `<tr class="empty-row"><td colspan="8">Error: ${_esc(error.message)}</td></tr>`;
         return;
     }
     _cotizacionesCache = cots || [];
@@ -5601,7 +5602,7 @@ renderClientes = async function() {
     const t = document.getElementById('tClientes');
     t.innerHTML = '<tr class="loading-row"><td colspan="6">Cargando...</td></tr>';
     const { data, error } = await sb.from('clientes').select('*').eq('empresa_id', currentEmpresa.id).order('razon_social');
-    if (error) { t.innerHTML = `<tr class="empty-row"><td colspan="6">⚠️ ${error.message}</td></tr>`; return; }
+    if (error) { t.innerHTML = `<tr class="empty-row"><td colspan="6">⚠️ ${_esc(error.message)}</td></tr>`; return; }
     _clientesData = data || [];
     t.innerHTML = _clientesData.length ? _clientesData.map(c => `<tr>
         <td>${_escapeHtml(c.rut)}</td>
@@ -5640,7 +5641,7 @@ renderVehiculos = async function() {
     const t = document.getElementById('tVehiculos');
     t.innerHTML = '<tr class="loading-row"><td colspan="6">Cargando...</td></tr>';
     const { data, error } = await sb.from('vehiculos').select('*').eq('empresa_id', currentEmpresa.id).order('patente');
-    if (error) { t.innerHTML = `<tr class="empty-row"><td colspan="6">⚠️ ${error.message}</td></tr>`; return; }
+    if (error) { t.innerHTML = `<tr class="empty-row"><td colspan="6">⚠️ ${_esc(error.message)}</td></tr>`; return; }
     _vehiculosData = data || [];
     t.innerHTML = _vehiculosData.length ? _vehiculosData.map(v => `<tr>
         <td><strong>${_escapeHtml(v.patente)}</strong></td>
@@ -5680,7 +5681,7 @@ renderConductores = async function() {
     const t = document.getElementById('tConductores');
     t.innerHTML = '<tr class="loading-row"><td colspan="6">Cargando...</td></tr>';
     const { data, error } = await sb.from('conductores').select('*').eq('empresa_id', currentEmpresa.id).order('nombre');
-    if (error) { t.innerHTML = `<tr class="empty-row"><td colspan="6">⚠️ ${error.message}</td></tr>`; return; }
+    if (error) { t.innerHTML = `<tr class="empty-row"><td colspan="6">⚠️ ${_esc(error.message)}</td></tr>`; return; }
     _conductoresData = data || [];
     t.innerHTML = _conductoresData.length ? _conductoresData.map(c => `<tr>
         <td>${c.rut}</td>
@@ -5744,7 +5745,7 @@ renderCombustible = async function() {
     const t = document.getElementById('tCombustible');
     t.innerHTML = '<tr class="loading-row"><td colspan="8">Cargando...</td></tr>';
     const { data, error } = await sb.from('combustible').select('*, vehiculos(patente)').eq('empresa_id', currentEmpresa.id).order('fecha', { ascending: false });
-    if (error) { t.innerHTML = `<tr class="empty-row"><td colspan="8">⚠️ ${error.message}</td></tr>`; return; }
+    if (error) { t.innerHTML = `<tr class="empty-row"><td colspan="8">⚠️ ${_esc(error.message)}</td></tr>`; return; }
     _combustibleData = data || [];
     const inp = document.getElementById('filtroFacturaComb');
     const q = inp ? (inp.value || '').trim().toLowerCase() : '';
@@ -5777,7 +5778,7 @@ renderGastos = async function() {
     const t = document.getElementById('tGastos');
     t.innerHTML = '<tr class="loading-row"><td colspan="6">Cargando...</td></tr>';
     const { data, error } = await sb.from('gastos').select('*, vehiculos(patente)').eq('empresa_id', currentEmpresa.id).order('fecha', { ascending: false });
-    if (error) { t.innerHTML = `<tr class="empty-row"><td colspan="6">⚠️ ${error.message}</td></tr>`; return; }
+    if (error) { t.innerHTML = `<tr class="empty-row"><td colspan="6">⚠️ ${_esc(error.message)}</td></tr>`; return; }
     _gastosData = data || [];
     t.innerHTML = _gastosData.length ? _gastosData.map(g => `<tr>
         <td>${fmtDate(g.fecha)}</td>
@@ -5835,7 +5836,7 @@ renderMantenimiento = async function() {
     const t = document.getElementById('tMantenimiento');
     t.innerHTML = '<tr class="loading-row"><td colspan="7">Cargando...</td></tr>';
     const { data, error } = await sb.from('mantenimiento').select('*, vehiculos(patente)').eq('empresa_id', currentEmpresa.id).order('fecha_programada', { ascending: true });
-    if (error) { t.innerHTML = `<tr class="empty-row"><td colspan="7">⚠️ ${error.message}</td></tr>`; return; }
+    if (error) { t.innerHTML = `<tr class="empty-row"><td colspan="7">⚠️ ${_esc(error.message)}</td></tr>`; return; }
     _mantenimientoData = data || [];
     t.innerHTML = _mantenimientoData.length ? _mantenimientoData.map(m => `<tr>
         <td>${m.vehiculos?.patente || '—'}</td>
@@ -6030,7 +6031,7 @@ async function renderUsuarios() {
         .order('nombre');
 
     if (error) {
-        t.innerHTML = `<tr class="empty-row"><td colspan="5">⚠️ ${error.message}</td></tr>`;
+        t.innerHTML = `<tr class="empty-row"><td colspan="5">⚠️ ${_esc(error.message)}</td></tr>`;
         return;
     }
 
@@ -6532,7 +6533,7 @@ async function renderBitacora() {
         .eq('empresa_id', currentEmpresa.id)
         .eq('vehiculo_id', _bitacoraVehiculoId)
         .order('fecha', { ascending: false });
-    if (error) { t.innerHTML = `<tr class="empty-row"><td colspan="7">⚠️ ${error.message}</td></tr>`; return; }
+    if (error) { t.innerHTML = `<tr class="empty-row"><td colspan="7">⚠️ ${_esc(error.message)}</td></tr>`; return; }
     _bitacoraData = data || [];
 
     // Render filter tabs
@@ -6666,7 +6667,7 @@ async function _renderAlmInventario() {
         .eq('empresa_id', currentEmpresa.id)
         .order('created_at', {ascending:false})
         .then(r=>r, ()=>({data:null,error:{message:'Tabla no encontrada — ejecuta el SQL de migración'}}));
-    if (error) { t.innerHTML = `<tr class="empty-row"><td colspan="11">⚠️ ${error.message}</td></tr>`; return; }
+    if (error) { t.innerHTML = `<tr class="empty-row"><td colspan="11">⚠️ ${_esc(error.message)}</td></tr>`; return; }
     _almData = data || [];
     filtrarAlmacenaje();
 }
@@ -6725,7 +6726,7 @@ async function _renderAlmMovimientos() {
         .eq('empresa_id', currentEmpresa.id)
         .order('fecha', {ascending:false}).limit(100)
         .then(r=>r, ()=>({data:null,error:{message:'Tabla no encontrada'}}));
-    if (error) { t.innerHTML = `<tr class="empty-row"><td colspan="5">⚠️ ${error.message}</td></tr>`; return; }
+    if (error) { t.innerHTML = `<tr class="empty-row"><td colspan="5">⚠️ ${_esc(error.message)}</td></tr>`; return; }
     const evColor = { recepcion:'badge-success', traslado:'badge-info', asignacion:'badge-warning', despacho:'badge-info', 'daño':'badge-danger', 'pérdida':'badge-danger' };
     t.innerHTML = (data||[]).length ? (data||[]).map(m=>`<tr>
         <td>${fmtDate(m.fecha)}</td>
@@ -6981,7 +6982,7 @@ async function renderSoporte() {
                 </div>` : ''}
             </div>`).join('');
     } catch(err) {
-        el.innerHTML = `<div style="padding:16px;color:#dc2626">⚠️ ${err.message}</div>`;
+        el.innerHTML = `<div style="padding:16px;color:#dc2626">⚠️ ${_esc(err.message)}</div>`;
     }
 }
 
@@ -7150,7 +7151,7 @@ async function renderRemuneraciones() {
         .order('fecha', { ascending: false });
 
     if (error) {
-        t.innerHTML = `<tr class="empty-row"><td colspan="6">⚠️ ${error.message}</td></tr>`;
+        t.innerHTML = `<tr class="empty-row"><td colspan="6">⚠️ ${_esc(error.message)}</td></tr>`;
         return;
     }
 
@@ -7392,7 +7393,7 @@ async function renderModuloCustom() {
         .order('created_at', { ascending: false });
 
     if (error) {
-        tbody.innerHTML = `<tr class="empty-row"><td colspan="${campos.length+1}">⚠️ ${error.message}</td></tr>`;
+        tbody.innerHTML = `<tr class="empty-row"><td colspan="${campos.length+1}">⚠️ ${_esc(error.message)}</td></tr>`;
         return;
     }
 

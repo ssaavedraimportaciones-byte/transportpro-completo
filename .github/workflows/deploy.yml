@@ -21,8 +21,8 @@ jobs:
 
       - name: Teardown y redeploy transportpro-nuevo.surge.sh
         env:
-          SURGE_LOGIN: ssaavedra.importaciones@gmail.com
-          SURGE_TOKEN: 917ceb996e01d6f911baff79cde3ef7b
+          SURGE_LOGIN: ${{ secrets.SURGE_LOGIN }}
+          SURGE_TOKEN: ${{ secrets.SURGE_TOKEN }}
         run: |
           surge teardown transportpro-nuevo.surge.sh || true
           sleep 2
@@ -30,7 +30,7 @@ jobs:
 
       - name: Aplicar migraciones Supabase
         env:
-          DB_URL: "postgresql://postgres.ozmnfdndauyzcsxunxig:TransportPro2026DB@aws-0-sa-east-1.pooler.supabase.com:6543/postgres"
+          DB_URL: ${{ secrets.DB_URL }}
         run: |
           echo "🔄 Aplicando migraciones en orden..."
           for f in $(ls supabase/migrations/*.sql | sort); do
