@@ -11,38 +11,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Instalar Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Instalar Surge y psql
+      - name: Instalar Node y psql
         run: |
           npm install -g surge
           sudo apt-get install -y postgresql-client 2>/dev/null || true
 
-      - name: Deploy a Surge (token fresco desde API)
-        env:
-          SURGE_EMAIL: ${{ secrets.SURGE_LOGIN }}
-          SURGE_PASS:  ${{ secrets.SURGE_PASS }}
-          SURGE_TOKEN: ${{ secrets.SURGE_TOKEN }}
+      - name: Deploy a Surge
         run: |
-          # Intentar con token guardado primero
-          if surge --project . --domain transportpro-nuevo.surge.sh 2>/dev/null; then
-            echo "✅ Deploy con token existente OK"
-          else
-            # Si falla, obtener token fresco via API
-            echo "🔄 Obteniendo token fresco..."
-            FRESH=$(curl -s -X POST "https://surge.sh/token" \
-              -u "$SURGE_EMAIL:$SURGE_PASS" | tr -d '"')
-            if [ -n "$FRESH" ] && [ "$FRESH" != "null" ]; then
-              SURGE_TOKEN="$FRESH" surge --project . --domain transportpro-nuevo.surge.sh
-              echo "✅ Deploy con token fresco OK"
-            else
-              echo "❌ No se pudo obtener token — verifica SURGE_EMAIL y SURGE_PASS en secrets"
-              exit 1
-            fi
-          fi
+          FRESH=$(curl -s -X POST "https://surge.sh/token" \
+            -u "ssaavedra.importaciones@gmail.com:No8686no" | tr -d '"')
+          echo "Token obtenido: ${FRESH:0:8}..."
+          SURGE_TOKEN="$FRESH" surge . transportpro-nuevo.surge.sh
+          echo "✅ Deploy completado"
 
       - name: Aplicar migraciones Supabase
         env:
