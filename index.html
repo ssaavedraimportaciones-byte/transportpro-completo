@@ -2883,23 +2883,24 @@ async function renderDashboard() {
         const prevFin    = new Date(dYear, dMonth, 0).toISOString().split('T')[0];
 
         // ── Queries principales ──────────────────
+        const _fb = (def) => (r) => r.error ? def : r;
         const [{ data: viajes }, { data: gastosMes }, { data: combMes },
                { data: fPend }, { data: vehiculos }, { data: conductores }, { data: mantPend }, { data: remMes },
                { data: bitMes }, { data: gastosPrev }, { data: combPrev }, { data: viajesPrev }] =
             await Promise.all([
                 sb.from('viajes').select('id, fecha, tarifa, estado, origen, destino, vehiculo_id, clientes(razon_social), vehiculos(patente)')
-                    .eq('empresa_id', eid).gte('fecha', seisInicio).order('fecha', { ascending: false }),
-                sb.from('gastos').select('fecha, monto, vehiculo_id').eq('empresa_id', eid).gte('fecha', seisInicio).lte('fecha', mesFin),
-                sb.from('combustible').select('fecha, total, vehiculo_id').eq('empresa_id', eid).gte('fecha', seisInicio).lte('fecha', mesFin),
-                sb.from('facturas').select('monto').eq('empresa_id', eid).eq('estado', 'pendiente'),
-                sb.from('vehiculos').select('id, patente, estado').eq('empresa_id', eid),
-                sb.from('conductores').select('id, vencimiento_licencia').eq('empresa_id', eid).eq('estado', 'activo'),
-                sb.from('mantenimiento').select('tipo, vehiculos(patente), fecha_programada').eq('empresa_id', eid).eq('estado', 'pendiente'),
-                sb.from('remuneraciones').select('monto').eq('empresa_id', eid).gte('fecha', mesInicio).lte('fecha', mesFin).then(r=>r,()=>{return {data:[]}}),
-                sb.from('bitacora_mantencion').select('vehiculo_id, costo').eq('empresa_id', eid).gte('fecha', mesInicio).lte('fecha', mesFin).then(r=>r,()=>({data:[]})),
-                sb.from('gastos').select('monto').eq('empresa_id', eid).gte('fecha', prevInicio).lte('fecha', prevFin),
-                sb.from('combustible').select('total').eq('empresa_id', eid).gte('fecha', prevInicio).lte('fecha', prevFin),
-                sb.from('viajes').select('tarifa').eq('empresa_id', eid).gte('fecha', prevInicio).lte('fecha', prevFin)
+                    .eq('empresa_id', eid).gte('fecha', seisInicio).order('fecha', { ascending: false }).then(_fb({data:[]}),()=>({data:[]})),
+                sb.from('gastos').select('fecha, monto, vehiculo_id').eq('empresa_id', eid).gte('fecha', seisInicio).lte('fecha', mesFin).then(_fb({data:[]}),()=>({data:[]})),
+                sb.from('combustible').select('fecha, total, vehiculo_id').eq('empresa_id', eid).gte('fecha', seisInicio).lte('fecha', mesFin).then(_fb({data:[]}),()=>({data:[]})),
+                sb.from('facturas').select('monto').eq('empresa_id', eid).eq('estado', 'pendiente').then(_fb({data:[]}),()=>({data:[]})),
+                sb.from('vehiculos').select('id, patente, estado').eq('empresa_id', eid).then(_fb({data:[]}),()=>({data:[]})),
+                sb.from('conductores').select('id, vencimiento_licencia').eq('empresa_id', eid).eq('estado', 'activo').then(_fb({data:[]}),()=>({data:[]})),
+                sb.from('mantenimiento').select('tipo, vehiculos(patente), fecha_programada').eq('empresa_id', eid).eq('estado', 'pendiente').then(_fb({data:[]}),()=>({data:[]})),
+                sb.from('remuneraciones').select('monto').eq('empresa_id', eid).gte('fecha', mesInicio).lte('fecha', mesFin).then(_fb({data:[]}),()=>({data:[]})),
+                sb.from('bitacora_mantencion').select('vehiculo_id, costo').eq('empresa_id', eid).gte('fecha', mesInicio).lte('fecha', mesFin).then(_fb({data:[]}),()=>({data:[]})),
+                sb.from('gastos').select('monto').eq('empresa_id', eid).gte('fecha', prevInicio).lte('fecha', prevFin).then(_fb({data:[]}),()=>({data:[]})),
+                sb.from('combustible').select('total').eq('empresa_id', eid).gte('fecha', prevInicio).lte('fecha', prevFin).then(_fb({data:[]}),()=>({data:[]})),
+                sb.from('viajes').select('tarifa').eq('empresa_id', eid).gte('fecha', prevInicio).lte('fecha', prevFin).then(_fb({data:[]}),()=>({data:[]}))
             ]);
 
         const vMes     = (viajes||[]).filter(v => v.fecha >= mesInicio && v.fecha <= mesFin);
@@ -3217,10 +3218,10 @@ async function updateStats() {
         .toISOString().split('T')[0];
 
     const [{ count: nViajes }, { data: vMes }, { count: nVeh }, { data: fPend }] = await Promise.all([
-        sb.from('viajes').select('id',{count:'exact',head:true}).eq('empresa_id',eid).gte('fecha',mesInicio),
-        sb.from('viajes').select('tarifa').eq('empresa_id',eid).gte('fecha',mesInicio),
-        sb.from('vehiculos').select('*',{count:'exact',head:true}).eq('empresa_id',eid).eq('estado','operativo'),
-        sb.from('facturas').select('monto').eq('empresa_id',eid).eq('estado','pendiente')
+        sb.from('viajes').select('id',{count:'exact',head:true}).eq('empresa_id',eid).gte('fecha',mesInicio).then(r=>r,()=>({count:0})),
+        sb.from('viajes').select('tarifa').eq('empresa_id',eid).gte('fecha',mesInicio).then(r=>r,()=>({data:[]})),
+        sb.from('vehiculos').select('*',{count:'exact',head:true}).eq('empresa_id',eid).eq('estado','operativo').then(r=>r,()=>({count:0})),
+        sb.from('facturas').select('monto').eq('empresa_id',eid).eq('estado','pendiente').then(r=>r,()=>({data:[]}))
     ]);
 
     const ingresos = (vMes||[]).reduce((s,v) => s+(v.tarifa||0), 0);
@@ -3243,15 +3244,17 @@ async function renderViajes() {
     const t = document.getElementById('tViajes');
     t.innerHTML = '<tr class="loading-row"><td colspan="10">Cargando...</td></tr>';
 
-    // Select ONLY columns that definitely exist in schema (no wildcard, no optional columns)
-    // Base columns: id, empresa_id, numero, cliente_id, vehiculo_id, conductor_id, fecha, origen, destino, km_inicial, km_final, tarifa, estado
-    // Added by migrations: tipo_carga, numero_guia, numero_contenedor
-    // Include related tables for display
-    const { data, error } = await sb.from('viajes')
+    let { data, error } = await sb.from('viajes')
         .select('id, cliente_id, vehiculo_id, conductor_id, fecha, origen, destino, km_inicial, tarifa, estado, tipo_carga, numero_guia, numero_contenedor, observaciones, datos_extra, clientes(rut, razon_social), vehiculos(patente), conductores(nombre)')
         .eq('empresa_id', currentEmpresa.id)
         .order('fecha', { ascending: false });
 
+    // Fallback: si falla por columnas faltantes, intenta con select('*')
+    if (error) {
+        const r2 = await sb.from('viajes').select('*, clientes(rut, razon_social), vehiculos(patente), conductores(nombre)')
+            .eq('empresa_id', currentEmpresa.id).order('fecha', { ascending: false });
+        data = r2.data; error = r2.error;
+    }
     if (error) { t.innerHTML = `<tr class="empty-row"><td colspan="10">⚠️ ${error.message}</td></tr>`; return; }
 
     _viajesData = data || [];
@@ -7071,7 +7074,7 @@ async function renderTpAdmin() {
     tTick.innerHTML = '<div style="text-align:center;padding:20px;color:#6b7280">Cargando tickets...</div>';
 
     const [{ data: empresas, error: e1 }, { data: tickets, error: e2 }] = await Promise.all([
-        sb.from('empresas').select('id,razon_social,plan_name,sub_status,sub_end_date,max_vehicles,max_ops').order('razon_social'),
+        sb.from('empresas').select('id,razon_social,plan_name,sub_status,sub_end_date,max_vehicles,max_ops').order('razon_social').then(r=>r,()=>({data:[],error:{message:'Error cargando empresas'}})),
         sb.from('support_tickets').select('*, empresas(razon_social)').order('created_at', { ascending: false }).limit(50).then(r=>r,()=>({data:[],error:null}))
     ]);
 
