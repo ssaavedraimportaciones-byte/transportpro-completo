@@ -2854,6 +2854,7 @@ function cambiarTipoGrafico(chartId, tipo, hbar) {
 
 async function renderDashboard() {
     if (!currentEmpresa) return;
+    if (!_dashChartsConfig) _dashChartsConfig = {};
     const eid = currentEmpresa.id;
     const hoy  = new Date();
     // _dashMes puede no estar definido aún si block5 no cargó (init temprana)
