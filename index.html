@@ -2281,6 +2281,11 @@ setInterval(function() {
 ══════════════════════════════════════════ -->
 <script>
 // ═══════════════════════════════════════════════════════════
+// GLOBALS — inicializar antes de cualquier función
+// ═══════════════════════════════════════════════════════════
+window._dashChartsConfig = {};
+
+// ═══════════════════════════════════════════════════════════
 // CONFIGURACIÓN
 // ═══════════════════════════════════════════════════════════
 const SUPABASE_URL      = 'https://ozmnfdndauyzcsxunxig.supabase.co';
@@ -2826,7 +2831,7 @@ document.addEventListener('click', e => {
 // ═══════════════════════════════════════════════════════════
 // DASHBOARD
 // ═══════════════════════════════════════════════════════════
-var _dashChartsConfig = {};
+// _dashChartsConfig inicializado al inicio del script
 
 function cambiarTipoGrafico(chartId, tipo, hbar) {
     const saved = _dashChartsConfig[chartId]; if (!saved) return;
