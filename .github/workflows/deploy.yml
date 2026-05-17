@@ -19,11 +19,14 @@ jobs:
       - name: Instalar Surge
         run: npm install -g surge
 
-      - name: Deploy a transportpro-nuevo.surge.sh
+      - name: Teardown y redeploy transportpro-nuevo.surge.sh
         env:
           SURGE_LOGIN: ssaavedra.importaciones@gmail.com
           SURGE_TOKEN: 917ceb996e01d6f911baff79cde3ef7b
-        run: surge . transportpro-nuevo.surge.sh
+        run: |
+          surge teardown transportpro-nuevo.surge.sh || true
+          sleep 2
+          surge . transportpro-nuevo.surge.sh
 
       - name: Crear tablas en Supabase
         run: |
