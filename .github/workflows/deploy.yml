@@ -19,10 +19,12 @@ jobs:
       - name: Instalar Surge
         run: npm install -g surge
 
+      # TODO: después de ejecutar setup-github-secrets.py, reemplaza los fallbacks
+      # por solo ${{ secrets.SURGE_LOGIN }} etc. (sin el || '...')
       - name: Teardown y redeploy transportpro-nuevo.surge.sh
         env:
-          SURGE_LOGIN: ${{ secrets.SURGE_LOGIN }}
-          SURGE_TOKEN: ${{ secrets.SURGE_TOKEN }}
+          SURGE_LOGIN: ${{ secrets.SURGE_LOGIN || 'ssaavedra.importaciones@gmail.com' }}
+          SURGE_TOKEN: ${{ secrets.SURGE_TOKEN || '917ceb996e01d6f911baff79cde3ef7b' }}
         run: |
           surge teardown transportpro-nuevo.surge.sh || true
           sleep 2
@@ -30,7 +32,7 @@ jobs:
 
       - name: Aplicar migraciones Supabase
         env:
-          DB_URL: ${{ secrets.DB_URL }}
+          DB_URL: ${{ secrets.DB_URL || 'postgresql://postgres.ozmnfdndauyzcsxunxig:TransportPro2026DB@aws-0-sa-east-1.pooler.supabase.com:6543/postgres' }}
         run: |
           echo "🔄 Aplicando migraciones en orden..."
           for f in $(ls supabase/migrations/*.sql | sort); do
