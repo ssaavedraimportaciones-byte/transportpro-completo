@@ -18,7 +18,7 @@ jobs:
       - name: Instalar Node
         uses: actions/setup-node@v4
         with:
-          node-version: '24'
+          node-version: '20'
 
       - name: Instalar Surge
         run: npm install -g surge
