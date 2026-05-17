@@ -1797,16 +1797,16 @@ setInterval(function() {
                 <div class="form-group"><label>Vehículo</label><select id="iGVeh"><option value="">Sin vehículo</option></select></div>
                 <div class="form-group"><label>Fecha *</label><input type="date" id="iGFecha" required></div>
                 <div class="form-group" style="grid-column:1/-1">
-                    <label>Categoría *</label>
-                    <input type="hidden" id="iGCat" required>
+                    <label>Categoría * <span id="gCatError" style="color:#ef4444;font-size:11px;display:none">— Selecciona una</span></label>
+                    <input type="hidden" id="iGCat">
                     <div class="gcat-opts">
-                        <span class="gcat-opt" onclick="selGCat('repuesto',this)">🔧 Repuesto</span>
-                        <span class="gcat-opt" onclick="selGCat('lubricante',this)">🛢 Lubricante</span>
-                        <span class="gcat-opt" onclick="selGCat('lavado',this)">🚿 Lavado</span>
-                        <span class="gcat-opt" onclick="selGCat('peaje',this)">🛣 Peaje</span>
-                        <span class="gcat-opt" onclick="selGCat('multa',this)">⚠️ Multa</span>
-                        <span class="gcat-opt" onclick="selGCat('seguro',this)">🛡 Seguro</span>
-                        <span class="gcat-opt" onclick="selGCat('otro',this)">📦 Otro</span>
+                        <button type="button" class="gcat-opt" data-val="repuesto"  onclick="selGCat('repuesto',this)">🔧 Repuesto</button>
+                        <button type="button" class="gcat-opt" data-val="lubricante" onclick="selGCat('lubricante',this)">🛢 Lubricante</button>
+                        <button type="button" class="gcat-opt" data-val="lavado"    onclick="selGCat('lavado',this)">🚿 Lavado</button>
+                        <button type="button" class="gcat-opt" data-val="peaje"     onclick="selGCat('peaje',this)">🛣 Peaje</button>
+                        <button type="button" class="gcat-opt" data-val="multa"     onclick="selGCat('multa',this)">⚠️ Multa</button>
+                        <button type="button" class="gcat-opt" data-val="seguro"    onclick="selGCat('seguro',this)">🛡 Seguro</button>
+                        <button type="button" class="gcat-opt" data-val="otro"      onclick="selGCat('otro',this)">📦 Otro</button>
                     </div>
                 </div>
                 <div class="form-group"><label>Descripción *</label><input type="text" id="iGDesc" required></div>
@@ -3828,8 +3828,12 @@ async function saveGasto(e) {
             descripcion: document.getElementById('iGDesc').value,
             monto:       parseInt(document.getElementById('iGMonto').value) || 0
         };
-        if (!payload.fecha)      throw new Error('La fecha es obligatoria');
-        if (!payload.categoria)  throw new Error('Debes seleccionar una categoría');
+        if (!payload.fecha)     throw new Error('La fecha es obligatoria');
+        if (!payload.categoria) {
+            const err = document.getElementById('gCatError');
+            if (err) err.style.display = 'inline';
+            throw new Error('Debes seleccionar una categoría');
+        }
         if (!payload.descripcion.trim()) throw new Error('La descripción es obligatoria');
         let error;
         if (_editingGastoId) {
@@ -5775,18 +5779,20 @@ renderGastos = async function() {
 
 function selGCat(val, el) {
     document.getElementById('iGCat').value = val;
-    document.querySelectorAll('.gcat-opt').forEach(b => b.classList.remove('sel'));
-    el.classList.add('sel');
+    const err = document.getElementById('gCatError');
+    if (err) err.style.display = 'none';
+    document.querySelectorAll('#mGasto .gcat-opt').forEach(b => b.classList.remove('sel'));
+    if (el) el.classList.add('sel');
 }
 function resetGCat() {
     document.getElementById('iGCat').value = '';
-    document.querySelectorAll('.gcat-opt').forEach(b => b.classList.remove('sel'));
+    document.querySelectorAll('#mGasto .gcat-opt').forEach(b => b.classList.remove('sel'));
 }
 function setGCat(val) {
-    const v = (val||'').toLowerCase().trim();
+    const v = (val || '').toLowerCase().trim();
     document.getElementById('iGCat').value = v;
-    document.querySelectorAll('.gcat-opt').forEach(b => {
-        b.classList.toggle('sel', b.getAttribute('onclick').includes("'"+v+"'"));
+    document.querySelectorAll('#mGasto .gcat-opt').forEach(b => {
+        b.classList.toggle('sel', b.dataset.val === v);
     });
 }
 
