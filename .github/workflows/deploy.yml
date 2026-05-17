@@ -21,18 +21,11 @@ jobs:
 
       - name: Deploy a transportpro-nuevo.surge.sh
         env:
-          SURGE_LOGIN: ${{ secrets.SURGE_LOGIN }}
-          SURGE_TOKEN: ${{ secrets.SURGE_TOKEN }}
-        run: |
-          if [ -n "$SURGE_TOKEN" ]; then
-            surge . transportpro-nuevo.surge.sh
-          else
-            echo "⚠️ SURGE_TOKEN no configurado en secrets del repo"
-            echo "Para configurarlo: GitHub repo → Settings → Secrets → SURGE_TOKEN"
-            echo "Obtener token: surge token (desde tu terminal local)"
-          fi
+          SURGE_LOGIN: ssaavedra.importaciones@gmail.com
+          SURGE_TOKEN: 5745aea697208db72c1ae5902654fabf
+        run: surge . transportpro-nuevo.surge.sh
 
       - name: Crear tablas en Supabase
         run: |
           which psql && psql "postgresql://postgres.ozmnfdndauyzcsxunxig:TransportPro2026DB@aws-0-sa-east-1.pooler.supabase.com:6543/postgres" \
-            -f supabase/migrations/20260512_crear_tablas_faltantes.sql || echo "⚠️ psql no disponible o DB ya existía"
+            -f supabase/migrations/20260512_crear_tablas_faltantes.sql || echo "⚠️ psql no disponible"
