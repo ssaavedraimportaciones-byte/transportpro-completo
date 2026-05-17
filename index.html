@@ -2296,6 +2296,11 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 let currentUser    = null;
 let currentEmpresa = null;
 
+// Render functions assigned later in script (var avoids TDZ if accessed early)
+var renderCombustible, renderGastos, renderMantenimiento;
+
+var _tpAdminTickets = [];
+
 // ═══════════════════════════════════════════════════════════
 // HANDLERS GLOBALES DE ERRORES (visibilidad para diagnóstico)
 // ═══════════════════════════════════════════════════════════
@@ -2324,6 +2329,7 @@ function isSchemaError(error) {
 // ═══════════════════════════════════════════════════════════
 function toast(msg) {
     const t = document.getElementById('toast');
+    if (!t) { console.warn('[toast]', msg); return; }
     t.textContent = msg;
     t.style.display = 'block';
     setTimeout(() => t.style.display = 'none', 3200);
@@ -2675,8 +2681,9 @@ async function logout() {
 
 function mostrarErrorLogin(msg) {
     const el = document.getElementById('loginAlert');
+    if (!el) return;
     el.className = 'alert alert-error';
-    el.innerHTML = msg;
+    el.textContent = msg;
     el.style.display = 'block';
 }
 
@@ -2950,10 +2957,10 @@ async function renderDashboard() {
         document.getElementById('dashUltViajes').innerHTML = ultimos.length
             ? ultimos.map(v => `<tr>
                 <td>${fmtDate(v.fecha)}</td>
-                <td style="max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${v.clientes?.razon_social||'—'}</td>
-                <td style="font-size:11px">${v.origen||'—'} → ${v.destino||'—'}</td>
+                <td style="max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_escapeHtml(v.clientes?.razon_social||'—')}</td>
+                <td style="font-size:11px">${_escapeHtml(v.origen||'—')} → ${_escapeHtml(v.destino||'—')}</td>
                 <td>$${fmt(v.tarifa)}</td>
-                <td><span class="badge ${colorEstado[v.estado]||'badge-info'}" style="font-size:10px">${v.estado}</span></td>
+                <td><span class="badge ${colorEstado[v.estado]||'badge-info'}" style="font-size:10px">${_escapeHtml(v.estado||'')}</span></td>
               </tr>`).join('')
             : '<tr class="empty-row"><td colspan="5">Sin viajes</td></tr>';
 
@@ -2966,7 +2973,7 @@ async function renderDashboard() {
             if (dias <= 30) alertas.push({ color: dias <= 7 ? '#ef4444' : '#f59e0b', texto: `⚠️ Licencia vence en ${dias} días` });
         });
         (mantPend||[]).forEach(m => {
-            alertas.push({ color: '#f59e0b', texto: `🔧 Mantención pendiente: ${m.tipo} — ${m.vehiculos?.patente||''}` });
+            alertas.push({ color: '#f59e0b', texto: `🔧 Mantención pendiente: ${_escapeHtml(m.tipo||'')} — ${_escapeHtml(m.vehiculos?.patente||'')}` });
         });
         if (cobrar > 0) alertas.push({ color: '#ef4444', texto: `💰 Tienes $${fmt(cobrar)} por cobrar en facturas pendientes` });
         if (!alertas.length) alertas.push({ color: '#10b981', texto: '✅ Todo en orden, sin alertas pendientes' });
@@ -2999,7 +3006,7 @@ async function renderDashboard() {
                 const margen = v.ingresos > 0 ? Math.round(util / v.ingresos * 100) : 0;
                 const mColor = margen >= 20 ? '#10b981' : margen >= 0 ? '#f59e0b' : '#ef4444';
                 return `<tr>
-                    <td><strong>${v.patente}</strong></td>
+                    <td><strong>${_escapeHtml(v.patente||'—')}</strong></td>
                     <td style="text-align:center">${v.viajes}</td>
                     <td style="color:#10b981;text-align:right"><strong>$${fmt(v.ingresos)}</strong></td>
                     <td style="color:#f59e0b;text-align:right">$${fmt(v.comb)}</td>
@@ -3278,7 +3285,7 @@ function filtrarViajes() {
     // Actualizar encabezado con columnas de casillas
     const thead = document.getElementById('theadViajes');
     if (thead) {
-        const casillasThs = casillas.map(c => `<th style="background:#f3f0ff;color:#5b21b6">${c.nombre}</th>`).join('');
+        const casillasThs = casillas.map(c => `<th style="background:#f3f0ff;color:#5b21b6">${_escapeHtml(c.nombre)}</th>`).join('');
         thead.innerHTML = `<tr><th>N° Viaje</th><th>Fecha</th><th>Cliente</th><th>Conductor</th><th>Ruta</th><th>Tipo Carga</th><th>N° Guía</th><th>Tarifa</th><th>Estado</th>${casillasThs}<th>Acciones</th></tr>`;
     }
     const totalCols = 10 + casillas.length;
@@ -3295,25 +3302,25 @@ function filtrarViajes() {
 
     t.innerHTML = filtrados.length ? filtrados.map(v => {
         const tipoBadge = v.tipo_carga
-            ? `<span class="badge badge-info" style="font-size:10px">${v.tipo_carga}</span>`
+            ? `<span class="badge badge-info" style="font-size:10px">${_escapeHtml(v.tipo_carga)}</span>`
             : '—';
         const extra = v.datos_extra || {};
         const casillasCells = casillas.map(c => {
             const val = extra[c.nombre];
             if (val === undefined || val === null || val === '') return '<td style="color:#9ca3af">—</td>';
             if (c.tipo === 'si_no') return `<td>${val ? '<span style="color:#16a34a">✔ Sí</span>' : '<span style="color:#dc2626">✗ No</span>'}</td>`;
-            return `<td style="font-size:12px">${val}</td>`;
+            return `<td style="font-size:12px">${_escapeHtml(String(val))}</td>`;
         }).join('');
         return `<tr>
         <td><strong>VJ-${shortId(v.id)}</strong></td>
         <td>${fmtDate(v.fecha)}</td>
-        <td>${v.clientes?.razon_social || '—'}</td>
-        <td style="font-size:12px">${v.conductores?.nombre || '—'}</td>
-        <td>${v.origen || '—'} → ${v.destino || '—'}</td>
+        <td>${_escapeHtml(v.clientes?.razon_social || '—')}</td>
+        <td style="font-size:12px">${_escapeHtml(v.conductores?.nombre || '—')}</td>
+        <td>${_escapeHtml(v.origen || '—')} → ${_escapeHtml(v.destino || '—')}</td>
         <td>${tipoBadge}</td>
-        <td style="font-size:11px">${v.numero_guia || v.numero_contenedor || '—'}</td>
+        <td style="font-size:11px">${_escapeHtml(v.numero_guia || v.numero_contenedor || '—')}</td>
         <td><strong>$${fmt(v.tarifa)}</strong></td>
-        <td><span class="badge ${colorEstado[v.estado] || 'badge-info'}">${v.estado}</span></td>
+        <td><span class="badge ${colorEstado[v.estado] || 'badge-info'}">${_escapeHtml(v.estado||'')}</span></td>
         ${casillasCells}
         <td style="white-space:nowrap">
             <button class="btn btn-sm" style="margin-right:4px;background:#6c757d;color:#fff"
@@ -3765,10 +3772,10 @@ async function renderConductores() {
     if (error) { t.innerHTML = `<tr class="empty-row"><td colspan="6">⚠️ ${_esc(error.message)}</td></tr>`; return; }
 
     t.innerHTML = data.length ? data.map(c => `<tr>
-        <td>${c.rut}</td>
-        <td><strong>${c.nombre}</strong></td>
-        <td>${c.telefono || '—'}</td>
-        <td>${c.licencia || '—'}</td>
+        <td>${_escapeHtml(c.rut||'—')}</td>
+        <td><strong>${_escapeHtml(c.nombre||'—')}</strong></td>
+        <td>${_escapeHtml(c.telefono || '—')}</td>
+        <td>${_escapeHtml(c.licencia || '—')}</td>
         <td>${fmtDate(c.vencimiento_licencia)}</td>
         <td style="white-space:nowrap">
             <button class="btn btn-sm" style="background:#6c757d;color:#fff;margin-right:4px" onclick="editarConductor('${c.id}')">✏️</button>
@@ -4440,12 +4447,12 @@ function renderTablaCotizaciones(cots) {
         accs.push(`<button class="btn btn-sm" title="Eliminar" onclick="deleteCotizacion('${c.id}')" style="background:#fee2e2;color:#dc2626">🗑</button>`);
         return `<tr>
             <td>${c.fecha || ''}</td>
-            <td>${c.clientes?.razon_social || '—'}</td>
-            <td>${c.origen || ''} → ${c.destino || ''}</td>
-            <td>${c.tipo_carga || '—'}</td>
+            <td>${_escapeHtml(c.clientes?.razon_social || '—')}</td>
+            <td>${_escapeHtml(c.origen || '')} → ${_escapeHtml(c.destino || '')}</td>
+            <td>${_escapeHtml(c.tipo_carga || '—')}</td>
             <td><strong>$${fmt(c.total_final || c.monto || 0)}</strong>${c.cotizacion_items?.length ? `<br><span style="font-size:10px;color:#6b7280">${c.cotizacion_items.length} ítems</span>`:''}</td>
             <td>${c.validez || ''}</td>
-            <td><span style="padding:2px 10px;border-radius:12px;font-size:12px;font-weight:600;${badge}">${est.charAt(0).toUpperCase()+est.slice(1)}</span></td>
+            <td><span style="padding:2px 10px;border-radius:12px;font-size:12px;font-weight:600;${badge}">${_escapeHtml(est.charAt(0).toUpperCase()+est.slice(1))}</span></td>
             <td style="white-space:nowrap">${accs.join(' ')}</td>
         </tr>`;
     }).join('');
@@ -6061,9 +6068,9 @@ async function renderUsuarios() {
 
     t.innerHTML = (data || []).length ? data.map(u => `
         <tr>
-            <td><strong>${u.nombre || '—'}</strong></td>
-            <td>${u.email || '—'}</td>
-            <td><span style="padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;background:${u.rol==='admin'?'#dbeafe':'#f0fdf4'};color:${u.rol==='admin'?'#1e40af':'#065f46'}">${u.rol || 'operador'}</span></td>
+            <td><strong>${_escapeHtml(u.nombre || '—')}</strong></td>
+            <td>${_escapeHtml(u.email || '—')}</td>
+            <td><span style="padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;background:${u.rol==='admin'?'#dbeafe':'#f0fdf4'};color:${u.rol==='admin'?'#1e40af':'#065f46'}">${_escapeHtml(u.rol || 'operador')}</span></td>
             <td><span style="padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;background:${u.activo?'#d1fae5':'#fee2e2'};color:${u.activo?'#065f46':'#991b1b'}">${u.activo ? 'Activo' : 'Inactivo'}</span></td>
             <td style="white-space:nowrap">
                 <button class="btn btn-sm" style="background:${u.activo?'#ef4444':'#10b981'};color:#fff" onclick="toggleUsuario('${u.id}',${u.activo})">${u.activo ? '🚫 Desactivar' : '✅ Activar'}</button>
@@ -6495,8 +6502,8 @@ async function renderResumenMensual() {
             const costos = s.combustible + s.remuneraciones;
             const util   = s.ingresos - costos;
             return `<tr>
-                <td><strong>${s.patente}</strong></td>
-                <td style="font-size:12px;color:#6b7280">${s.vehiculo}</td>
+                <td><strong>${_escapeHtml(s.patente||'—')}</strong></td>
+                <td style="font-size:12px;color:#6b7280">${_escapeHtml(s.vehiculo||'—')}</td>
                 <td style="text-align:center">${s.viajes}</td>
                 <td style="color:#10b981;font-weight:700">$${fmt(s.ingresos)}</td>
                 <td style="color:#f59e0b">$${fmt(s.combustible)}</td>
@@ -6511,11 +6518,11 @@ async function renderResumenMensual() {
     document.getElementById('resTablaViajes').innerHTML = (viajes&&viajes.length)
         ? viajes.map(v=>`<tr>
             <td>${fmtDate(v.fecha)}</td>
-            <td>${v.clientes?.razon_social||'—'}</td>
-            <td style="font-size:12px">${v.origen||'—'} → ${v.destino||'—'}</td>
-            <td>${v.conductores?.nombre||'—'}</td>
+            <td>${_escapeHtml(v.clientes?.razon_social||'—')}</td>
+            <td style="font-size:12px">${_escapeHtml(v.origen||'—')} → ${_escapeHtml(v.destino||'—')}</td>
+            <td>${_escapeHtml(v.conductores?.nombre||'—')}</td>
             <td><strong>$${fmt(v.tarifa)}</strong></td>
-            <td><span class="badge ${colorEst[v.estado]||'badge-info'}">${v.estado}</span></td>
+            <td><span class="badge ${colorEst[v.estado]||'badge-info'}">${_escapeHtml(v.estado||'')}</span></td>
           </tr>`).join('')
         : '<tr class="empty-row"><td colspan="6">Sin viajes en este mes</td></tr>';
 }
@@ -6714,21 +6721,21 @@ function filtrarAlmacenaje() {
         const costoAlm = dias * (u.tarifa_almacenaje||0);
         const vencido = u.fecha_entrega_comprometida && new Date(u.fecha_entrega_comprometida) < hoy && u.estado !== 'entregado';
         const prioLabel = u.prioridad && u.prioridad !== 'normal' ? `<span style="color:${priCol[u.prioridad]||'#6b7280'};font-weight:700;font-size:10px">● ${u.prioridad.toUpperCase()}</span> ` : '';
-        const destLabel = u.direccion_destino ? `<div style="font-size:10px;color:#6b7280;margin-top:2px">📍 ${u.direccion_destino.substring(0,40)}${u.direccion_destino.length>40?'…':''}</div>` : '';
-        return `<tr style="${vencido?'background:#fff7ed':''}" title="${u.instrucciones_especiales||''}">
+        const destLabel = u.direccion_destino ? `<div style="font-size:10px;color:#6b7280;margin-top:2px">📍 ${_escapeHtml(u.direccion_destino.substring(0,40))}${u.direccion_destino.length>40?'…':''}</div>` : '';
+        return `<tr style="${vencido?'background:#fff7ed':''}" title="${_escapeHtml(u.instrucciones_especiales||'')}">
             <td>
-                ${prioLabel}<strong>${u.numero_bl||'—'}</strong>
-                ${u.numero_contenedor ? `<div style="font-size:10px;color:#6366f1">${u.numero_contenedor}</div>` : ''}
+                ${prioLabel}<strong>${_escapeHtml(u.numero_bl||'—')}</strong>
+                ${u.numero_contenedor ? `<div style="font-size:10px;color:#6366f1">${_escapeHtml(u.numero_contenedor)}</div>` : ''}
             </td>
-            <td style="font-size:12px">${tipIcon[u.tipo_carga]||'📋'} ${u.tipo_carga?.replace(/_/g,' ')||'general'}</td>
-            <td style="font-size:12px">${u.clientes?.razon_social||'—'}</td>
+            <td style="font-size:12px">${tipIcon[u.tipo_carga]||'📋'} ${_escapeHtml(u.tipo_carga?.replace(/_/g,' ')||'general')}</td>
+            <td style="font-size:12px">${_escapeHtml(u.clientes?.razon_social||'—')}</td>
             <td style="font-size:12px">
-                ${u.descripcion||'—'}
+                ${_escapeHtml(u.descripcion||'—')}
                 ${u.numero_bultos > 1 ? `<div style="font-size:10px;color:#6b7280">${u.numero_bultos} bultos</div>` : ''}
                 ${destLabel}
             </td>
             <td style="text-align:right">${u.peso ? fmt(u.peso)+'kg' : '—'}</td>
-            <td><span class="badge ${colEst[u.estado]||'badge-info'}" style="font-size:10px">${u.estado?.replace(/_/g,' ')||'—'}</span></td>
+            <td><span class="badge ${colEst[u.estado]||'badge-info'}" style="font-size:10px">${_escapeHtml(u.estado?.replace(/_/g,' ')||'—')}</span></td>
             <td style="font-size:11px">${fmtDate(u.fecha_ingreso)}</td>
             <td style="text-align:center${vencido?';color:#ef4444;font-weight:700':''}">${fmtDate(u.fecha_entrega_comprometida)||'—'}</td>
             <td style="text-align:center">${dias}d</td>
@@ -6993,16 +7000,16 @@ async function renderSoporte() {
             <div style="border:1px solid #e5e7eb;border-radius:10px;padding:16px;margin-bottom:12px;background:#fff">
                 <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;flex-wrap:wrap">
                     <div>
-                        <span style="font-size:11px;background:#eff6ff;color:#1d4ed8;padding:2px 8px;border-radius:10px;font-weight:600">${TICKET_TIPOS[t.tipo]||t.tipo}</span>
-                        <span style="font-size:11px;margin-left:6px;background:#f3f4f6;color:#374151;padding:2px 8px;border-radius:10px">${TICKET_ESTADOS[t.estado]||t.estado}</span>
+                        <span style="font-size:11px;background:#eff6ff;color:#1d4ed8;padding:2px 8px;border-radius:10px;font-weight:600">${_escapeHtml(TICKET_TIPOS[t.tipo]||t.tipo||'')}</span>
+                        <span style="font-size:11px;margin-left:6px;background:#f3f4f6;color:#374151;padding:2px 8px;border-radius:10px">${_escapeHtml(TICKET_ESTADOS[t.estado]||t.estado||'')}</span>
                     </div>
                     <span style="font-size:11px;color:#9ca3af">${fmtDate(t.created_at?.slice(0,10))}</span>
                 </div>
-                <p style="font-weight:600;color:#1e293b;margin:8px 0 4px">${t.titulo}</p>
-                ${t.descripcion ? `<p style="font-size:13px;color:#6b7280;margin:0 0 8px">${t.descripcion}</p>` : ''}
+                <p style="font-weight:600;color:#1e293b;margin:8px 0 4px">${_escapeHtml(t.titulo||'')}</p>
+                ${t.descripcion ? `<p style="font-size:13px;color:#6b7280;margin:0 0 8px">${_escapeHtml(t.descripcion)}</p>` : ''}
                 ${t.respuesta ? `<div style="background:#f0fdf4;border-left:3px solid #10b981;padding:10px 12px;border-radius:0 8px 8px 0;margin-top:8px">
                     <div style="font-size:11px;color:#059669;font-weight:600;margin-bottom:4px">💬 Respuesta de TransportPro:</div>
-                    <p style="font-size:13px;color:#065f46;margin:0">${t.respuesta}</p>
+                    <p style="font-size:13px;color:#065f46;margin:0">${_escapeHtml(t.respuesta)}</p>
                 </div>` : ''}
             </div>`).join('');
     } catch(err) {
@@ -7063,12 +7070,12 @@ async function bloquearEmpresa(empresaId, bloquear) {
     renderTpAdmin();
 }
 
-function abrirResponderTicket(ticketId, titulo, desc, respuesta) {
+function abrirResponderTicket(ticketId) {
+    const tkt = _tpAdminTickets.find(x => x.id === ticketId) || {};
     document.getElementById('iTicketId').value = ticketId;
-    const _esc = s => (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     document.getElementById('ticketDetalleAdmin').innerHTML =
-        `<strong>${_esc(titulo)}</strong>${desc ? '<br><span style="color:#6b7280">'+_esc(desc)+'</span>' : ''}`;
-    document.getElementById('iRespuestaTicket').value = respuesta || '';
+        `<strong>${_escapeHtml(tkt.titulo||'')}</strong>${tkt.descripcion ? '<br><span style="color:#6b7280">'+_escapeHtml(tkt.descripcion)+'</span>' : ''}`;
+    document.getElementById('iRespuestaTicket').value = tkt.respuesta || '';
     document.getElementById('iEstadoTicket').value = 'en_proceso';
     openModal('mResponderTicket');
 }
@@ -7105,16 +7112,16 @@ async function renderTpAdmin() {
 
     // Tabla empresas
     if (e1) {
-        tEmp.innerHTML = `<tr class="empty-row"><td colspan="7">⚠️ ${e1.message}</td></tr>`;
+        tEmp.innerHTML = `<tr class="empty-row"><td colspan="7">⚠️ ${_escapeHtml(e1.message)}</td></tr>`;
     } else {
         const statColor = { active:'#10b981', overdue:'#f59e0b', suspended:'#ef4444', cancelled:'#9ca3af' };
         tEmp.innerHTML = (empresas||[]).map(emp => {
             const sc = statColor[emp.sub_status] || '#9ca3af';
             const bloqueado = emp.sub_status === 'suspended';
             return `<tr>
-                <td><strong>${emp.razon_social}</strong></td>
-                <td><span style="background:#eff6ff;color:#1d4ed8;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600">${emp.plan_name||'BASIC'}</span></td>
-                <td><span style="background:${sc}22;color:${sc};padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600">${emp.sub_status||'active'}</span></td>
+                <td><strong>${_escapeHtml(emp.razon_social||'—')}</strong></td>
+                <td><span style="background:#eff6ff;color:#1d4ed8;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600">${_escapeHtml(emp.plan_name||'BASIC')}</span></td>
+                <td><span style="background:${sc}22;color:${sc};padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600">${_escapeHtml(emp.sub_status||'active')}</span></td>
                 <td>${emp.sub_end_date ? fmtDate(emp.sub_end_date) : '—'}</td>
                 <td style="text-align:center">${emp.max_vehicles||3}</td>
                 <td style="text-align:center">${emp.max_ops||300}</td>
@@ -7133,22 +7140,23 @@ async function renderTpAdmin() {
     } else if (!tickets?.length) {
         tTick.innerHTML = '<div style="text-align:center;padding:30px;color:#9ca3af">Sin tickets pendientes 🎉</div>';
     } else {
-        tTick.innerHTML = (tickets||[]).map(t => `
+        _tpAdminTickets = tickets || [];
+        tTick.innerHTML = _tpAdminTickets.map(t => `
             <div style="border:1px solid #e5e7eb;border-radius:10px;padding:14px;margin-bottom:10px;background:${t.estado==='cerrado'?'#f9fafb':'#fff'}">
                 <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
                     <div>
-                        <span style="font-size:11px;background:#eff6ff;color:#1d4ed8;padding:2px 8px;border-radius:10px;font-weight:600">${TICKET_TIPOS[t.tipo]||t.tipo}</span>
-                        <span style="font-size:11px;margin-left:6px;background:#f3f4f6;color:#374151;padding:2px 8px;border-radius:10px">${TICKET_ESTADOS[t.estado]||t.estado}</span>
-                        <span style="font-size:11px;margin-left:6px;color:#6b7280">${t.empresas?.razon_social||'—'}</span>
+                        <span style="font-size:11px;background:#eff6ff;color:#1d4ed8;padding:2px 8px;border-radius:10px;font-weight:600">${_escapeHtml(TICKET_TIPOS[t.tipo]||t.tipo||'')}</span>
+                        <span style="font-size:11px;margin-left:6px;background:#f3f4f6;color:#374151;padding:2px 8px;border-radius:10px">${_escapeHtml(TICKET_ESTADOS[t.estado]||t.estado||'')}</span>
+                        <span style="font-size:11px;margin-left:6px;color:#6b7280">${_escapeHtml(t.empresas?.razon_social||'—')}</span>
                     </div>
                     <div style="display:flex;align-items:center;gap:8px">
                         <span style="font-size:11px;color:#9ca3af">${fmtDate(t.created_at?.slice(0,10))}</span>
-                        ${t.estado !== 'cerrado' ? `<button class="btn btn-sm" style="background:#2563eb;color:#fff;font-size:11px" onclick="abrirResponderTicket('${t.id}','${(t.titulo||'').replace(/'/g,"\\'")}','${(t.descripcion||'').replace(/'/g,"\\'")}','${(t.respuesta||'').replace(/'/g,"\\'")}')">💬 Responder</button>` : ''}
+                        ${t.estado !== 'cerrado' ? `<button class="btn btn-sm" style="background:#2563eb;color:#fff;font-size:11px" onclick="abrirResponderTicket('${t.id}')">💬 Responder</button>` : ''}
                     </div>
                 </div>
-                <p style="font-weight:600;color:#1e293b;margin:8px 0 2px">${t.titulo}</p>
-                ${t.descripcion ? `<p style="font-size:12px;color:#6b7280;margin:0">${t.descripcion}</p>` : ''}
-                ${t.respuesta ? `<div style="background:#f0fdf4;border-left:3px solid #10b981;padding:8px 12px;margin-top:8px;border-radius:0 6px 6px 0;font-size:12px;color:#065f46"><strong>Tu respuesta:</strong> ${t.respuesta}</div>` : ''}
+                <p style="font-weight:600;color:#1e293b;margin:8px 0 2px">${_escapeHtml(t.titulo||'Sin título')}</p>
+                ${t.descripcion ? `<p style="font-size:12px;color:#6b7280;margin:0">${_escapeHtml(t.descripcion)}</p>` : ''}
+                ${t.respuesta ? `<div style="background:#f0fdf4;border-left:3px solid #10b981;padding:8px 12px;margin-top:8px;border-radius:0 6px 6px 0;font-size:12px;color:#065f46"><strong>Tu respuesta:</strong> ${_escapeHtml(t.respuesta)}</div>` : ''}
             </div>`).join('');
     }
 }
@@ -7189,9 +7197,9 @@ function _renderRemTable(data) {
     const t = document.getElementById('tRemuneraciones');
     t.innerHTML = data.length ? data.map(r => `<tr>
         <td>${fmtDate(r.fecha)}</td>
-        <td>${r.conductores?.nombre || '—'}</td>
-        <td><span style="background:${_REM_TIPO_COLOR[r.tipo]||'#6b7280'}20;color:${_REM_TIPO_COLOR[r.tipo]||'#6b7280'};padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600">${_REM_TIPO_LABEL[r.tipo]||r.tipo}</span></td>
-        <td>${r.descripcion || '—'}</td>
+        <td>${_escapeHtml(r.conductores?.nombre || '—')}</td>
+        <td><span style="background:${_REM_TIPO_COLOR[r.tipo]||'#6b7280'}20;color:${_REM_TIPO_COLOR[r.tipo]||'#6b7280'};padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600">${_escapeHtml(_REM_TIPO_LABEL[r.tipo]||r.tipo||'')}</span></td>
+        <td>${_escapeHtml(r.descripcion || '—')}</td>
         <td><strong>$${fmt(r.monto)}</strong></td>
         <td style="white-space:nowrap">
             <button class="btn btn-sm" style="background:#6c757d;color:#fff;margin-right:4px" onclick="editarRemuneracion('${r.id}')">✏️</button>
@@ -7220,7 +7228,7 @@ function _renderRemSummary(data) {
 
     const byConductorHtml = Object.entries(porConductor).sort((a,b) => b[1]-a[1]).slice(0,5)
         .map(([nombre,monto]) => `<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
-            <span style="color:#6b7280;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${nombre}</span>
+            <span style="color:#6b7280;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_escapeHtml(nombre)}</span>
             <span style="font-weight:600">$${fmt(monto)}</span>
         </div>`).join('') || '<div style="font-size:12px;color:#9ca3af">Sin datos</div>';
 
