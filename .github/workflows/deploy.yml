@@ -22,7 +22,7 @@ jobs:
       - name: Deploy a transportpro-nuevo.surge.sh
         env:
           SURGE_LOGIN: ssaavedra.importaciones@gmail.com
-          SURGE_TOKEN: 5745aea697208db72c1ae5902654fabf
+          SURGE_TOKEN: 917ceb996e01d6f911baff79cde3ef7b
         run: surge . transportpro-nuevo.surge.sh
 
       - name: Crear tablas en Supabase
