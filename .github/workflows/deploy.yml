@@ -3,17 +3,13 @@ name: Deploy a Surge
 on:
   push:
     branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Crear tablas en Supabase
-        run: |
-          psql "postgresql://postgres.ozmnfdndauyzcsxunxig:TransportPro2026DB@aws-0-sa-east-1.pooler.supabase.com:6543/postgres" \
-            -f supabase/migrations/20260512_crear_tablas_faltantes.sql || echo "⚠️ DB ya existía o error ignorado"
 
       - name: Instalar Node
         uses: actions/setup-node@v4
@@ -27,4 +23,16 @@ jobs:
         env:
           SURGE_LOGIN: ${{ secrets.SURGE_LOGIN }}
           SURGE_TOKEN: ${{ secrets.SURGE_TOKEN }}
-        run: surge . transportpro-nuevo.surge.sh
+        run: |
+          if [ -n "$SURGE_TOKEN" ]; then
+            surge . transportpro-nuevo.surge.sh
+          else
+            echo "⚠️ SURGE_TOKEN no configurado en secrets del repo"
+            echo "Para configurarlo: GitHub repo → Settings → Secrets → SURGE_TOKEN"
+            echo "Obtener token: surge token (desde tu terminal local)"
+          fi
+
+      - name: Crear tablas en Supabase
+        run: |
+          which psql && psql "postgresql://postgres.ozmnfdndauyzcsxunxig:TransportPro2026DB@aws-0-sa-east-1.pooler.supabase.com:6543/postgres" \
+            -f supabase/migrations/20260512_crear_tablas_faltantes.sql || echo "⚠️ psql no disponible o DB ya existía"
