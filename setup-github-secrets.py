@@ -6,7 +6,7 @@ Ejecutar UNA VEZ desde tu terminal local (Mac/Linux):
 Requiere: pip install PyNaCl requests
 """
 
-import sys, base64, requests
+import sys, base64, requests, getpass
 
 try:
     from nacl import encoding, public
@@ -18,26 +18,30 @@ except ImportError:
 
 REPO = "ssaavedraimportaciones-byte/transportpro-completo"
 
-SECRETS = {
-    "SURGE_LOGIN": "ssaavedra.importaciones@gmail.com",
-    "SURGE_TOKEN": "917ceb996e01d6f911baff79cde3ef7b",
-    "DB_URL": "postgresql://postgres.ozmnfdndauyzcsxunxig:TransportPro2026DB@aws-0-sa-east-1.pooler.supabase.com:6543/postgres",
-}
-
 def encrypt_secret(public_key_value: str, secret_value: str) -> str:
     key = public.PublicKey(public_key_value.encode(), encoding.Base64Encoder())
     box = public.SealedBox(key)
     encrypted = box.encrypt(secret_value.encode())
     return base64.b64encode(encrypted).decode()
 
+def set_secret(headers, pub_key, key_id, name, value):
+    encrypted = encrypt_secret(pub_key, value)
+    r = requests.put(
+        f"https://api.github.com/repos/{REPO}/actions/secrets/{name}",
+        headers=headers,
+        json={"encrypted_value": encrypted, "key_id": key_id}
+    )
+    if r.status_code in (201, 204):
+        print(f"  ✅ Secret '{name}' configurado")
+    else:
+        print(f"  ❌ Error en '{name}': {r.status_code} {r.text}")
+
 def main():
     print("\n=== TransportPro — GitHub Secrets Setup ===\n")
-    print("Necesitas un GitHub Personal Access Token (PAT) con permisos:")
-    print("  repo → secrets (Actions secrets) write")
-    print("\nCrear en: https://github.com/settings/tokens/new")
-    print("  Scope requerido: repo (full)\n")
+    print("Ingresa los valores que quieres guardar como secrets.")
+    print("Deja en blanco para mantener el valor actual en GitHub.\n")
 
-    pat = input("Pega tu GitHub PAT aquí: ").strip()
+    pat = getpass.getpass("GitHub PAT (repo scope): ").strip()
     if not pat:
         print("❌ Token vacío. Cancelado.")
         sys.exit(1)
@@ -48,35 +52,28 @@ def main():
         "X-GitHub-Api-Version": "2022-11-28",
     }
 
-    # Get public key
     r = requests.get(
         f"https://api.github.com/repos/{REPO}/actions/secrets/public-key",
         headers=headers
     )
     if r.status_code != 200:
-        print(f"❌ Error obteniendo public key: {r.status_code} {r.text}")
+        print(f"❌ Error autenticando: {r.status_code} {r.text}")
         sys.exit(1)
 
     key_data = r.json()
     pub_key = key_data["key"]
     key_id  = key_data["key_id"]
-    print(f"\n✅ Repositorio autenticado. Key ID: {key_id}\n")
+    print(f"✅ Autenticado. Ingresa los valores (Enter para omitir):\n")
 
-    for name, value in SECRETS.items():
-        encrypted = encrypt_secret(pub_key, value)
-        put = requests.put(
-            f"https://api.github.com/repos/{REPO}/actions/secrets/{name}",
-            headers=headers,
-            json={"encrypted_value": encrypted, "key_id": key_id}
-        )
-        if put.status_code in (201, 204):
-            print(f"  ✅ Secret '{name}' creado/actualizado")
-        else:
-            print(f"  ❌ Error en '{name}': {put.status_code} {put.text}")
+    surge_login = input("SURGE_LOGIN (email de surge.sh): ").strip()
+    surge_token = getpass.getpass("SURGE_TOKEN (token de surge.sh): ").strip()
+    db_url      = getpass.getpass("DB_URL (postgresql://...): ").strip()
 
-    print("\n🎉 Listo. El workflow de GitHub Actions ahora usará los secrets seguros.")
-    print("   Puedes regenerar SURGE_TOKEN en https://surge.sh/account")
-    print("   y actualizar el secret con este mismo script.\n")
+    if surge_login: set_secret(headers, pub_key, key_id, "SURGE_LOGIN", surge_login)
+    if surge_token: set_secret(headers, pub_key, key_id, "SURGE_TOKEN", surge_token)
+    if db_url:      set_secret(headers, pub_key, key_id, "DB_URL", db_url)
+
+    print("\n🎉 Listo. GitHub Actions usará estos secrets en el próximo deploy.\n")
 
 if __name__ == "__main__":
     main()
