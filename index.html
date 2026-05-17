@@ -142,9 +142,9 @@
             border-radius: 7px; font-size: 13px; transition: border 0.2s;
         }
         .form-group input:focus, .form-group select:focus { outline: none; border-color: var(--primary); }
-        .form-group select { position: relative; z-index: 10001; }
-        .modal-content > form { position: relative; z-index: 1; }
-        select { overflow: visible !important; }
+        .gcat-opts { display:flex; flex-wrap:wrap; gap:6px; margin-top:4px; }
+        .gcat-opt  { padding:6px 12px; border:2px solid #e5e7eb; border-radius:20px; font-size:12px; font-weight:600; cursor:pointer; background:#f9fafb; color:#555; transition:all .15s; user-select:none; }
+        .gcat-opt.sel { background:var(--primary); color:#fff; border-color:var(--primary); }
 
         /* ── Modal ──────────────────────────── */
         .modal {
@@ -155,10 +155,8 @@
         .modal.open { display: flex; }
         .modal-content {
             background: white; border-radius: 15px; padding: 28px;
-            max-width: 620px; width: 100%; max-height: 88vh;
-            display: flex; flex-direction: column;
+            max-width: 620px; width: 100%; max-height: 88vh; overflow-y: auto;
         }
-        .modal-content form { overflow: visible; flex: 1; }
         .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 22px; }
         .modal-header h2 { font-size: 17px; }
         .close-modal { background: none; border: none; font-size: 24px; cursor: pointer; color: #666; }
@@ -1798,17 +1796,18 @@ setInterval(function() {
             <div class="form-grid">
                 <div class="form-group"><label>Vehículo</label><select id="iGVeh"><option value="">Sin vehículo</option></select></div>
                 <div class="form-group"><label>Fecha *</label><input type="date" id="iGFecha" required></div>
-                <div class="form-group"><label>Categoría *</label>
-                    <select id="iGCat" required>
-                        <option value="">Seleccionar...</option>
-                        <option value="repuesto">Repuesto</option>
-                        <option value="lubricante">Lubricante</option>
-                        <option value="lavado">Lavado</option>
-                        <option value="peaje">Peaje</option>
-                        <option value="multa">Multa</option>
-                        <option value="seguro">Seguro</option>
-                        <option value="otro">Otro</option>
-                    </select>
+                <div class="form-group" style="grid-column:1/-1">
+                    <label>Categoría *</label>
+                    <input type="hidden" id="iGCat" required>
+                    <div class="gcat-opts">
+                        <span class="gcat-opt" onclick="selGCat('repuesto',this)">🔧 Repuesto</span>
+                        <span class="gcat-opt" onclick="selGCat('lubricante',this)">🛢 Lubricante</span>
+                        <span class="gcat-opt" onclick="selGCat('lavado',this)">🚿 Lavado</span>
+                        <span class="gcat-opt" onclick="selGCat('peaje',this)">🛣 Peaje</span>
+                        <span class="gcat-opt" onclick="selGCat('multa',this)">⚠️ Multa</span>
+                        <span class="gcat-opt" onclick="selGCat('seguro',this)">🛡 Seguro</span>
+                        <span class="gcat-opt" onclick="selGCat('otro',this)">📦 Otro</span>
+                    </div>
                 </div>
                 <div class="form-group"><label>Descripción *</label><input type="text" id="iGDesc" required></div>
                 <div class="form-group"><label>Monto ($) *</label><input type="number" id="iGMonto" required placeholder="0"></div>
@@ -2807,7 +2806,7 @@ function closeModal(id) {
         mVehiculo:    () => { _editingVehiculoId = null; document.querySelector('#mVehiculo .modal-header h2').textContent = 'Nuevo Vehículo'; },
         mConductor:   () => { _editingConductorId = null; document.querySelector('#mConductor .modal-header h2').textContent = 'Nuevo Conductor'; },
         mCombustible: () => { _editingCombustibleId = null; _editingCombustibleData = null; document.querySelector('#mCombustible .modal-header h2').textContent = 'Registrar Carga de Combustible'; },
-        mGasto:       () => { _editingGastoId = null; _editingGastoData = null; document.querySelector('#mGasto .modal-header h2').textContent = 'Registrar Gasto'; },
+        mGasto:       () => { _editingGastoId = null; _editingGastoData = null; document.querySelector('#mGasto .modal-header h2').textContent = 'Registrar Gasto'; resetGCat(); },
         mMantenimiento: () => { _editingMantenimientoId = null; _editingMantenimientoData = null; document.querySelector('#mMantenimiento .modal-header h2').textContent = 'Programar Mantención'; },
         mCotizacion:    () => { _editingCotizacionId = null; document.querySelector('#mCotizacion .modal-header h2').textContent = '📋 Nueva Cotización'; cotResetForm(); },
         mRemuneracion:  () => { _editingRemId = null; _editingRemData = null; document.getElementById('mRemTitle').textContent = 'Nueva Remuneración'; },
@@ -5774,6 +5773,23 @@ renderGastos = async function() {
     </tr>`).join('') : '<tr class="empty-row"><td colspan="6">Sin gastos registrados</td></tr>';
 };
 
+function selGCat(val, el) {
+    document.getElementById('iGCat').value = val;
+    document.querySelectorAll('.gcat-opt').forEach(b => b.classList.remove('sel'));
+    el.classList.add('sel');
+}
+function resetGCat() {
+    document.getElementById('iGCat').value = '';
+    document.querySelectorAll('.gcat-opt').forEach(b => b.classList.remove('sel'));
+}
+function setGCat(val) {
+    const v = (val||'').toLowerCase().trim();
+    document.getElementById('iGCat').value = v;
+    document.querySelectorAll('.gcat-opt').forEach(b => {
+        b.classList.toggle('sel', b.getAttribute('onclick').includes("'"+v+"'"));
+    });
+}
+
 var _editingGastoData = null;
 function editarGasto(id) {
     const g = _gastosData.find(x => x.id === id);
@@ -5782,7 +5798,7 @@ function editarGasto(id) {
     _editingGastoData = g;
     document.querySelector('#mGasto .modal-header h2').textContent = 'Editar Gasto';
     document.getElementById('iGFecha').value = g.fecha || '';
-    document.getElementById('iGCat').value   = (g.categoria || '').toLowerCase().trim();
+    setGCat(g.categoria);
     document.getElementById('iGDesc').value  = g.descripcion || '';
     document.getElementById('iGMonto').value = g.monto || '';
     openModal('mGasto');
