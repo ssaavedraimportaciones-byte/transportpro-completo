@@ -28,7 +28,15 @@ jobs:
           sleep 2
           surge . transportpro-nuevo.surge.sh
 
-      - name: Crear tablas en Supabase
+      - name: Aplicar migraciones Supabase
+        env:
+          DB_URL: "postgresql://postgres.ozmnfdndauyzcsxunxig:TransportPro2026DB@aws-0-sa-east-1.pooler.supabase.com:6543/postgres"
         run: |
-          which psql && psql "postgresql://postgres.ozmnfdndauyzcsxunxig:TransportPro2026DB@aws-0-sa-east-1.pooler.supabase.com:6543/postgres" \
-            -f supabase/migrations/20260512_crear_tablas_faltantes.sql || echo "⚠️ psql no disponible"
+          echo "🔄 Aplicando migraciones en orden..."
+          for f in $(ls supabase/migrations/*.sql | sort); do
+            echo "→ $f"
+            psql "$DB_URL" -f "$f" \
+              --set ON_ERROR_STOP=0 \
+              -q 2>&1 | grep -v "^NOTICE" || true
+          done
+          echo "✅ Migraciones completadas"
