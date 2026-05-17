@@ -2705,7 +2705,8 @@ const moduloRender = {
 function switchTab(tab, btn) {
     document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    document.getElementById('sec-' + tab).classList.add('active');
+    const secEl = document.getElementById('sec-' + tab);
+    if (secEl) secEl.classList.add('active');
     btn.classList.add('active');
     if (moduloRender[tab]) moduloRender[tab]();
 }
@@ -2714,7 +2715,8 @@ function switchTab(tab, btn) {
 // MODALS
 // ═══════════════════════════════════════════════════════════
 function openModal(id) {
-    document.getElementById(id).classList.add('open');
+    const _m = document.getElementById(id); if (!_m) return;
+    _m.classList.add('open');
     const t = today();
     if (id === 'mViaje') {
         cargarSelectsViaje().then(() => {
@@ -2739,7 +2741,7 @@ function openModal(id) {
         const extraLocal = _editingViajeId ? (() => { try { return JSON.parse(localStorage.getItem('tp_viaje_extra_' + _editingViajeId)); } catch(e) { return null; } })() : null;
         renderCasillasEnForm(_editingViajeData?.datos_extra || extraLocal || null);
     }
-    if (id === 'mFactura')     { cargarSelectsFactura(_prefillFacturaClienteId); document.getElementById('iFFecha').value = t; _prefillFacturaClienteId = null; }
+    if (id === 'mFactura')     { cargarSelectsFactura(_prefillFacturaClienteId).catch(()=>{}); document.getElementById('iFFecha').value = t; _prefillFacturaClienteId = null; }
     if (id === 'mCombustible') {
         cargarSelectVehiculo('iCoVeh', false).then(() => {
             if (_editingCombustibleId && _editingCombustibleData)
@@ -2786,7 +2788,7 @@ function openModal(id) {
             document.getElementById('iCotFecha').value = t;
             const v30 = new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0];
             document.getElementById('iCotValidez').value = v30;
-            cargarSelectClienteEn('iCotCliente');
+            cargarSelectClienteEn('iCotCliente').catch(()=>{});
             cotResetForm();
             cotAddItem();
         }
@@ -2798,7 +2800,8 @@ var _editingViajeData = null;
 var _prefillFacturaClienteId = null;
 
 function closeModal(id) {
-    document.getElementById(id).classList.remove('open');
+    const _cm = document.getElementById(id); if (!_cm) return;
+    _cm.classList.remove('open');
     document.querySelector(`#${id} form`)?.reset();
     const resets = {
         mViaje:       () => { _editingViajeId = null; _editingViajeData = null; document.querySelector('#mViaje .modal-header h2').textContent = 'Nuevo Viaje'; },
@@ -4072,8 +4075,9 @@ async function eliminarTodo(tabla, rerender, nombreVisible) {
 }
 
 async function eliminarRegistro(tabla, id, rerender) {
+    if (!currentEmpresa) return;
     if (!confirm('¿Eliminar este registro? Esta acción no se puede deshacer.')) return;
-    const { error } = await sb.from(tabla).delete().eq('id', id);
+    const { error } = await sb.from(tabla).delete().eq('id', id).eq('empresa_id', currentEmpresa.id);
     if (error) { toast('❌ Error: ' + error.message); return; }
     toast('🗑 Registro eliminado');
     await rerender();
@@ -4588,8 +4592,10 @@ async function cambiarEstadoCotizacion(id, nuevoEstado) {
 }
 
 async function deleteCotizacion(id) {
+    if (!currentEmpresa) return;
     if (!confirm('¿Eliminar esta cotización?')) return;
-    const { error } = await sb.from('cotizaciones').delete().eq('id', id);
+    await sb.from('cotizacion_items').delete().eq('cotizacion_id', id);
+    const { error } = await sb.from('cotizaciones').delete().eq('id', id).eq('empresa_id', currentEmpresa.id);
     if (error) { toast('❌ ' + error.message); return; }
     toast('🗑 Cotización eliminada');
     await renderCotizaciones();
@@ -5554,7 +5560,7 @@ async function importConfirm() {
 
         const refreshMap = { clientes: renderClientes, vehiculos: renderVehiculos, conductores: renderConductores, combustible: renderCombustible, gastos: renderGastos, mantenimiento: renderMantenimiento, viajes: renderViajes };
         if (refreshMap[_importModulo]) refreshMap[_importModulo]();
-        updateStats();
+        updateStats(); // intentionally fire-and-forget
         toast(`✅ ${insertados} ${IMPORT_LABELS[_importModulo]} importados`);
     } catch (e) {
         toast('❌ Error: ' + e.message);
@@ -6346,7 +6352,7 @@ function navDashMes(delta) {
     _dashMes.month += delta;
     if (_dashMes.month > 11) { _dashMes.month = 0; _dashMes.year++; }
     if (_dashMes.month < 0)  { _dashMes.month = 11; _dashMes.year--; }
-    renderDashboard();
+    renderDashboard(); // fire-and-forget OK in nav
 }
 function navDashMesHoy() {
     const n = new Date();
@@ -6359,7 +6365,7 @@ function navMes(delta) {
     _resMes.month += delta;
     if (_resMes.month > 11) { _resMes.month = 0; _resMes.year++; }
     if (_resMes.month < 0)  { _resMes.month = 11; _resMes.year--; }
-    renderResumenMensual();
+    renderResumenMensual(); // fire-and-forget OK in nav
 }
 
 function navMesHoy() {
