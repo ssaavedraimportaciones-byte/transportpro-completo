@@ -143,7 +143,7 @@
         }
         .form-group input:focus, .form-group select:focus { outline: none; border-color: var(--primary); }
         .gcat-opts { display:flex; flex-wrap:wrap; gap:6px; margin-top:4px; }
-        .gcat-opt  { padding:6px 12px; border:2px solid #e5e7eb; border-radius:20px; font-size:12px; font-weight:600; cursor:pointer; background:#f9fafb; color:#555; transition:all .15s; user-select:none; }
+        .gcat-opt  { padding:6px 12px; border:2px solid #e5e7eb; border-radius:20px; font-size:12px; font-weight:600; cursor:pointer; background:#f9fafb; color:#555; transition:all .15s; user-select:none; pointer-events:auto; }
         .gcat-opt.sel { background:var(--primary); color:#fff; border-color:var(--primary); }
 
         /* ── Modal ──────────────────────────── */
@@ -185,7 +185,7 @@
 
         /* ── SEGURIDAD: anti-selección global (excepto campos editables) ── */
         body { -webkit-user-select: none; -moz-user-select: none; user-select: none; }
-        input, textarea, select, [contenteditable] { -webkit-user-select: text; -moz-user-select: text; user-select: text; }
+        input, textarea, select, button, [contenteditable] { -webkit-user-select: text; -moz-user-select: text; user-select: text; }
 
         /* ── SEGURIDAD: bloquear impresión ── */
         @media print { body * { visibility: hidden !important; } body::before { visibility: visible !important; content: "⛔ Impresión no autorizada — TransportPro © " attr(data-empresa); font-size: 24px; font-weight: bold; color: red; display: block; text-align: center; margin-top: 40px; } }
