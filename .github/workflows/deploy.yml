@@ -16,17 +16,33 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Instalar Surge
-        run: npm install -g surge
+      - name: Instalar Surge y psql
+        run: |
+          npm install -g surge
+          sudo apt-get install -y postgresql-client 2>/dev/null || true
 
-      - name: Teardown y redeploy transportpro-nuevo.surge.sh
+      - name: Deploy a Surge (token fresco desde API)
         env:
-          SURGE_LOGIN: ${{ secrets.SURGE_LOGIN }}
+          SURGE_EMAIL: ${{ secrets.SURGE_LOGIN }}
+          SURGE_PASS:  ${{ secrets.SURGE_PASS }}
           SURGE_TOKEN: ${{ secrets.SURGE_TOKEN }}
         run: |
-          surge teardown transportpro-nuevo.surge.sh || true
-          sleep 2
-          surge . transportpro-nuevo.surge.sh
+          # Intentar con token guardado primero
+          if surge --project . --domain transportpro-nuevo.surge.sh 2>/dev/null; then
+            echo "✅ Deploy con token existente OK"
+          else
+            # Si falla, obtener token fresco via API
+            echo "🔄 Obteniendo token fresco..."
+            FRESH=$(curl -s -X POST "https://surge.sh/token" \
+              -u "$SURGE_EMAIL:$SURGE_PASS" | tr -d '"')
+            if [ -n "$FRESH" ] && [ "$FRESH" != "null" ]; then
+              SURGE_TOKEN="$FRESH" surge --project . --domain transportpro-nuevo.surge.sh
+              echo "✅ Deploy con token fresco OK"
+            else
+              echo "❌ No se pudo obtener token — verifica SURGE_EMAIL y SURGE_PASS en secrets"
+              exit 1
+            fi
+          fi
 
       - name: Aplicar migraciones Supabase
         env:
