@@ -3899,14 +3899,18 @@ async function renderRentabilidad() {
     if (!currentEmpresa) return;
     const eid = currentEmpresa.id;
 
+    const _fbr = () => ({data:[]});
     const [{ data: viajes }, { data: gastos }, { data: combustible }, { data: vehiculos }, { data: facturas }, { data: remuneraciones }] = await Promise.all([
-        sb.from('viajes').select('origen, destino, tarifa, vehiculo_id, cliente_id, clientes(razon_social), vehiculos(patente)').eq('empresa_id', eid),
-        sb.from('gastos').select('monto, vehiculo_id').eq('empresa_id', eid),
-        sb.from('combustible').select('total, vehiculo_id').eq('empresa_id', eid),
-        sb.from('vehiculos').select('id, patente, marca, modelo').eq('empresa_id', eid),
-        sb.from('facturas').select('monto, estado, cliente_id').eq('empresa_id', eid),
-        sb.from('remuneraciones').select('monto').eq('empresa_id', eid).then(r=>r,()=>{return {data:[]}})
+        sb.from('viajes').select('origen, destino, tarifa, vehiculo_id, cliente_id, clientes(razon_social), vehiculos(patente)').eq('empresa_id', eid).then(r=>r.error?{data:[]}:r,_fbr),
+        sb.from('gastos').select('monto, vehiculo_id').eq('empresa_id', eid).then(r=>r.error?{data:[]}:r,_fbr),
+        sb.from('combustible').select('total, vehiculo_id').eq('empresa_id', eid).then(r=>r.error?{data:[]}:r,_fbr),
+        sb.from('vehiculos').select('id, patente, marca, modelo').eq('empresa_id', eid).then(r=>r.error?{data:[]}:r,_fbr),
+        sb.from('facturas').select('monto, estado, cliente_id').eq('empresa_id', eid).then(r=>r.error?{data:[]}:r,_fbr),
+        sb.from('remuneraciones').select('monto').eq('empresa_id', eid).then(r=>r.error?{data:[]}:r,_fbr)
     ]);
+
+    const kpiEl = document.getElementById('kpiRent');
+    if (!kpiEl) return;
 
     // KPIs globales
     const totalIngresos = (viajes||[]).reduce((s,v) => s+(v.tarifa||0), 0);
@@ -3917,7 +3921,7 @@ async function renderRentabilidad() {
     const utilidad      = totalIngresos - totalCostos;
     const margen        = totalIngresos ? Math.round((utilidad / totalIngresos) * 100) : 0;
 
-    document.getElementById('kpiRent').innerHTML = `
+    kpiEl.innerHTML = `
         <div class="kpi-card"><div class="kpi-label">Ingresos Totales</div>
             <div class="kpi-value" style="color:#10b981">$${fmt(totalIngresos)}</div></div>
         <div class="kpi-card"><div class="kpi-label">Combustible</div>
@@ -3952,6 +3956,7 @@ async function renderRentabilidad() {
     }
 
     const tPatente = document.getElementById('tRentPatente');
+    if (!tPatente) return;
     const vehRows = Object.values(porVeh).sort((a,b) => b.ingresos - a.ingresos);
     tPatente.innerHTML = vehRows.length ? vehRows.map(v => {
         const util = v.ingresos - v.comb - v.gastos - v.rem;
@@ -4647,19 +4652,14 @@ async function renderConfiguracion() {
         .single();
 
     if (!error && data) {
-        // Actualizar currentEmpresa con datos frescos
         Object.assign(currentEmpresa, data);
-
-        // Poblar formulario
-        document.getElementById('cfgRut').value         = data.rut_empresa  || '';
-        document.getElementById('cfgRazonSocial').value = data.razon_social || '';
-        document.getElementById('cfgDireccion').value   = data.direccion    || '';
-        document.getElementById('cfgComuna').value      = data.comuna       || '';
-        document.getElementById('cfgCiudad').value      = data.ciudad       || '';
-        // Mostrar placeholder si ya hay clave guardada (no exponemos el valor real)
-        document.getElementById('cfgApiKey').value      = data.haulmer_api_key
-            ? '••••••••••••••••••••••••••••••••'
-            : '';
+        const _sv = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+        _sv('cfgRut',        data.rut_empresa  || '');
+        _sv('cfgRazonSocial',data.razon_social || '');
+        _sv('cfgDireccion',  data.direccion    || '');
+        _sv('cfgComuna',     data.comuna       || '');
+        _sv('cfgCiudad',     data.ciudad       || '');
+        _sv('cfgApiKey',     data.haulmer_api_key ? '••••••••••••••••••••••••••••••••' : '');
     }
 
     // Actualizar badge de estado
@@ -7279,8 +7279,9 @@ async function saveRemuneracion(e) {
     const btn = document.getElementById('btnSaveRem');
     btn.disabled = true;
     try {
+        const conductorVal = document.getElementById('iRemConductor').value;
         const payload = {
-            conductor_id: document.getElementById('iRemConductor').value || null,
+            conductor_id: conductorVal || null,
             tipo:         document.getElementById('iRemTipo').value,
             monto:        parseFloat(document.getElementById('iRemMonto').value) || 0,
             fecha:        document.getElementById('iRemFecha').value,
