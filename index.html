@@ -2287,7 +2287,7 @@ setInterval(function() {
 // CACHE-BUST: fuerza recarga si el browser sirve versión vieja
 // ═══════════════════════════════════════════════════════════
 (function() {
-    var V = '2.3.0';
+    var V = '2.4.0';
     try {
         if (localStorage.getItem('_tpv') !== V) {
             localStorage.setItem('_tpv', V);
@@ -5796,7 +5796,7 @@ function filtrarCombustible(limpiar) {
     const rows = q ? _combustibleData.filter(c => (c.numero_factura||'').toLowerCase().includes(q)) : _combustibleData;
     _renderCombRows(rows);
 }
-renderCombustible = async function() {
+async function renderCombustible() {
     if (!currentEmpresa) return;
     const t = document.getElementById('tCombustible');
     t.innerHTML = '<tr class="loading-row"><td colspan="8">Cargando...</td></tr>';
@@ -5807,7 +5807,7 @@ renderCombustible = async function() {
     const q = inp ? (inp.value || '').trim().toLowerCase() : '';
     const rows = q ? _combustibleData.filter(c => (c.numero_factura||'').toLowerCase().includes(q)) : _combustibleData;
     _renderCombRows(rows);
-};
+}
 
 var _editingCombustibleData = null;
 function editarCombustible(id) {
@@ -5829,7 +5829,7 @@ function editarCombustible(id) {
 // ═══════════════════════════════════════════════════════════
 var _editingGastoId = null;
 var _gastosData = [];
-renderGastos = async function() {
+async function renderGastos() {
     if (!currentEmpresa) return;
     const t = document.getElementById('tGastos');
     t.innerHTML = '<tr class="loading-row"><td colspan="6">Cargando...</td></tr>';
@@ -5847,7 +5847,7 @@ renderGastos = async function() {
             <button class="btn btn-danger btn-sm" onclick="eliminarRegistro('gastos','${g.id}',renderGastos)">✕</button>
         </td>
     </tr>`).join('') : '<tr class="empty-row"><td colspan="6">Sin gastos registrados</td></tr>';
-};
+}
 
 function selGCat(val, el) {
     document.getElementById('iGCat').value = val;
@@ -5887,7 +5887,7 @@ function editarGasto(id) {
 // ═══════════════════════════════════════════════════════════
 var _editingMantenimientoId = null;
 var _mantenimientoData = [];
-renderMantenimiento = async function() {
+async function renderMantenimiento() {
     if (!currentEmpresa) return;
     const t = document.getElementById('tMantenimiento');
     t.innerHTML = '<tr class="loading-row"><td colspan="7">Cargando...</td></tr>';
@@ -5906,7 +5906,7 @@ renderMantenimiento = async function() {
             <button class="btn btn-danger btn-sm" onclick="eliminarRegistro('mantenimiento','${m.id}',renderMantenimiento)">✕</button>
         </td>
     </tr>`).join('') : '<tr class="empty-row"><td colspan="7">Sin mantenciones programadas</td></tr>';
-};
+}
 
 var _editingMantenimientoData = null;
 function editarMantenimiento(id) {
