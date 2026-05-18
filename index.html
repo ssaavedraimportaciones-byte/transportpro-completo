@@ -2312,9 +2312,6 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 let currentUser    = null;
 let currentEmpresa = null;
 
-// Render functions assigned later in script (var avoids TDZ if accessed early)
-var renderCombustible, renderGastos, renderMantenimiento;
-
 var _tpAdminTickets = [];
 
 // ═══════════════════════════════════════════════════════════
@@ -3747,13 +3744,15 @@ async function renderVehiculos() {
 
     if (error) { t.innerHTML = `<tr class="empty-row"><td colspan="6">⚠️ ${_esc(error.message)}</td></tr>`; return; }
 
-    t.innerHTML = data.length ? data.map(v => `<tr>
+    _vehiculosData = data || [];
+    t.innerHTML = _vehiculosData.length ? _vehiculosData.map(v => `<tr>
         <td><strong>${_escapeHtml(v.patente)}</strong></td>
         <td>${_escapeHtml(v.marca)} ${_escapeHtml(v.modelo)}</td>
         <td>${v.ano}</td>
         <td>${fmt(v.km)} km</td>
         <td><span class="badge ${colorEstado[v.estado] || 'badge-info'}">${v.estado}</span></td>
         <td style="white-space:nowrap">
+            <button class="btn btn-sm" style="background:#0891b2;color:#fff;margin-right:4px" onclick="abrirBitacora('${v.id}','${v.patente}')">📋 Bitácora</button>
             <button class="btn btn-sm" style="background:#6c757d;color:#fff;margin-right:4px" onclick="editarVehiculo('${v.id}')">✏️</button>
             <button class="btn btn-danger btn-sm" onclick="eliminarRegistro('vehiculos','${v.id}',renderVehiculos)">✕</button>
         </td>
@@ -3807,7 +3806,8 @@ async function renderConductores() {
 
     if (error) { t.innerHTML = `<tr class="empty-row"><td colspan="6">⚠️ ${_esc(error.message)}</td></tr>`; return; }
 
-    t.innerHTML = data.length ? data.map(c => `<tr>
+    _conductoresData = data || [];
+    t.innerHTML = _conductoresData.length ? _conductoresData.map(c => `<tr>
         <td>${_escapeHtml(c.rut||'—')}</td>
         <td><strong>${_escapeHtml(c.nombre||'—')}</strong></td>
         <td>${_escapeHtml(c.telefono || '—')}</td>
@@ -4732,6 +4732,7 @@ async function renderConfiguracion() {
 
     // Actualizar badge de estado
     _actualizarBadgeConfiguracion();
+    _mostrarLogoPreview(_getLogo());
 }
 
 function _actualizarBadgeConfiguracion() {
@@ -4897,13 +4898,6 @@ function _mostrarLogoPreview(src) {
 }
 
 function _getLogo() { return localStorage.getItem(_logoKey()) || null; }
-
-// Cargar logo al abrir configuración
-const _origRenderCfg = renderConfiguracion;
-renderConfiguracion = async function() {
-    await _origRenderCfg.call(this);
-    _mostrarLogoPreview(_getLogo());
-};
 
 // ═══════════════════════════════════════════════════════════
 // PREVIEW DE COTIZACIÓN — 3 TEMPLATES PROFESIONALES
@@ -5664,25 +5658,6 @@ function _actualizarHdrLogo() {
 // ═══════════════════════════════════════════════════════════
 var _editingClienteId = null;
 var _clientesData = [];
-renderClientes = async function() {
-    if (!currentEmpresa) return;
-    const t = document.getElementById('tClientes');
-    t.innerHTML = '<tr class="loading-row"><td colspan="6">Cargando...</td></tr>';
-    const { data, error } = await sb.from('clientes').select('*').eq('empresa_id', currentEmpresa.id).order('razon_social');
-    if (error) { t.innerHTML = `<tr class="empty-row"><td colspan="6">⚠️ ${_esc(error.message)}</td></tr>`; return; }
-    _clientesData = data || [];
-    t.innerHTML = _clientesData.length ? _clientesData.map(c => `<tr>
-        <td>${_escapeHtml(c.rut)}</td>
-        <td><strong>${_escapeHtml(c.razon_social)}</strong></td>
-        <td>${_escapeHtml(c.contacto || '—')}</td>
-        <td>${_escapeHtml(c.telefono || '—')}</td>
-        <td>${_escapeHtml(c.email || '—')}</td>
-        <td style="white-space:nowrap">
-            <button class="btn btn-sm" style="background:#6c757d;color:#fff;margin-right:4px" onclick="editarCliente('${c.id}')">✏️</button>
-            <button class="btn btn-danger btn-sm" onclick="eliminarRegistro('clientes','${c.id}',renderClientes)">✕</button>
-        </td>
-    </tr>`).join('') : '<tr class="empty-row"><td colspan="6">Sin clientes registrados</td></tr>';
-};
 
 function editarCliente(id) {
     const c = _clientesData.find(x => x.id === id);
@@ -5703,26 +5678,6 @@ function editarCliente(id) {
 // ═══════════════════════════════════════════════════════════
 var _editingVehiculoId = null;
 var _vehiculosData = [];
-renderVehiculos = async function() {
-    if (!currentEmpresa) return;
-    const t = document.getElementById('tVehiculos');
-    t.innerHTML = '<tr class="loading-row"><td colspan="6">Cargando...</td></tr>';
-    const { data, error } = await sb.from('vehiculos').select('*').eq('empresa_id', currentEmpresa.id).order('patente');
-    if (error) { t.innerHTML = `<tr class="empty-row"><td colspan="6">⚠️ ${_esc(error.message)}</td></tr>`; return; }
-    _vehiculosData = data || [];
-    t.innerHTML = _vehiculosData.length ? _vehiculosData.map(v => `<tr>
-        <td><strong>${_escapeHtml(v.patente)}</strong></td>
-        <td>${_escapeHtml(v.marca)} ${_escapeHtml(v.modelo)}</td>
-        <td>${v.ano}</td>
-        <td>${fmt(v.km)} km</td>
-        <td><span class="badge ${colorEstado[v.estado] || 'badge-info'}">${v.estado}</span></td>
-        <td style="white-space:nowrap">
-            <button class="btn btn-sm" style="background:#0891b2;color:#fff;margin-right:4px" onclick="abrirBitacora('${v.id}','${v.patente}')">📋 Bitácora</button>
-            <button class="btn btn-sm" style="background:#6c757d;color:#fff;margin-right:4px" onclick="editarVehiculo('${v.id}')">✏️</button>
-            <button class="btn btn-danger btn-sm" onclick="eliminarRegistro('vehiculos','${v.id}',renderVehiculos)">✕</button>
-        </td>
-    </tr>`).join('') : '<tr class="empty-row"><td colspan="6">Sin vehículos registrados</td></tr>';
-};
 
 function editarVehiculo(id) {
     const v = _vehiculosData.find(x => x.id === id);
@@ -5743,25 +5698,6 @@ function editarVehiculo(id) {
 // ═══════════════════════════════════════════════════════════
 var _editingConductorId = null;
 var _conductoresData = [];
-renderConductores = async function() {
-    if (!currentEmpresa) return;
-    const t = document.getElementById('tConductores');
-    t.innerHTML = '<tr class="loading-row"><td colspan="6">Cargando...</td></tr>';
-    const { data, error } = await sb.from('conductores').select('*').eq('empresa_id', currentEmpresa.id).order('nombre');
-    if (error) { t.innerHTML = `<tr class="empty-row"><td colspan="6">⚠️ ${_esc(error.message)}</td></tr>`; return; }
-    _conductoresData = data || [];
-    t.innerHTML = _conductoresData.length ? _conductoresData.map(c => `<tr>
-        <td>${c.rut}</td>
-        <td><strong>${c.nombre}</strong></td>
-        <td>${c.telefono || '—'}</td>
-        <td>${c.licencia || '—'}</td>
-        <td>${fmtDate(c.vencimiento_licencia)}</td>
-        <td style="white-space:nowrap">
-            <button class="btn btn-sm" style="background:#6c757d;color:#fff;margin-right:4px" onclick="editarConductor('${c.id}')">✏️</button>
-            <button class="btn btn-danger btn-sm" onclick="eliminarRegistro('conductores','${c.id}',renderConductores)">✕</button>
-        </td>
-    </tr>`).join('') : '<tr class="empty-row"><td colspan="6">Sin conductores registrados</td></tr>';
-};
 
 function editarConductor(id) {
     const c = _conductoresData.find(x => x.id === id);
