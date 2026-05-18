@@ -1,6 +1,7 @@
 -- ══════════════════════════════════════════════════════════════
 -- DIAGNÓSTICO Y REPARACIÓN: auth_uid + empresa_id + RLS
 -- Ejecutar después de 20260517_fix_columnas_faltantes.sql
+-- Forzar re-deploy: 2026-05-17
 -- ══════════════════════════════════════════════════════════════
 
 -- 1. Vincular auth_uid automáticamente desde auth.users → public.usuarios
