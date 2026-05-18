@@ -2284,6 +2284,19 @@ setInterval(function() {
 ══════════════════════════════════════════ -->
 <script>
 // ═══════════════════════════════════════════════════════════
+// CACHE-BUST: fuerza recarga si el browser sirve versión vieja
+// ═══════════════════════════════════════════════════════════
+(function() {
+    var V = '2.3.0';
+    try {
+        if (localStorage.getItem('_tpv') !== V) {
+            localStorage.setItem('_tpv', V);
+            location.reload(true);
+        }
+    } catch(e) {}
+})();
+
+// ═══════════════════════════════════════════════════════════
 // GLOBALS — inicializar antes de cualquier función
 // ═══════════════════════════════════════════════════════════
 window._dashChartsConfig = {};
@@ -2708,27 +2721,36 @@ function mostrarErrorLogin(msg) {
 // ═══════════════════════════════════════════════════════════
 // NAVEGACIÓN
 // ═══════════════════════════════════════════════════════════
-const moduloRender = {
-    dashboard: renderDashboard,
-    viajes: renderViajes,  clientes: renderClientes,
-    facturacion: renderFacturacion, vehiculos: renderVehiculos,
-    conductores: renderConductores, combustible: (...a) => renderCombustible(...a),
-    gastos: (...a) => renderGastos(...a), remuneraciones: (...a) => renderRemuneraciones(...a), mantenimiento: (...a) => renderMantenimiento(...a),
-    resumen: (...a) => renderResumenMensual(...a),
-    almacenaje: (...a) => renderAlmacenaje(...a),
-    cotizaciones: renderCotizaciones,
-    rentabilidad: renderRentabilidad, configuracion: renderConfiguracion,
-    usuarios: (...a) => renderUsuarios(...a), miplan: (...a) => renderMiPlan(...a),
-    soporte: (...a) => renderSoporte(...a), tpadmin: (...a) => renderTpAdmin(...a)
-};
+var moduloRender;
+try {
+    moduloRender = {
+        dashboard: renderDashboard,
+        viajes: renderViajes,  clientes: renderClientes,
+        facturacion: renderFacturacion, vehiculos: renderVehiculos,
+        conductores: renderConductores, combustible: (...a) => renderCombustible(...a),
+        gastos: (...a) => renderGastos(...a), remuneraciones: (...a) => renderRemuneraciones(...a), mantenimiento: (...a) => renderMantenimiento(...a),
+        resumen: (...a) => renderResumenMensual(...a),
+        almacenaje: (...a) => renderAlmacenaje(...a),
+        cotizaciones: renderCotizaciones,
+        rentabilidad: renderRentabilidad, configuracion: renderConfiguracion,
+        usuarios: (...a) => renderUsuarios(...a), miplan: (...a) => renderMiPlan(...a),
+        soporte: (...a) => renderSoporte(...a), tpadmin: (...a) => renderTpAdmin(...a),
+        bitacora: (...a) => (typeof renderBitacora === 'function' ? renderBitacora(...a) : null)
+    };
+} catch(e) {
+    console.error('[moduloRender init]', e);
+    moduloRender = {};
+}
 
 function switchTab(tab, btn) {
     document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     const secEl = document.getElementById('sec-' + tab);
     if (secEl) secEl.classList.add('active');
-    btn.classList.add('active');
-    if (moduloRender[tab]) moduloRender[tab]();
+    if (btn) btn.classList.add('active');
+    if (moduloRender && moduloRender[tab]) {
+        try { moduloRender[tab](); } catch(e) { console.error('[switchTab ' + tab + ']', e); }
+    }
 }
 
 // ═══════════════════════════════════════════════════════════
