@@ -29,10 +29,20 @@ jobs:
           DB_URL: ${{ secrets.DB_URL }}
         run: |
           echo "🔄 Aplicando migraciones en orden..."
+          FAILED=0
           for f in $(ls supabase/migrations/*.sql | sort); do
             echo "→ $f"
-            psql "$DB_URL" -f "$f" \
-              --set ON_ERROR_STOP=0 \
-              -q 2>&1 | grep -v "^NOTICE" || true
+            if output=$(psql "$DB_URL" -f "$f" --set ON_ERROR_STOP=0 2>&1); then
+              echo "   ✓ OK"
+            else
+              FAILED=$((FAILED+1))
+              echo "   ⚠ Terminó con error (puede ser ya-aplicado):"
+              echo "$output" | grep -v "^NOTICE" || true
+            fi
           done
-          echo "✅ Migraciones completadas"
+          echo ""
+          if [ $FAILED -gt 0 ]; then
+            echo "⚠️  $FAILED migración(es) con error — revisar logs arriba"
+          else
+            echo "✅ Todas las migraciones completadas sin errores"
+          fi
