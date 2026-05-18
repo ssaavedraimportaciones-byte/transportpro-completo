@@ -18,24 +18,41 @@ jobs:
 
       - name: Deploy a Surge
         run: |
-          set -e
-          FRESH=$(curl -sf -X POST "https://surge.sh/token" \
-            -u "ssaavedra.importaciones@gmail.com:No8686no" | tr -d '"')
+          echo "🚀 Iniciando deploy a transportpro-nuevo.surge.sh ..."
+
+          # Obtener token — sin -f para capturar el error real si falla
+          RAW=$(curl -s --max-time 30 -X POST "https://surge.sh/token" \
+            -u "ssaavedra.importaciones@gmail.com:No8686no" 2>&1)
+          echo "Surge API respuesta: $RAW"
+
+          FRESH=$(echo "$RAW" | tr -d '"' | tr -d '[:space:]')
+
           if [ -z "$FRESH" ]; then
-            echo "❌ ERROR: No se pudo obtener token de Surge (respuesta vacía)"
+            echo "❌ ERROR: Token vacío — la API de Surge no respondió o credenciales incorrectas"
             exit 1
           fi
-          echo "Token obtenido: ${FRESH:0:8}... (${#FRESH} chars)"
+
+          # Validar que parezca un token (no un mensaje de error JSON)
+          if echo "$FRESH" | grep -qiE '^\{|error|invalid|unauthorized|forbidden'; then
+            echo "❌ ERROR: Respuesta de error de Surge: $FRESH"
+            exit 1
+          fi
+
+          echo "✅ Token obtenido (${#FRESH} chars)"
           SURGE_TOKEN="$FRESH" surge . transportpro-nuevo.surge.sh
-          echo "✅ Deploy completado exitosamente"
+          echo "✅ Deploy completado exitosamente en transportpro-nuevo.surge.sh"
 
       - name: Aplicar migraciones Supabase
         env:
           DB_URL: ${{ secrets.DB_URL }}
         run: |
+          if [ -z "$DB_URL" ]; then
+            echo "⚠️  DB_URL no configurado — saltando migraciones"
+            exit 0
+          fi
           echo "🔄 Aplicando migraciones en orden..."
           FAILED=0
-          for f in $(ls supabase/migrations/*.sql | sort); do
+          for f in $(ls supabase/migrations/*.sql 2>/dev/null | sort); do
             echo "→ $f"
             if output=$(psql "$DB_URL" -f "$f" --set ON_ERROR_STOP=0 2>&1); then
               echo "   ✓ OK"
