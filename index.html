@@ -2287,7 +2287,7 @@ setInterval(function() {
 // CACHE-BUST: fuerza recarga si el browser sirve versión vieja
 // ═══════════════════════════════════════════════════════════
 (function() {
-    var V = '2.4.0';
+    var V = '2.5.0';
     try {
         if (localStorage.getItem('_tpv') !== V) {
             localStorage.setItem('_tpv', V);
@@ -2721,21 +2721,32 @@ function mostrarErrorLogin(msg) {
 // ═══════════════════════════════════════════════════════════
 // NAVEGACIÓN
 // ═══════════════════════════════════════════════════════════
+// Todas las entradas usan arrow closures para resolver el valor GLOBAL en el momento
+// del llamado — no en el momento de inicialización. Esto evita TDZ y captura
+// las versiones "patched" de funciones que se redefinen más abajo en el script.
 var moduloRender;
 try {
     moduloRender = {
-        dashboard: renderDashboard,
-        viajes: renderViajes,  clientes: renderClientes,
-        facturacion: renderFacturacion, vehiculos: renderVehiculos,
-        conductores: renderConductores, combustible: (...a) => renderCombustible(...a),
-        gastos: (...a) => renderGastos(...a), remuneraciones: (...a) => renderRemuneraciones(...a), mantenimiento: (...a) => renderMantenimiento(...a),
-        resumen: (...a) => renderResumenMensual(...a),
-        almacenaje: (...a) => renderAlmacenaje(...a),
-        cotizaciones: renderCotizaciones,
-        rentabilidad: renderRentabilidad, configuracion: renderConfiguracion,
-        usuarios: (...a) => renderUsuarios(...a), miplan: (...a) => renderMiPlan(...a),
-        soporte: (...a) => renderSoporte(...a), tpadmin: (...a) => renderTpAdmin(...a),
-        bitacora: (...a) => (typeof renderBitacora === 'function' ? renderBitacora(...a) : null)
+        dashboard:     (...a) => renderDashboard(...a),
+        viajes:        (...a) => renderViajes(...a),
+        clientes:      (...a) => renderClientes(...a),
+        facturacion:   (...a) => renderFacturacion(...a),
+        vehiculos:     (...a) => renderVehiculos(...a),
+        conductores:   (...a) => renderConductores(...a),
+        combustible:   (...a) => renderCombustible(...a),
+        gastos:        (...a) => renderGastos(...a),
+        remuneraciones:(...a) => renderRemuneraciones(...a),
+        mantenimiento: (...a) => renderMantenimiento(...a),
+        resumen:       (...a) => renderResumenMensual(...a),
+        almacenaje:    (...a) => renderAlmacenaje(...a),
+        cotizaciones:  (...a) => renderCotizaciones(...a),
+        rentabilidad:  (...a) => renderRentabilidad(...a),
+        configuracion: (...a) => renderConfiguracion(...a),
+        usuarios:      (...a) => renderUsuarios(...a),
+        miplan:        (...a) => renderMiPlan(...a),
+        soporte:       (...a) => renderSoporte(...a),
+        tpadmin:       (...a) => renderTpAdmin(...a),
+        bitacora:      (...a) => (typeof renderBitacora === 'function' ? renderBitacora(...a) : null)
     };
 } catch(e) {
     console.error('[moduloRender init]', e);

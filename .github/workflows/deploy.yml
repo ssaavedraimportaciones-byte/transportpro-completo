@@ -18,11 +18,16 @@ jobs:
 
       - name: Deploy a Surge
         run: |
-          FRESH=$(curl -s -X POST "https://surge.sh/token" \
+          set -e
+          FRESH=$(curl -sf -X POST "https://surge.sh/token" \
             -u "ssaavedra.importaciones@gmail.com:No8686no" | tr -d '"')
-          echo "Token obtenido: ${FRESH:0:8}..."
+          if [ -z "$FRESH" ]; then
+            echo "❌ ERROR: No se pudo obtener token de Surge (respuesta vacía)"
+            exit 1
+          fi
+          echo "Token obtenido: ${FRESH:0:8}... (${#FRESH} chars)"
           SURGE_TOKEN="$FRESH" surge . transportpro-nuevo.surge.sh
-          echo "✅ Deploy completado"
+          echo "✅ Deploy completado exitosamente"
 
       - name: Aplicar migraciones Supabase
         env:
