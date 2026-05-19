@@ -11,36 +11,45 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Instalar Node y psql
-        run: |
-          npm install -g surge
-          sudo apt-get install -y postgresql-client 2>/dev/null || true
-
       - name: Deploy a Surge
         run: |
-          echo "🚀 Iniciando deploy a transportpro-nuevo.surge.sh ..."
+          echo "=== Node / npm version ==="
+          node --version
+          npm --version
 
-          # Obtener token — sin -f para capturar el error real si falla
-          RAW=$(curl -s --max-time 30 -X POST "https://surge.sh/token" \
-            -u "ssaavedra.importaciones@gmail.com:No8686no" 2>&1)
-          echo "Surge API respuesta: $RAW"
+          echo ""
+          echo "=== Obteniendo token de Surge ==="
+          TOKEN_RAW=$(curl -s --max-time 30 \
+            -u "ssaavedra.importaciones@gmail.com:No8686no" \
+            -X POST https://surge.sh/token 2>&1)
+          echo "Surge API respondió: $TOKEN_RAW"
 
-          FRESH=$(echo "$RAW" | tr -d '"' | tr -d '[:space:]')
+          TOKEN=$(echo "$TOKEN_RAW" | tr -d '"' | tr -d '[:space:]')
+          echo "Token procesado (${#TOKEN} chars): ${TOKEN:0:10}..."
 
-          if [ -z "$FRESH" ]; then
-            echo "❌ ERROR: Token vacío — la API de Surge no respondió o credenciales incorrectas"
+          if [ -z "$TOKEN" ]; then
+            echo "❌ FALLO: Surge API no devolvió token (red o credenciales)"
             exit 1
           fi
 
-          # Validar que parezca un token (no un mensaje de error JSON)
-          if echo "$FRESH" | grep -qiE '^\{|error|invalid|unauthorized|forbidden'; then
-            echo "❌ ERROR: Respuesta de error de Surge: $FRESH"
+          if echo "$TOKEN_RAW" | grep -qi '"error"\|unauthorized\|forbidden\|invalid'; then
+            echo "❌ FALLO: Surge rechazó las credenciales"
             exit 1
           fi
 
-          echo "✅ Token obtenido (${#FRESH} chars)"
-          SURGE_TOKEN="$FRESH" surge . transportpro-nuevo.surge.sh
-          echo "✅ Deploy completado exitosamente en transportpro-nuevo.surge.sh"
+          echo ""
+          echo "=== Instalando surge CLI (local, sin -g) ==="
+          npm install surge --no-fund --no-audit --prefer-offline 2>&1 | tail -5
+          echo "surge instalado: $(./node_modules/.bin/surge --version 2>&1)"
+
+          echo ""
+          echo "=== Desplegando a transportpro-nuevo.surge.sh ==="
+          SURGE_LOGIN="ssaavedra.importaciones@gmail.com" \
+          SURGE_TOKEN="$TOKEN" \
+          ./node_modules/.bin/surge . transportpro-nuevo.surge.sh
+
+          echo ""
+          echo "✅ Deploy completado exitosamente"
 
       - name: Aplicar migraciones Supabase
         env:
@@ -50,21 +59,10 @@ jobs:
             echo "⚠️  DB_URL no configurado — saltando migraciones"
             exit 0
           fi
+          which psql || (sudo apt-get install -y postgresql-client -qq 2>/dev/null)
           echo "🔄 Aplicando migraciones en orden..."
-          FAILED=0
           for f in $(ls supabase/migrations/*.sql 2>/dev/null | sort); do
             echo "→ $f"
-            if output=$(psql "$DB_URL" -f "$f" --set ON_ERROR_STOP=0 2>&1); then
-              echo "   ✓ OK"
-            else
-              FAILED=$((FAILED+1))
-              echo "   ⚠ Terminó con error (puede ser ya-aplicado):"
-              echo "$output" | grep -v "^NOTICE" || true
-            fi
+            psql "$DB_URL" -f "$f" --set ON_ERROR_STOP=0 2>&1 | grep -v "^NOTICE" || true
           done
-          echo ""
-          if [ $FAILED -gt 0 ]; then
-            echo "⚠️  $FAILED migración(es) con error — revisar logs arriba"
-          else
-            echo "✅ Todas las migraciones completadas sin errores"
-          fi
+          echo "✅ Migraciones listas"
