@@ -14,29 +14,46 @@ jobs:
       - name: Deploy a Surge
         run: |
           echo "=== Obteniendo token de Surge ==="
-          TOKEN_RAW=$(curl -s --max-time 30 \
+          SURGE_RESPONSE=$(curl -s --max-time 20 \
             -u 'ssaavedra.importaciones@gmail.com:No8686no$' \
-            -X POST https://surge.sh/token 2>&1)
-          echo "Surge API respondió (${#TOKEN_RAW} chars)"
+            -X POST https://surge.sh/token)
 
-          TOKEN=$(echo "$TOKEN_RAW" | tr -d '"' | tr -d '[:space:]')
+          echo "Response raw: [$SURGE_RESPONSE]"
+          echo "Response length: ${#SURGE_RESPONSE}"
 
-          if [ -z "$TOKEN" ] || echo "$TOKEN_RAW" | grep -qi '"error"\|unauthorized\|forbidden'; then
-            echo "❌ Error de autenticación Surge: $TOKEN_RAW"
+          # Extraer token correctamente usando Python (maneja string o JSON)
+          TOKEN=$(echo "$SURGE_RESPONSE" | python3 -c "
+import json, sys
+raw = sys.stdin.read().strip()
+try:
+    parsed = json.loads(raw)
+    if isinstance(parsed, str):
+        print(parsed)
+    elif isinstance(parsed, dict):
+        print(parsed.get('token', parsed.get('access_token', '')))
+    else:
+        print('')
+except Exception as e:
+    # No es JSON — asumir que es el token directo sin comillas
+    print(raw.strip('\"'))
+")
+
+          echo "Token extraido (${#TOKEN} chars): [${TOKEN:0:16}...]"
+
+          if [ -z "$TOKEN" ]; then
+            echo "❌ Token vacío"
             exit 1
           fi
 
-          echo "✅ Token OK (${#TOKEN} chars)"
-
           echo "=== Instalando surge CLI ==="
-          npm install surge --no-fund --no-audit 2>&1 | tail -3
+          npm install surge --no-fund --no-audit --silent
 
           echo "=== Desplegando a transportpro-nuevo.surge.sh ==="
           SURGE_LOGIN='ssaavedra.importaciones@gmail.com' \
           SURGE_TOKEN="$TOKEN" \
           ./node_modules/.bin/surge . transportpro-nuevo.surge.sh
 
-          echo "✅ Deploy completado en transportpro-nuevo.surge.sh"
+          echo "✅ Deploy completado"
 
       - name: Aplicar migraciones Supabase
         env:
