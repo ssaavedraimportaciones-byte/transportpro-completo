@@ -15,7 +15,7 @@ jobs:
         run: |
           echo "=== Obteniendo token de Surge ==="
           SURGE_RESPONSE=$(curl -s --max-time 20 \
-            -u 'ssaavedra.importaciones@gmail.com:No8686no$' \
+            -u 'ssaavedra.importaciones@gmail.com:No8686no' \
             -X POST https://surge.sh/token)
 
           echo "Response raw: [$SURGE_RESPONSE]"
