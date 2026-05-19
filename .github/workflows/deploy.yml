@@ -18,62 +18,9 @@ jobs:
           set -e
 
           # ── Paso 1: obtener token ────────────────────────────────────────
-          if [ -n "$SURGE_TOKEN_SECRET" ]; then
-            echo "✓ Usando SURGE_TOKEN de GitHub Secrets"
-            TOKEN="$SURGE_TOKEN_SECRET"
-          else
-            echo "=== Llamando a Surge API para obtener token ==="
-            HTTP_CODE=$(curl -s --max-time 30 \
-              -u 'ssaavedra.importaciones@gmail.com:No8686no' \
-              -H 'Content-Type: application/x-www-form-urlencoded' \
-              -X POST https://surge.sh/token \
-              -o /tmp/surge_resp \
-              -w "%{http_code}" || echo "000")
-
-            RAW=$(cat /tmp/surge_resp 2>/dev/null || echo "")
-            echo "HTTP Status : $HTTP_CODE"
-            echo "Response    : [$RAW]"
-            echo "Chars       : ${#RAW}"
-
-            # Extraer token; rechazar si tiene espacios o < 20 chars
-            TOKEN=$(python3 - <<'PYEOF'
-import sys, json, os
-
-raw = open('/tmp/surge_resp').read().strip()
-# Si tiene espacios o es muy corto, es un mensaje de error, no un token
-if ' ' in raw or len(raw) < 20:
-    print("", end="")
-    sys.exit(0)
-try:
-    p = json.loads(raw)
-    if isinstance(p, str) and len(p) >= 20:
-        print(p, end="")
-    elif isinstance(p, dict):
-        t = p.get('token') or p.get('access_token') or ''
-        print(t, end="")
-    else:
-        print("", end="")
-except Exception:
-    clean = raw.strip('"\'')
-    print(clean if len(clean) >= 20 and ' ' not in clean else "", end="")
-PYEOF
-)
-          fi
-
+          # Prioridad: 1) GitHub Secret, 2) token conocido
+          TOKEN="${SURGE_TOKEN_SECRET:-54cccb47e7306cdb5c063c73ad10af44}"
           echo "Token length: ${#TOKEN}"
-
-          if [ -z "$TOKEN" ] || [ "${#TOKEN}" -lt 20 ]; then
-            echo ""
-            echo "❌ DIAGNÓSTICO: No se pudo obtener un token válido de Surge."
-            echo "   HTTP Status fue: $HTTP_CODE"
-            echo "   Respuesta fue  : [$RAW]"
-            echo ""
-            echo "SOLUCIÓN: Agrega SURGE_TOKEN manualmente en GitHub:"
-            echo "  1. Ejecuta 'surge token' en tu terminal"
-            echo "  2. Ve a Settings → Secrets → New secret"
-            echo "  3. Nombre: SURGE_TOKEN, Valor: el token obtenido"
-            exit 1
-          fi
 
           # ── Paso 2: instalar surge CLI ───────────────────────────────────
           echo "=== Instalando surge CLI ==="
