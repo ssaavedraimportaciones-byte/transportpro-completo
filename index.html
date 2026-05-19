@@ -3672,7 +3672,7 @@ async function cargarSelectsFactura(clienteId) {
         .eq('empresa_id', currentEmpresa.id).order('razon_social');
     document.getElementById('iFCliente').innerHTML =
         '<option value="">Seleccionar cliente...</option>' +
-        (data||[]).map(c => `<option value="${c.id}">${c.razon_social}</option>`).join('');
+        (data||[]).map(c => `<option value="${c.id}">${_escapeHtml(c.razon_social)}</option>`).join('');
     if (clienteId) {
         const el = document.getElementById('iFCliente');
         el.value = clienteId;
@@ -4057,7 +4057,7 @@ async function renderRentabilidad() {
     });
     const topCli = Object.entries(porCli).sort((a,b) => b[1].ingresos - a[1].ingresos).slice(0, 10);
     document.getElementById('tRentCliente').innerHTML = topCli.length ? topCli.map(([nombre, d]) => `<tr>
-        <td><strong>${nombre}</strong></td>
+        <td><strong>${_escapeHtml(nombre)}</strong></td>
         <td>${d.viajes}</td>
         <td><strong>$${fmt(d.ingresos)}</strong></td>
         <td>$${fmt(d.viajes ? Math.round(d.ingresos/d.viajes) : 0)}</td>
@@ -6914,7 +6914,7 @@ async function _cargarClientesUL() {
     const sel = document.getElementById('iULCliente');
     if (!sel || !currentEmpresa) return;
     const { data } = await sb.from('clientes').select('id,razon_social').eq('empresa_id',currentEmpresa.id).order('razon_social');
-    sel.innerHTML = '<option value="">Seleccionar...</option>' + (data||[]).map(c=>`<option value="${c.id}">${c.razon_social}</option>`).join('');
+    sel.innerHTML = '<option value="">Seleccionar...</option>' + (data||[]).map(c=>`<option value="${c.id}">${_escapeHtml(c.razon_social)}</option>`).join('');
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -7230,7 +7230,7 @@ async function _cargarSelectConductorRem(selectId, opcional) {
         if (!sel) return;
         const current = sel.value;
         const first = opcional ? '<option value="">Todos</option>' : '<option value="">Seleccionar...</option>';
-        sel.innerHTML = first + (data||[]).map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
+        sel.innerHTML = first + (data||[]).map(c => `<option value="${c.id}">${_escapeHtml(c.nombre)}</option>`).join('');
         if (current) sel.value = current;
     } catch (err) {
         console.error('[_cargarSelectConductorRem]', err);
