@@ -11,47 +11,80 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Deploy a Surge
+      - name: Obtener token y desplegar
+        env:
+          SURGE_TOKEN_SECRET: ${{ secrets.SURGE_TOKEN }}
         run: |
-          echo "=== Obteniendo token de Surge ==="
-          curl -s --max-time 20 \
-            -u 'ssaavedra.importaciones@gmail.com:No8686no' \
-            -X POST https://surge.sh/token \
-            -o /tmp/surge_resp -w "HTTP %{http_code}" && echo ""
+          set -e
 
-          SURGE_RESPONSE=$(cat /tmp/surge_resp)
-          echo "Response raw: [$SURGE_RESPONSE]"
-          echo "Response length: ${#SURGE_RESPONSE}"
+          # ── Paso 1: obtener token ────────────────────────────────────────
+          if [ -n "$SURGE_TOKEN_SECRET" ]; then
+            echo "✓ Usando SURGE_TOKEN de GitHub Secrets"
+            TOKEN="$SURGE_TOKEN_SECRET"
+          else
+            echo "=== Llamando a Surge API para obtener token ==="
+            HTTP_CODE=$(curl -s --max-time 30 \
+              -u 'ssaavedra.importaciones@gmail.com:No8686no' \
+              -H 'Content-Type: application/x-www-form-urlencoded' \
+              -X POST https://surge.sh/token \
+              -o /tmp/surge_resp \
+              -w "%{http_code}" || echo "000")
 
-          TOKEN=$(echo "$SURGE_RESPONSE" | python3 -c "
-import json, sys
-raw = sys.stdin.read().strip()
+            RAW=$(cat /tmp/surge_resp 2>/dev/null || echo "")
+            echo "HTTP Status : $HTTP_CODE"
+            echo "Response    : [$RAW]"
+            echo "Chars       : ${#RAW}"
+
+            # Extraer token; rechazar si tiene espacios o < 20 chars
+            TOKEN=$(python3 - <<'PYEOF'
+import sys, json, os
+
+raw = open('/tmp/surge_resp').read().strip()
+# Si tiene espacios o es muy corto, es un mensaje de error, no un token
+if ' ' in raw or len(raw) < 20:
+    print("", end="")
+    sys.exit(0)
 try:
-    parsed = json.loads(raw)
-    if isinstance(parsed, str):
-        print(parsed)
-    elif isinstance(parsed, dict):
-        print(parsed.get('token', parsed.get('access_token', '')))
+    p = json.loads(raw)
+    if isinstance(p, str) and len(p) >= 20:
+        print(p, end="")
+    elif isinstance(p, dict):
+        t = p.get('token') or p.get('access_token') or ''
+        print(t, end="")
     else:
-        print('')
+        print("", end="")
 except Exception:
-    print(raw.strip('\"'))
-")
+    clean = raw.strip('"\'')
+    print(clean if len(clean) >= 20 and ' ' not in clean else "", end="")
+PYEOF
+)
+          fi
 
-          echo "Token extraido (${#TOKEN} chars): [${TOKEN:0:20}...]"
+          echo "Token length: ${#TOKEN}"
 
-          if [ -z "$TOKEN" ]; then
-            echo "❌ Token vacío — verificar credenciales"
+          if [ -z "$TOKEN" ] || [ "${#TOKEN}" -lt 20 ]; then
+            echo ""
+            echo "❌ DIAGNÓSTICO: No se pudo obtener un token válido de Surge."
+            echo "   HTTP Status fue: $HTTP_CODE"
+            echo "   Respuesta fue  : [$RAW]"
+            echo ""
+            echo "SOLUCIÓN: Agrega SURGE_TOKEN manualmente en GitHub:"
+            echo "  1. Ejecuta 'surge token' en tu terminal"
+            echo "  2. Ve a Settings → Secrets → New secret"
+            echo "  3. Nombre: SURGE_TOKEN, Valor: el token obtenido"
             exit 1
           fi
 
+          # ── Paso 2: instalar surge CLI ───────────────────────────────────
           echo "=== Instalando surge CLI ==="
-          npm install surge --no-fund --no-audit --silent
+          npm install -g surge --no-fund --no-audit --silent
+          echo "Surge version: $(surge --version)"
 
+          # ── Paso 3: desplegar ────────────────────────────────────────────
           echo "=== Desplegando a transportpro-nuevo.surge.sh ==="
           SURGE_LOGIN='ssaavedra.importaciones@gmail.com' \
           SURGE_TOKEN="$TOKEN" \
-          ./node_modules/.bin/surge . transportpro-nuevo.surge.sh
+          surge . transportpro-nuevo.surge.sh
 
           echo "✅ Deploy completado"
 
