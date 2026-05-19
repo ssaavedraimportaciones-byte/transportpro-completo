@@ -14,14 +14,15 @@ jobs:
       - name: Deploy a Surge
         run: |
           echo "=== Obteniendo token de Surge ==="
-          SURGE_RESPONSE=$(curl -s --max-time 20 \
+          curl -s --max-time 20 \
             -u 'ssaavedra.importaciones@gmail.com:No8686no' \
-            -X POST https://surge.sh/token)
+            -X POST https://surge.sh/token \
+            -o /tmp/surge_resp -w "HTTP %{http_code}" && echo ""
 
+          SURGE_RESPONSE=$(cat /tmp/surge_resp)
           echo "Response raw: [$SURGE_RESPONSE]"
           echo "Response length: ${#SURGE_RESPONSE}"
 
-          # Extraer token correctamente usando Python (maneja string o JSON)
           TOKEN=$(echo "$SURGE_RESPONSE" | python3 -c "
 import json, sys
 raw = sys.stdin.read().strip()
@@ -33,15 +34,14 @@ try:
         print(parsed.get('token', parsed.get('access_token', '')))
     else:
         print('')
-except Exception as e:
-    # No es JSON — asumir que es el token directo sin comillas
+except Exception:
     print(raw.strip('\"'))
 ")
 
-          echo "Token extraido (${#TOKEN} chars): [${TOKEN:0:16}...]"
+          echo "Token extraido (${#TOKEN} chars): [${TOKEN:0:20}...]"
 
           if [ -z "$TOKEN" ]; then
-            echo "❌ Token vacío"
+            echo "❌ Token vacío — verificar credenciales"
             exit 1
           fi
 
