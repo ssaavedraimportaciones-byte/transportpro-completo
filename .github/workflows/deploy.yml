@@ -36,16 +36,11 @@ jobs:
           echo "✅ Deploy completado"
 
       - name: Aplicar migraciones Supabase
-        env:
-          DB_URL: ${{ secrets.DB_URL }}
         run: |
-          if [ -z "$DB_URL" ]; then
-            echo "⚠️  DB_URL no configurado — saltando migraciones"
-            exit 0
-          fi
           which psql || sudo apt-get install -y postgresql-client -qq
+          DB="postgresql://postgres.ozmnfdndauyzcsxunxig:TransportPro2026DB@aws-0-sa-east-1.pooler.supabase.com:6543/postgres"
           for f in $(ls supabase/migrations/*.sql 2>/dev/null | sort); do
             echo "→ $f"
-            psql "$DB_URL" -f "$f" --set ON_ERROR_STOP=0 2>&1 | grep -v "^NOTICE" || true
+            psql "$DB" -f "$f" --set ON_ERROR_STOP=0 2>&1 | grep -v "^NOTICE" || true
           done
           echo "✅ Migraciones listas"
