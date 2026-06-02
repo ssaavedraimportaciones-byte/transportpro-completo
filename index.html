@@ -1797,23 +1797,35 @@ setInterval(function() {
         </div>
         <form onsubmit="saveGasto(event)">
             <div class="form-grid">
-                <div class="form-group"><label>Vehículo</label><select id="iGVeh"><option value="">Sin vehículo</option></select></div>
                 <div class="form-group"><label>Fecha *</label><input type="date" id="iGFecha" required></div>
-                <div class="form-group" style="grid-column:1/-1">
-                    <label>Categoría * <span id="gCatError" style="color:#ef4444;font-size:11px;display:none">— Selecciona una</span></label>
+                <div class="form-group">
+                    <label>Tipo de Gasto * <span id="gCatError" style="color:#ef4444;font-size:11px;display:none">— Selecciona uno</span></label>
                     <input type="hidden" id="iGCat">
-                    <div class="gcat-opts">
-                        <button type="button" class="gcat-opt" data-val="repuesto"  onclick="selGCat('repuesto',this)">🔧 Repuesto</button>
-                        <button type="button" class="gcat-opt" data-val="lubricante" onclick="selGCat('lubricante',this)">🛢 Lubricante</button>
-                        <button type="button" class="gcat-opt" data-val="lavado"    onclick="selGCat('lavado',this)">🚿 Lavado</button>
-                        <button type="button" class="gcat-opt" data-val="peaje"     onclick="selGCat('peaje',this)">🛣 Peaje</button>
-                        <button type="button" class="gcat-opt" data-val="multa"     onclick="selGCat('multa',this)">⚠️ Multa</button>
-                        <button type="button" class="gcat-opt" data-val="seguro"    onclick="selGCat('seguro',this)">🛡 Seguro</button>
-                        <button type="button" class="gcat-opt" data-val="otro"      onclick="selGCat('otro',this)">📦 Otro</button>
-                    </div>
+                    <select id="iGTipo" required onchange="selGCat(this.value,null)">
+                        <option value="">Seleccionar tipo...</option>
+                        <option value="combustible">Combustible</option>
+                        <option value="peaje">Peaje</option>
+                        <option value="mantencion">Mantención</option>
+                        <option value="neumaticos">Neumáticos</option>
+                        <option value="seguro">Seguro</option>
+                        <option value="permiso">Permiso circulación</option>
+                        <option value="revision">Revisión técnica</option>
+                        <option value="sueldo">Sueldo / anticipo conductor</option>
+                        <option value="estacionamiento">Estacionamiento</option>
+                        <option value="lavado">Lavado</option>
+                        <option value="repuesto">Repuesto</option>
+                        <option value="lubricante">Lubricante</option>
+                        <option value="oficina">Oficina / administración</option>
+                        <option value="alimentacion">Alimentación</option>
+                        <option value="multa">Multa</option>
+                        <option value="otro">Otro</option>
+                    </select>
                 </div>
+                <div class="form-group"><label>Vehículo (Opcional)</label><select id="iGVeh"><option value="">Sin vehículo</option></select></div>
+                <div class="form-group"><label>Conductor (Opcional)</label><select id="iGConductor"><option value="">No aplica</option></select></div>
+                <div class="form-group"><label>Viaje (Opcional)</label><select id="iGViaje"><option value="">Ninguno / Gasto General</option></select></div>
                 <div class="form-group"><label>Descripción *</label><input type="text" id="iGDesc" required></div>
-                <div class="form-group"><label>Monto ($) *</label><input type="number" id="iGMonto" required placeholder="0"></div>
+                <div class="form-group"><label>Monto ($) *</label><input type="number" id="iGMonto" required min="0" placeholder="0"></div>
             </div>
             <button type="submit" class="btn btn-success">Guardar Gasto</button>
         </form>
@@ -2800,10 +2812,7 @@ function openModal(id) {
         if (!_editingCombustibleId) document.getElementById('iCoFecha').value = t;
     }
     if (id === 'mGasto') {
-        cargarSelectVehiculo('iGVeh', true).then(() => {
-            if (_editingGastoId && _editingGastoData)
-                document.getElementById('iGVeh').value = _editingGastoData.vehiculo_id || '';
-        }).catch((err) => { console.error('[openModal.mGasto]', err); });
+        _cargarSelectsGasto().catch(err => console.error('[openModal.mGasto]', err));
         if (!_editingGastoId) document.getElementById('iGFecha').value = t;
     }
     if (id === 'mRemuneracion') {
@@ -2859,7 +2868,7 @@ function closeModal(id) {
         mVehiculo:    () => { _editingVehiculoId = null; document.querySelector('#mVehiculo .modal-header h2').textContent = 'Nuevo Vehículo'; },
         mConductor:   () => { _editingConductorId = null; document.querySelector('#mConductor .modal-header h2').textContent = 'Nuevo Conductor'; },
         mCombustible: () => { _editingCombustibleId = null; _editingCombustibleData = null; document.querySelector('#mCombustible .modal-header h2').textContent = 'Registrar Carga de Combustible'; },
-        mGasto:       () => { _editingGastoId = null; _editingGastoData = null; document.querySelector('#mGasto .modal-header h2').textContent = 'Registrar Gasto'; resetGCat(); },
+        mGasto:       () => { _editingGastoId = null; _editingGastoData = null; document.querySelector('#mGasto .modal-header h2').textContent = 'Registrar Gasto'; resetGCat(); const _c=document.getElementById('iGConductor'); if(_c)_c.value=''; const _v=document.getElementById('iGViaje'); if(_v)_v.value=''; },
         mMantenimiento: () => { _editingMantenimientoId = null; _editingMantenimientoData = null; document.querySelector('#mMantenimiento .modal-header h2').textContent = 'Programar Mantención'; },
         mCotizacion:    () => { _editingCotizacionId = null; document.querySelector('#mCotizacion .modal-header h2').textContent = '📋 Nueva Cotización'; cotResetForm(); },
         mRemuneracion:  () => { _editingRemId = null; _editingRemData = null; document.getElementById('mRemTitle').textContent = 'Nueva Remuneración'; },
@@ -3889,11 +3898,13 @@ async function saveGasto(e) {
     const btn = e.submitter || e.target?.querySelector('button[type="submit"]'); if (btn) btn.disabled = true;
     try {
         const payload = {
-            vehiculo_id: document.getElementById('iGVeh').value  || null,
-            fecha:       document.getElementById('iGFecha').value,
-            categoria:   document.getElementById('iGCat').value.toLowerCase().trim(),
-            descripcion: document.getElementById('iGDesc').value,
-            monto:       parseInt(document.getElementById('iGMonto').value) || 0
+            vehiculo_id:  document.getElementById('iGVeh').value || null,
+            conductor_id: document.getElementById('iGConductor')?.value || null,
+            viaje_id:     document.getElementById('iGViaje')?.value || null,
+            fecha:        document.getElementById('iGFecha').value,
+            categoria:    document.getElementById('iGCat').value.toLowerCase().trim(),
+            descripcion:  document.getElementById('iGDesc').value,
+            monto:        parseInt(document.getElementById('iGMonto').value) || 0
         };
         if (!payload.fecha)     throw new Error('La fecha es obligatoria');
         if (!payload.categoria) {
@@ -4166,6 +4177,37 @@ async function cargarSelectVehiculo(selectId, opcional) {
     } catch (err) {
         console.error('[cargarSelectVehiculo]', err);
         toast('❌ Error cargando vehículos: ' + err.message);
+    }
+}
+
+async function _cargarSelectsGasto() {
+    if (!currentEmpresa) return;
+    const eid = currentEmpresa.id;
+    const [vRes, cRes, viaRes] = await Promise.allSettled([
+        sb.from('vehiculos').select('id,patente').eq('empresa_id', eid).order('patente'),
+        sb.from('conductores').select('id,nombre').eq('empresa_id', eid).eq('estado','activo').order('nombre'),
+        sb.from('viajes').select('id,fecha,origen,destino').eq('empresa_id', eid).order('fecha',{ascending:false}).limit(100)
+    ]);
+    const veh = document.getElementById('iGVeh');
+    if (veh) {
+        const vd = vRes.status === 'fulfilled' ? (vRes.value.data || []) : [];
+        veh.innerHTML = '<option value="">Sin vehículo</option>' +
+            vd.map(v => `<option value="${v.id}">${_escapeHtml(v.patente||v.id)}</option>`).join('');
+        if (_editingGastoData?.vehiculo_id) veh.value = _editingGastoData.vehiculo_id;
+    }
+    const cond = document.getElementById('iGConductor');
+    if (cond) {
+        const cd = cRes.status === 'fulfilled' ? (cRes.value.data || []) : [];
+        cond.innerHTML = '<option value="">No aplica</option>' +
+            cd.map(c => `<option value="${c.id}">${_escapeHtml(c.nombre||c.id)}</option>`).join('');
+        if (_editingGastoData?.conductor_id) cond.value = _editingGastoData.conductor_id;
+    }
+    const via = document.getElementById('iGViaje');
+    if (via) {
+        const viad = viaRes.status === 'fulfilled' ? (viaRes.value.data || []) : [];
+        via.innerHTML = '<option value="">Ninguno / Gasto General</option>' +
+            viad.map(v => `<option value="${v.id}">${_escapeHtml((v.fecha||'').slice(0,10))} ${_escapeHtml(v.origen||'')}→${_escapeHtml(v.destino||'')}</option>`).join('');
+        if (_editingGastoData?.viaje_id) via.value = _editingGastoData.viaje_id;
     }
 }
 
@@ -5805,11 +5847,13 @@ function selGCat(val, el) {
 }
 function resetGCat() {
     document.getElementById('iGCat').value = '';
+    const tp = document.getElementById('iGTipo'); if (tp) tp.value = '';
     document.querySelectorAll('#mGasto .gcat-opt').forEach(b => b.classList.remove('sel'));
 }
 function setGCat(val) {
     const v = (val || '').toLowerCase().trim();
     document.getElementById('iGCat').value = v;
+    const tp = document.getElementById('iGTipo'); if (tp) tp.value = v;
     document.querySelectorAll('#mGasto .gcat-opt').forEach(b => {
         b.classList.toggle('sel', b.dataset.val === v);
     });
