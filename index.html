@@ -3919,6 +3919,15 @@ async function saveGasto(e) {
         } else {
             ({ error } = await sb.from('gastos').insert([{ empresa_id: currentEmpresa.id, ...payload }]));
         }
+        // Si columnas nuevas aún no existen en DB, reintentar sin ellas
+        if (error?.message?.includes('conductor_id') || error?.message?.includes('viaje_id') || error?.message?.includes('schema cache')) {
+            const { conductor_id, viaje_id, ...payloadBase } = payload;
+            if (_editingGastoId) {
+                ({ error } = await sb.from('gastos').update(payloadBase).eq('id', _editingGastoId).eq('empresa_id', currentEmpresa.id));
+            } else {
+                ({ error } = await sb.from('gastos').insert([{ empresa_id: currentEmpresa.id, ...payloadBase }]));
+            }
+        }
         if (error) throw error;
         closeModal('mGasto');
         toast(_editingGastoId ? '✅ Gasto actualizado' : '✅ Gasto registrado');
