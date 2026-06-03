@@ -3441,7 +3441,7 @@ async function saveViaje(e) {
 
         let error;
         if (_editingViajeId) {
-            ({ error } = await sb.from('viajes').update(payload).eq('id', _editingViajeId));
+            ({ error } = await sb.from('viajes').update(payload).eq('id', _editingViajeId).eq('empresa_id', currentEmpresa.id));
         } else {
             const { data: inserted, error: insErr } = await sb.from('viajes').insert([{ empresa_id: currentEmpresa.id, ...payload }]).select('id').single();
             error = insErr;
@@ -3469,13 +3469,13 @@ async function cargarSelectsViaje() {
         ]);
         document.getElementById('iVCliente').innerHTML =
             '<option value="">Seleccionar cliente...</option>' +
-            (cls||[]).map(c => `<option value="${c.id}">${c.razon_social}</option>`).join('');
+            (cls||[]).map(c => `<option value="${c.id}">${_escapeHtml(c.razon_social||'')}</option>`).join('');
         document.getElementById('iVVehiculo').innerHTML =
             '<option value="">Sin vehículo</option>' +
-            (vehs||[]).map(v => `<option value="${v.id}">${v.patente}</option>`).join('');
+            (vehs||[]).map(v => `<option value="${v.id}">${_escapeHtml(v.patente||'')}</option>`).join('');
         document.getElementById('iVConductor').innerHTML =
             '<option value="">Sin conductor</option>' +
-            (conds||[]).map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
+            (conds||[]).map(c => `<option value="${c.id}">${_escapeHtml(c.nombre||'')}</option>`).join('');
     } catch (err) {
         console.error('[cargarSelectsViaje]', err);
         toast('⚠️ Error cargando datos: ' + err.message);
