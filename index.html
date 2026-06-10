@@ -3366,14 +3366,15 @@ function filtrarViajes() {
         ${casillasCells}
         <td style="white-space:nowrap">
             <button class="btn btn-sm" style="margin-right:4px;background:#6c757d;color:#fff"
+                title="Editar viaje" aria-label="Editar viaje"
                 onclick="editarViaje('${v.id}')">✏️</button>
             <button class="btn btn-facturar btn-sm" style="margin-right:4px"
-                title="Emitir boleta/factura electrónica"
+                title="Emitir boleta/factura electrónica" aria-label="Emitir boleta electrónica"
                 onclick="emitirFactura('${v.id}',this)">🧾</button>
             <button class="btn btn-sm" style="margin-right:4px;background:#198754;color:#fff"
-                title="Crear factura manual desde este viaje"
+                title="Crear factura manual desde este viaje" aria-label="Crear factura manual desde viaje"
                 onclick="facturaDesdeViaje('${v.id}')">📄</button>
-            <button class="btn btn-danger btn-sm" onclick="eliminarRegistro('viajes','${v.id}',renderViajes)">✕</button>
+            <button class="btn btn-danger btn-sm" title="Eliminar viaje" aria-label="Eliminar viaje" onclick="eliminarRegistro('viajes','${v.id}',renderViajes)">✕</button>
         </td>
     </tr>`;}).join('') : `<tr class="empty-row"><td colspan="${totalCols}">Sin viajes registrados</td></tr>`;
 }
@@ -3401,7 +3402,10 @@ function editarViaje(id) {
 
 function facturaDesdeViaje(viajeId) {
     const v = _viajesData.find(x => x.id === viajeId);
-    if (!v) return;
+    if (!v) {
+        toast('⚠️ No se encontró el viaje seleccionado.');
+        return;
+    }
     _prefillFacturaClienteId = v.cliente_id || null;
     openModal('mFactura');
     // Pre-fill monto with tarifa del viaje
@@ -3488,7 +3492,7 @@ async function cargarSelectsViaje() {
 async function emitirFactura(viajeId, btn) {
     // PASO 4: verificar que la empresa tenga API Key configurada
     if (!currentEmpresa?.haulmer_api_key) {
-        toast('⚠️ Configura tu API Key de Haulmer en ⚙️ Configuración antes de emitir.');
+        toast('✅ El botón funciona correctamente. Para emitir boletas electrónicas, primero configura tu API Key de Haulmer en ⚙️ Configuración.');
         return;
     }
     btn.disabled = true;
