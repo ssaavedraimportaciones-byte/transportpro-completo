@@ -4969,12 +4969,21 @@ function cerrarPreview() {
     document.getElementById('mPreviewCotizacion').style.display = 'none';
 }
 
+// Autoriza impresión cuando el modal de cotización está abierto
+// Cubre TANTO el botón in-app como el share-button nativo de iOS Safari
+window.addEventListener('beforeprint', function() {
+    var modal = document.getElementById('mPreviewCotizacion');
+    if (modal && modal.style.display !== 'none') {
+        document.body.classList.add('modo-impresion');
+    }
+});
+window.addEventListener('afterprint', function() {
+    document.body.classList.remove('modo-impresion');
+});
+
 function imprimirCotizacionPreview() {
     document.body.classList.add('modo-impresion');
     window.print();
-    // Safari no siempre dispara onafterprint; el setTimeout es el fallback
-    window.onafterprint = function() { document.body.classList.remove('modo-impresion'); window.onafterprint = null; };
-    setTimeout(function() { document.body.classList.remove('modo-impresion'); }, 5000);
 }
 
 function cambiarTemplate(tpl) {
