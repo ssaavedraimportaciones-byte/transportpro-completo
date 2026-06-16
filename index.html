@@ -190,8 +190,17 @@
         body { -webkit-user-select: none; -moz-user-select: none; user-select: none; }
         input, textarea, select, button, [contenteditable] { -webkit-user-select: text; -moz-user-select: text; user-select: text; }
 
-        /* ── SEGURIDAD: bloquear impresión ── */
-        @media print { body * { visibility: hidden !important; } body::before { visibility: visible !important; content: "⛔ Impresión no autorizada — TransportPro © " attr(data-empresa); font-size: 24px; font-weight: bold; color: red; display: block; text-align: center; margin-top: 40px; } }
+        /* ── SEGURIDAD: bloquear impresión directa (Ctrl+P / Cmd+P sin botón del sistema) ── */
+        @media print {
+            body:not(.modo-impresion) * { visibility: hidden !important; }
+            body:not(.modo-impresion)::before { visibility: visible !important; content: "⛔ Impresión no autorizada — TransportPro © " attr(data-empresa); font-size: 24px; font-weight: bold; color: red; display: block; text-align: center; margin-top: 40px; }
+            /* Impresión autorizada desde cotización */
+            body.modo-impresion { background: white !important; min-height: auto !important; }
+            body.modo-impresion > * { display: none !important; }
+            body.modo-impresion #mPreviewCotizacion { display: block !important; position: static !important; background: none !important; overflow: visible !important; padding: 0 !important; }
+            body.modo-impresion #previewControls { display: none !important; }
+            body.modo-impresion #previewArea { display: block !important; box-shadow: none !important; border-radius: 0 !important; max-width: 100% !important; overflow: visible !important; }
+        }
 
         /* ── Pantalla bloqueo DevTools eliminada ── */
     </style>
@@ -2281,7 +2290,7 @@ setInterval(function() {
         <option value="minimal">⚪ Minimalista</option>
         <option value="corporativo">🏢 Corporativo</option>
       </select>
-      <button onclick="window.print()" style="padding:8px 18px;background:#10b981;color:white;border:none;border-radius:7px;font-size:13px;font-weight:700;cursor:pointer">🖨️ Imprimir / PDF</button>
+      <button onclick="imprimirCotizacionPreview()" style="padding:8px 18px;background:#10b981;color:white;border:none;border-radius:7px;font-size:13px;font-weight:700;cursor:pointer">🖨️ Imprimir / PDF</button>
       <button onclick="cerrarPreview()" style="padding:8px 14px;background:#ef4444;color:white;border:none;border-radius:7px;font-size:13px;font-weight:700;cursor:pointer">✕ Cerrar</button>
     </div>
   </div>
@@ -4958,6 +4967,14 @@ var _cotTemplate    = 'clasico';
 
 function cerrarPreview() {
     document.getElementById('mPreviewCotizacion').style.display = 'none';
+}
+
+function imprimirCotizacionPreview() {
+    document.body.classList.add('modo-impresion');
+    window.print();
+    // Safari no siempre dispara onafterprint; el setTimeout es el fallback
+    window.onafterprint = function() { document.body.classList.remove('modo-impresion'); window.onafterprint = null; };
+    setTimeout(function() { document.body.classList.remove('modo-impresion'); }, 5000);
 }
 
 function cambiarTemplate(tpl) {
