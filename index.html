@@ -6110,6 +6110,7 @@ async function renderUsuarios() {
         .from('usuarios')
         .select('id, nombre, email, rol, activo, created_at')
         .eq('empresa_id', currentEmpresa.id)
+        .or('rol.is.null,rol.neq.superadmin')   // oculta la cuenta propietaria/global, sin descartar usuarios con rol NULL
         .order('nombre');
 
     if (error) {
