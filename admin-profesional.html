@@ -499,9 +499,10 @@
 
     <script>
         const SUPABASE_URL = 'https://ozmnfdndauyzcsxunxig.supabase.co';
-        const SERVICE_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im96bW5mZG5kYXV5emNzeHVueGlnIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NDEwMzA2MywiZXhwIjoyMDg5Njc5MDYzfQ.f-y2qxuiMQyc5Iuu8vYZorM_XbH3V1oVR9fHG8LX7c8';
-        const ADMIN_PASS   = 'Admin2026tp';
-        const AUTH_KEY     = 'tp_admin_ok';
+        // El service key NUNCA debe escribirse en este archivo ni commitearse:
+        // otorga acceso total a la base de datos saltando RLS. Se solicita al
+        // entrar y se conserva solo en sessionStorage de esta pestaña.
+        const SERVICE_KEY_SS = 'tp_admin_service_key';
         const PLANES_PRECIO = { starter: 29990, professional: 59990, enterprise: 99990 };
 
         let sbAdmin;
@@ -510,42 +511,51 @@
         let _emailMap      = {};
 
         function cerrarSesion() {
-            localStorage.removeItem(AUTH_KEY);
+            sessionStorage.removeItem(SERVICE_KEY_SS);
             location.reload();
         }
 
         // ── Auth ──────────────────────────────────────────────────
         function checkAuth() {
-            if (localStorage.getItem(AUTH_KEY) === ADMIN_PASS) { initAdmin(); return; }
+            const key = sessionStorage.getItem(SERVICE_KEY_SS);
+            if (key) { initAdmin(key); return; }
             document.body.innerHTML = `
                 <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0f172a">
-                    <div style="background:#1e293b;padding:40px;border-radius:16px;width:360px;border:1px solid #334155;box-shadow:0 20px 60px rgba(0,0,0,0.5)">
+                    <div style="background:#1e293b;padding:40px;border-radius:16px;width:420px;border:1px solid #334155;box-shadow:0 20px 60px rgba(0,0,0,0.5)">
                         <div style="text-align:center;margin-bottom:28px">
                             <div style="font-size:40px;margin-bottom:8px">🔐</div>
                             <h2 style="color:#fff;font-size:20px">Admin TransportPro</h2>
-                            <p style="color:#94a3b8;font-size:13px;margin-top:4px">Acceso restringido</p>
+                            <p style="color:#94a3b8;font-size:13px;margin-top:4px">Pega el <strong>service_role key</strong> del proyecto<br>(Supabase → Settings → API). No se guarda en disco.</p>
                         </div>
-                        <input id="adminPassInput" type="password" placeholder="Contraseña de administrador"
+                        <input id="adminPassInput" type="password" placeholder="service_role key" autocomplete="off"
                             style="width:100%;padding:12px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:#fff;font-size:14px;box-sizing:border-box;margin-bottom:12px">
                         <button onclick="submitAdminPass()"
                             style="width:100%;padding:12px;background:linear-gradient(135deg,#dc2626,#991b1b);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">
                             Entrar al Panel
                         </button>
-                        <p id="adminErr" style="color:#ef4444;text-align:center;font-size:12px;margin-top:10px;display:none">❌ Contraseña incorrecta</p>
+                        <p id="adminErr" style="color:#ef4444;text-align:center;font-size:12px;margin-top:10px;display:none">❌ Key inválida o sin acceso</p>
                     </div>
                 </div>`;
             const inp = document.getElementById('adminPassInput');
             if (inp) inp.addEventListener('keydown', e => { if (e.key === 'Enter') submitAdminPass(); });
         }
 
-        function submitAdminPass() {
-            const val = document.getElementById('adminPassInput').value;
-            if (val === ADMIN_PASS) { localStorage.setItem(AUTH_KEY, ADMIN_PASS); location.reload(); }
-            else { document.getElementById('adminErr').style.display = 'block'; }
+        async function submitAdminPass() {
+            const val = document.getElementById('adminPassInput').value.trim();
+            const err = document.getElementById('adminErr');
+            if (!val) { err.style.display = 'block'; return; }
+            // Validar la key con una consulta mínima antes de aceptarla
+            const test = window.supabase.createClient(SUPABASE_URL, val, {
+                auth: { autoRefreshToken: false, persistSession: false }
+            });
+            const { error } = await test.from('empresas').select('id', { head: true, count: 'exact' });
+            if (error) { err.style.display = 'block'; return; }
+            sessionStorage.setItem(SERVICE_KEY_SS, val);
+            location.reload();
         }
 
-        function initAdmin() {
-            sbAdmin = window.supabase.createClient(SUPABASE_URL, SERVICE_KEY, {
+        function initAdmin(serviceKey) {
+            sbAdmin = window.supabase.createClient(SUPABASE_URL, serviceKey, {
                 auth: { autoRefreshToken: false, persistSession: false }
             });
             document.getElementById('dashFecha').textContent = new Date().toLocaleDateString('es-CL', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
@@ -688,7 +698,7 @@
             await loadEmpresas();
         }
 
-        document.getElementById('formEmpresa').addEventListener('submit', async (e) => {
+        document.getElementById('formEmpresa')?.addEventListener('submit', async (e) => {
             e.preventDefault();
             const btn = document.getElementById('btnCrearEmpresa');
             btn.disabled = true; btn.innerHTML = '<span class="loading"></span> Creando...';
@@ -760,7 +770,7 @@
             await loadUsuarios();
         }
 
-        document.getElementById('formUsuario').addEventListener('submit', async (e) => {
+        document.getElementById('formUsuario')?.addEventListener('submit', async (e) => {
             e.preventDefault();
             const btn = document.getElementById('btnCrearUsuario');
             btn.disabled = true; btn.innerHTML = '<span class="loading"></span> Creando...';

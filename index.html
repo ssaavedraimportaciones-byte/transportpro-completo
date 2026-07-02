@@ -2812,7 +2812,7 @@ function openModal(id) {
         const extraLocal = _editingViajeId ? (() => { try { return JSON.parse(localStorage.getItem('tp_viaje_extra_' + _editingViajeId)); } catch(e) { return null; } })() : null;
         renderCasillasEnForm(_editingViajeData?.datos_extra || extraLocal || null);
     }
-    if (id === 'mFactura')     { cargarSelectsFactura(_prefillFacturaClienteId).catch(()=>{}); document.getElementById('iFFecha').value = t; _prefillFacturaClienteId = null; }
+    if (id === 'mFactura' && !_editingFacturaId) { cargarSelectsFactura(_prefillFacturaClienteId).catch(()=>{}); document.getElementById('iFFecha').value = t; _prefillFacturaClienteId = null; }
     if (id === 'mCombustible') {
         cargarSelectVehiculo('iCoVeh', false).then(() => {
             if (_editingCombustibleId && _editingCombustibleData)
@@ -4046,7 +4046,7 @@ async function renderRentabilidad() {
         const util = v.ingresos - v.comb - v.gastos - v.rem;
         const mg   = v.ingresos ? Math.round((util/v.ingresos)*100) : 0;
         return `<tr>
-            <td><strong>${v.patente}</strong></td>
+            <td><strong>${_escapeHtml(v.patente)}</strong></td>
             <td>${v.viajes}</td>
             <td style="color:#10b981"><strong>$${fmt(v.ingresos)}</strong></td>
             <td style="color:#f59e0b">$${fmt(v.comb)}</td>
@@ -4067,22 +4067,24 @@ async function renderRentabilidad() {
     });
     const top = Object.entries(rutas).sort((a,b) => b[1].ing - a[1].ing).slice(0, 10);
     document.getElementById('tRentabilidad').innerHTML = top.length ? top.map(([ruta, d]) => `<tr>
-        <td>${ruta}</td><td>${d.n}</td>
+        <td>${_escapeHtml(ruta)}</td><td>${d.n}</td>
         <td><strong>$${fmt(d.ing)}</strong></td>
         <td>$${fmt(Math.round(d.ing / d.n))}</td>
     </tr>`).join('') : '<tr class="empty-row"><td colspan="4">Sin datos de viajes aún</td></tr>';
 
     // ── POR CLIENTE ──────────────────────────────────────────
     const porCli = {};
+    const cliIdNombre = {};
     (viajes||[]).forEach(v => {
         const nombre = v.clientes?.razon_social || v.cliente_id || '—';
+        if (v.cliente_id) cliIdNombre[v.cliente_id] = nombre;
         if (!porCli[nombre]) porCli[nombre] = { viajes: 0, ingresos: 0, factPagadas: 0 };
         porCli[nombre].viajes++;
         porCli[nombre].ingresos += v.tarifa || 0;
     });
     (facturas||[]).filter(f => f.estado === 'pagada').forEach(f => {
-        const nombre = Object.keys(porCli).find(k => k !== '—') || '—';
-        if (porCli[nombre]) porCli[nombre].factPagadas += f.monto || 0;
+        const nombre = cliIdNombre[f.cliente_id];
+        if (nombre && porCli[nombre]) porCli[nombre].factPagadas += f.monto || 0;
     });
     const topCli = Object.entries(porCli).sort((a,b) => b[1].ingresos - a[1].ingresos).slice(0, 10);
     document.getElementById('tRentCliente').innerHTML = topCli.length ? topCli.map(([nombre, d]) => `<tr>
@@ -4191,7 +4193,7 @@ async function cargarSelectVehiculo(selectId, opcional) {
         if (error) throw error;
         const first = opcional ? '<option value="">Sin vehículo</option>' : '<option value="">Seleccionar...</option>';
         document.getElementById(selectId).innerHTML =
-            first + (data||[]).map(v => `<option value="${v.id}">${v.patente}</option>`).join('');
+            first + (data||[]).map(v => `<option value="${v.id}">${_escapeHtml(v.patente)}</option>`).join('');
     } catch (err) {
         console.error('[cargarSelectVehiculo]', err);
         toast('❌ Error cargando vehículos: ' + err.message);
@@ -4260,7 +4262,8 @@ function _xlsxDescarga(filas, columnas, nombreArchivo, conTotales) {
     if (conTotales) {
         totalesRow = columnas.map((c, i) => {
             if (_esNumerico(c.label)) {
-                const col = String.fromCharCode(65 + (i < 26 ? i : 0));
+                let col = '', n = i + 1;
+                while (n > 0) { col = String.fromCharCode(65 + (n - 1) % 26) + col; n = Math.floor((n - 1) / 26); }
                 return { f: `SUM(${col}2:${col}${filas.length + 1})`, t: 'n' };
             }
             return i === 0 ? 'TOTALES' : '';
@@ -4650,7 +4653,7 @@ async function cargarSelectClienteEn(selectId) {
         const el = document.getElementById(selectId);
         if (!el) return;
         el.innerHTML = '<option value="">Seleccionar cliente...</option>' +
-            (cls || []).map(c => `<option value="${c.id}">${c.razon_social}</option>`).join('');
+            (cls || []).map(c => `<option value="${c.id}">${_escapeHtml(c.razon_social)}</option>`).join('');
     } catch (err) {
         console.error('[cargarSelectClienteEn]', err);
         toast('❌ Error cargando clientes: ' + err.message);
@@ -4692,7 +4695,7 @@ async function saveCotizacion(e) {
     let cotId;
     if (_editingCotizacionId) {
         // Actualizar cotización existente
-        const { error } = await sb.from('cotizaciones').update(cotPayload).eq('id', _editingCotizacionId);
+        const { error } = await sb.from('cotizaciones').update(cotPayload).eq('id', _editingCotizacionId).eq('empresa_id', currentEmpresa.id);
         if (error) { btn.disabled = false; btn.textContent = '💾 Guardar Cotización'; toast('❌ Error: ' + error.message); return; }
         cotId = _editingCotizacionId;
         // Eliminar ítems anteriores y reinsertar
@@ -4726,7 +4729,7 @@ async function saveCotizacion(e) {
 }
 
 async function cambiarEstadoCotizacion(id, nuevoEstado) {
-    const { error } = await sb.from('cotizaciones').update({ estado: nuevoEstado }).eq('id', id);
+    const { error } = await sb.from('cotizaciones').update({ estado: nuevoEstado }).eq('id', id).eq('empresa_id', currentEmpresa.id);
     if (error) { toast('❌ ' + error.message); return; }
     toast(`✅ Cotización marcada como ${nuevoEstado}`);
     await renderCotizaciones();
@@ -4760,7 +4763,7 @@ async function cotizacionAViaje(cotId) {
     }]);
     if (error) { toast('❌ Error al crear viaje: ' + error.message); return; }
     // Marcar cotización como convertida
-    await sb.from('cotizaciones').update({ estado: 'aceptada', notas: (cot.notas || '') + '\n[Convertida a viaje]' }).eq('id', cotId);
+    await sb.from('cotizaciones').update({ estado: 'aceptada', notas: (cot.notas || '') + '\n[Convertida a viaje]' }).eq('id', cotId).eq('empresa_id', currentEmpresa.id);
     toast('✅ Viaje creado desde la cotización');
     await renderCotizaciones();
 }
@@ -4943,7 +4946,7 @@ function actualizarLogoCotizacion() {
     if (!el) return;
     const src = _getLogo();
     el.innerHTML = src
-        ? `<img src="${src}" style="max-width:100%;max-height:100%;object-fit:contain;padding:3px">`
+        ? `<img src="${_escapeHtml(src)}" style="max-width:100%;max-height:100%;object-fit:contain;padding:3px">`
         : `<span style="font-size:10px;color:#6366f1">Sin logo</span>`;
 }
 
@@ -4951,7 +4954,7 @@ function _mostrarLogoPreview(src) {
     const el = document.getElementById('cfgLogoPreview');
     if (!el) return;
     if (src) {
-        el.innerHTML = `<img src="${src}" style="max-width:100%;max-height:100%;object-fit:contain;padding:4px">`;
+        el.innerHTML = `<img src="${_escapeHtml(src)}" style="max-width:100%;max-height:100%;object-fit:contain;padding:4px">`;
     } else {
         el.innerHTML = '<span style="font-size:11px;color:#9ca3af;text-align:center">Sin logo</span>';
     }
@@ -5002,6 +5005,7 @@ function verCotizacion(cotId) {
 }
 
 function _renderPreview(cot) {
+    const E = _escapeHtml;
     const area = document.getElementById('previewArea');
     const emp  = currentEmpresa || {};
     const cli  = cot.clientes  || {};
@@ -5015,10 +5019,10 @@ function _renderPreview(cot) {
     const fmt2 = n => Number(n).toLocaleString('es-CL');
 
     const logoHTML = logo
-        ? `<img src="${logo}" style="max-height:70px;max-width:160px;object-fit:contain">`
+        ? `<img src="${E(logo)}" style="max-height:70px;max-width:160px;object-fit:contain">`
         : `<div style="width:120px;height:50px;background:rgba(255,255,255,0.2);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;color:rgba(255,255,255,0.7)">Tu Logo</div>`;
     const logoHTMLDark = logo
-        ? `<img src="${logo}" style="max-height:70px;max-width:160px;object-fit:contain">`
+        ? `<img src="${E(logo)}" style="max-height:70px;max-width:160px;object-fit:contain">`
         : `<div style="width:120px;height:50px;background:#e5e7eb;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;color:#6b7280">Tu Logo</div>`;
 
     const thBg = _cotTemplate==='moderno'?'#1f2937':(_cotTemplate==='minimal'?'#f9fafb':(_cotTemplate==='corporativo'?'#1e3a5f':'#1e40af'));
@@ -5032,7 +5036,7 @@ function _renderPreview(cot) {
         itemRows = items.map((it, i) => `
             <tr style="border-bottom:1px solid #e5e7eb;${i%2===1?'background:#f9fafb':''}">
                 <td style="padding:12px 14px;font-size:13px">
-                    <strong>${it.descripcion || 'Servicio'}</strong>
+                    <strong>${E(it.descripcion || 'Servicio')}</strong>
                     ${it.tipo_servicio && it.tipo_servicio !== 'general' ? `<br><span style="color:#6b7280;font-size:11px">${tipoLabel(it.tipo_servicio)}</span>` : ''}
                 </td>
                 <td style="padding:12px 14px;text-align:center;font-size:13px">${it.cantidad || 1}</td>
@@ -5043,8 +5047,8 @@ function _renderPreview(cot) {
     } else {
         itemRows = `<tr style="border-bottom:1px solid #e5e7eb">
             <td style="padding:14px;font-size:13px">
-                <strong>Servicio de Transporte${cot.tipo_carga?' ('+cot.tipo_carga+')':''}</strong><br>
-                <span style="color:#6b7280;font-size:12px">📍 ${cot.origen||'—'} → ${cot.destino||'—'}</span>
+                <strong>Servicio de Transporte${cot.tipo_carga?' ('+E(cot.tipo_carga)+')':''}</strong><br>
+                <span style="color:#6b7280;font-size:12px">📍 ${E(cot.origen||'—')} → ${E(cot.destino||'—')}</span>
             </td>
             <td style="padding:14px;text-align:center;font-size:13px">1</td>
             <td style="padding:14px;text-align:right;font-size:13px">$${fmt2(neto)}</td>
@@ -5082,32 +5086,32 @@ function _renderPreview(cot) {
     const condicionesHTML = cot.condiciones_comerciales
         ? `<div style="margin-top:20px;padding:14px;background:#f0f9ff;border-left:4px solid #3b82f6;border-radius:0 8px 8px 0">
                <p style="font-size:11px;font-weight:700;color:#1e40af;margin-bottom:6px">📋 CONDICIONES COMERCIALES</p>
-               <p style="font-size:12px;color:#374151;white-space:pre-line">${cot.condiciones_comerciales}</p>
+               <p style="font-size:12px;color:#374151;white-space:pre-line">${E(cot.condiciones_comerciales)}</p>
            </div>` : '';
 
     const bancarioHTML = cot.datos_bancarios
         ? `<div style="margin-top:12px;padding:14px;background:#f0fdf4;border-left:4px solid #22c55e;border-radius:0 8px 8px 0">
                <p style="font-size:11px;font-weight:700;color:#065f46;margin-bottom:6px">🏦 DATOS BANCARIOS PARA TRANSFERENCIA</p>
-               <p style="font-size:12px;color:#374151;white-space:pre-line">${cot.datos_bancarios}</p>
+               <p style="font-size:12px;color:#374151;white-space:pre-line">${E(cot.datos_bancarios)}</p>
            </div>` : '';
 
     const notasHTML = cot.notas
         ? `<div style="margin-top:12px;padding:14px;background:#fffbeb;border-left:4px solid #f59e0b;border-radius:0 8px 8px 0">
                <p style="font-size:11px;font-weight:700;color:#92400e;margin-bottom:4px">📝 OBSERVACIONES</p>
-               <p style="font-size:12px;color:#374151;white-space:pre-line">${cot.notas}</p>
+               <p style="font-size:12px;color:#374151;white-space:pre-line">${E(cot.notas)}</p>
            </div>` : '';
 
     const firmasHTML = `
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:40px;padding-top:20px;border-top:1px solid #e5e7eb">
             <div style="text-align:center">
                 <div style="border-top:1px solid #374151;padding-top:8px;margin-top:50px">
-                    <p style="font-size:12px;font-weight:700;color:#374151">${emp.razon_social||emp.nombre||'Empresa'}</p>
+                    <p style="font-size:12px;font-weight:700;color:#374151">${E(emp.razon_social||emp.nombre||'Empresa')}</p>
                     <p style="font-size:11px;color:#6b7280">Proveedor del Servicio</p>
                 </div>
             </div>
             <div style="text-align:center">
                 <div style="border-top:1px solid #374151;padding-top:8px;margin-top:50px">
-                    <p style="font-size:12px;font-weight:700;color:#374151">${cli.razon_social||'Cliente'}</p>
+                    <p style="font-size:12px;font-weight:700;color:#374151">${E(cli.razon_social||'Cliente')}</p>
                     <p style="font-size:11px;color:#6b7280">Aceptación del Servicio</p>
                 </div>
             </div>
@@ -5135,16 +5139,16 @@ function _renderPreview(cot) {
             <!-- Franja info empresa -->
             <div style="background:#dbeafe;padding:14px 36px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px">
                 <div>
-                    <p style="font-size:13px;font-weight:700;color:#1e40af;margin:0">${emp.razon_social||emp.nombre||'Mi Empresa'}</p>
-                    <p style="font-size:11px;color:#3730a3;margin:2px 0">${emp.rut_empresa?'RUT: '+emp.rut_empresa:''}</p>
-                    <p style="font-size:11px;color:#374151;margin:2px 0">${[emp.direccion,emp.comuna,emp.ciudad].filter(Boolean).join(' · ')}</p>
+                    <p style="font-size:13px;font-weight:700;color:#1e40af;margin:0">${E(emp.razon_social||emp.nombre||'Mi Empresa')}</p>
+                    <p style="font-size:11px;color:#3730a3;margin:2px 0">${emp.rut_empresa?'RUT: '+E(emp.rut_empresa):''}</p>
+                    <p style="font-size:11px;color:#374151;margin:2px 0">${E([emp.direccion,emp.comuna,emp.ciudad].filter(Boolean).join(' · '))}</p>
                 </div>
                 <div style="text-align:right">
                     <p style="font-size:11px;color:#374151;margin:0"><strong>PARA:</strong></p>
-                    <p style="font-size:13px;font-weight:700;color:#1e40af;margin:2px 0">${cli.razon_social||'—'}</p>
-                    ${cli.rut?`<p style="font-size:11px;color:#374151;margin:1px 0">RUT: ${cli.rut}</p>`:''}
-                    ${cot.atencion?`<p style="font-size:11px;color:#374151;margin:1px 0">Atención: ${cot.atencion}</p>`:''}
-                    ${cli.email?`<p style="font-size:11px;color:#374151;margin:1px 0">${cli.email}</p>`:''}
+                    <p style="font-size:13px;font-weight:700;color:#1e40af;margin:2px 0">${E(cli.razon_social||'—')}</p>
+                    ${cli.rut?`<p style="font-size:11px;color:#374151;margin:1px 0">RUT: ${E(cli.rut)}</p>`:''}
+                    ${cot.atencion?`<p style="font-size:11px;color:#374151;margin:1px 0">Atención: ${E(cot.atencion)}</p>`:''}
+                    ${cli.email?`<p style="font-size:11px;color:#374151;margin:1px 0">${E(cli.email)}</p>`:''}
                 </div>
             </div>
             <!-- Body -->
@@ -5181,23 +5185,23 @@ function _renderPreview(cot) {
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:28px">
                     <div style="background:#1e293b;border-radius:10px;padding:16px">
                         <p style="font-size:10px;color:#64748b;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin:0 0 8px">DE:</p>
-                        <p style="color:white;font-weight:700;font-size:14px;margin:0">${emp.razon_social||emp.nombre||'Mi Empresa'}</p>
-                        ${emp.rut_empresa?`<p style="color:#94a3b8;font-size:12px;margin:3px 0">RUT: ${emp.rut_empresa}</p>`:''}
-                        <p style="color:#64748b;font-size:12px;margin:3px 0">${[emp.direccion,emp.ciudad].filter(Boolean).join(', ')}</p>
+                        <p style="color:white;font-weight:700;font-size:14px;margin:0">${E(emp.razon_social||emp.nombre||'Mi Empresa')}</p>
+                        ${emp.rut_empresa?`<p style="color:#94a3b8;font-size:12px;margin:3px 0">RUT: ${E(emp.rut_empresa)}</p>`:''}
+                        <p style="color:#64748b;font-size:12px;margin:3px 0">${E([emp.direccion,emp.ciudad].filter(Boolean).join(', '))}</p>
                     </div>
                     <div style="background:#1e293b;border-radius:10px;padding:16px">
                         <p style="font-size:10px;color:#64748b;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin:0 0 8px">PARA:</p>
-                        <p style="color:white;font-weight:700;font-size:14px;margin:0">${cli.razon_social||'—'}</p>
-                        ${cli.rut?`<p style="color:#94a3b8;font-size:12px;margin:3px 0">RUT: ${cli.rut}</p>`:''}
-                        ${cot.atencion?`<p style="color:#94a3b8;font-size:12px;margin:3px 0">Atención: ${cot.atencion}</p>`:''}
-                        ${cli.email?`<p style="color:#64748b;font-size:12px;margin:3px 0">${cli.email}</p>`:''}
+                        <p style="color:white;font-weight:700;font-size:14px;margin:0">${E(cli.razon_social||'—')}</p>
+                        ${cli.rut?`<p style="color:#94a3b8;font-size:12px;margin:3px 0">RUT: ${E(cli.rut)}</p>`:''}
+                        ${cot.atencion?`<p style="color:#94a3b8;font-size:12px;margin:3px 0">Atención: ${E(cot.atencion)}</p>`:''}
+                        ${cli.email?`<p style="color:#64748b;font-size:12px;margin:3px 0">${E(cli.email)}</p>`:''}
                     </div>
                 </div>
             </div>
             <!-- Franja amber ruta -->
             <div style="background:#f59e0b;padding:12px 40px;display:flex;gap:32px;align-items:center;flex-wrap:wrap">
-                <span style="font-size:13px;font-weight:700;color:#0f172a">🚛 ${cot.origen||'Origen'} → ${cot.destino||'Destino'}</span>
-                ${cot.tipo_carga?`<span style="font-size:12px;color:#0f172a">📦 ${cot.tipo_carga}</span>`:''}
+                <span style="font-size:13px;font-weight:700;color:#0f172a">🚛 ${E(cot.origen||'Origen')} → ${E(cot.destino||'Destino')}</span>
+                ${cot.tipo_carga?`<span style="font-size:12px;color:#0f172a">📦 ${E(cot.tipo_carga)}</span>`:''}
                 <span style="margin-left:auto;font-size:12px;color:#0f172a">Válida hasta: <strong>${cot.validez||'—'}</strong></span>
             </div>
             <!-- Body -->
@@ -5223,9 +5227,9 @@ function _renderPreview(cot) {
             <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #1f2937;padding-bottom:24px;margin-bottom:24px">
                 <div>
                     ${logoHTMLDark}
-                    <h2 style="font-size:16px;font-weight:700;color:#1f2937;margin:12px 0 2px">${emp.razon_social||emp.nombre||'Mi Empresa'}</h2>
-                    ${emp.rut_empresa?`<p style="font-size:11px;color:#6b7280;margin:1px 0">RUT ${emp.rut_empresa}</p>`:''}
-                    <p style="font-size:11px;color:#6b7280;margin:1px 0">${[emp.direccion,emp.comuna,emp.ciudad].filter(Boolean).join(', ')}</p>
+                    <h2 style="font-size:16px;font-weight:700;color:#1f2937;margin:12px 0 2px">${E(emp.razon_social||emp.nombre||'Mi Empresa')}</h2>
+                    ${emp.rut_empresa?`<p style="font-size:11px;color:#6b7280;margin:1px 0">RUT ${E(emp.rut_empresa)}</p>`:''}
+                    <p style="font-size:11px;color:#6b7280;margin:1px 0">${E([emp.direccion,emp.comuna,emp.ciudad].filter(Boolean).join(', '))}</p>
                 </div>
                 <div style="text-align:right">
                     <p style="font-size:10px;color:#9ca3af;letter-spacing:3px;text-transform:uppercase;margin:0">Cotización</p>
@@ -5237,15 +5241,15 @@ function _renderPreview(cot) {
             <!-- Cliente -->
             <div style="margin-bottom:28px">
                 <p style="font-size:10px;color:#9ca3af;letter-spacing:2px;text-transform:uppercase;margin:0 0 6px">Dirigido a</p>
-                <p style="font-size:15px;font-weight:700;margin:0">${cli.razon_social||'—'}</p>
-                ${cli.rut?`<p style="font-size:12px;color:#6b7280;margin:2px 0">RUT ${cli.rut}</p>`:''}
-                ${cli.email?`<p style="font-size:12px;color:#6b7280;margin:2px 0">${cli.email}</p>`:''}
+                <p style="font-size:15px;font-weight:700;margin:0">${E(cli.razon_social||'—')}</p>
+                ${cli.rut?`<p style="font-size:12px;color:#6b7280;margin:2px 0">RUT ${E(cli.rut)}</p>`:''}
+                ${cli.email?`<p style="font-size:12px;color:#6b7280;margin:2px 0">${E(cli.email)}</p>`:''}
             </div>
             <!-- Detalle ruta -->
             <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:14px 18px;margin-bottom:20px;display:flex;gap:24px;flex-wrap:wrap">
-                <span style="font-size:12px"><strong>Origen:</strong> ${cot.origen||'—'}</span>
-                <span style="font-size:12px"><strong>Destino:</strong> ${cot.destino||'—'}</span>
-                ${cot.tipo_carga?`<span style="font-size:12px"><strong>Tipo de Carga:</strong> ${cot.tipo_carga}</span>`:''}
+                <span style="font-size:12px"><strong>Origen:</strong> ${E(cot.origen||'—')}</span>
+                <span style="font-size:12px"><strong>Destino:</strong> ${E(cot.destino||'—')}</span>
+                ${cot.tipo_carga?`<span style="font-size:12px"><strong>Tipo de Carga:</strong> ${E(cot.tipo_carga)}</span>`:''}
             </div>
             <!-- Tabla -->
             <div style="border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;margin-bottom:20px">
@@ -5264,13 +5268,13 @@ function _renderPreview(cot) {
 
     // ── TEMPLATE 4: CORPORATIVO (estilo MCM Logística) ──────────
     else if (_cotTemplate === 'corporativo') {
-        const atencionHTML = cot.atencion ? `<p style="font-size:12px;margin:3px 0"><strong>Atención:</strong> ${cot.atencion}</p>` : '';
+        const atencionHTML = cot.atencion ? `<p style="font-size:12px;margin:3px 0"><strong>Atención:</strong> ${E(cot.atencion)}</p>` : '';
         html = `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#1f2937">
             <!-- Header corporativo -->
             <div style="background:#1e3a5f;padding:24px 36px;display:flex;justify-content:space-between;align-items:center">
                 <div>
                     ${logoHTML}
-                    <p style="color:rgba(255,255,255,0.7);font-size:11px;margin:6px 0 0">${emp.razon_social||emp.nombre||'Empresa'}</p>
+                    <p style="color:rgba(255,255,255,0.7);font-size:11px;margin:6px 0 0">${E(emp.razon_social||emp.nombre||'Empresa')}</p>
                 </div>
                 <div style="text-align:right">
                     <p style="color:rgba(255,255,255,0.6);font-size:10px;letter-spacing:2px;text-transform:uppercase;margin:0">Cotización de Servicios</p>
@@ -5280,7 +5284,7 @@ function _renderPreview(cot) {
 
             <!-- Barra info empresa -->
             <div style="background:#e8eef4;padding:12px 36px;font-size:11px;color:#374151;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px">
-                <div>${emp.rut_empresa?'RUT: '+emp.rut_empresa+' · ':''}${[emp.direccion,emp.comuna,emp.ciudad].filter(Boolean).join(', ')}</div>
+                <div>${emp.rut_empresa?'RUT: '+E(emp.rut_empresa)+' · ':''}${E([emp.direccion,emp.comuna,emp.ciudad].filter(Boolean).join(', '))}</div>
                 <div>Fecha: <strong>${cot.fecha||'—'}</strong> · Válida hasta: <strong>${cot.validez||'—'}</strong></div>
             </div>
 
@@ -5289,18 +5293,18 @@ function _renderPreview(cot) {
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:20px">
                     <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px 18px">
                         <p style="font-size:10px;color:#64748b;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin:0 0 8px">Señores</p>
-                        <p style="font-size:14px;font-weight:700;margin:0">${cli.razon_social||'—'}</p>
-                        ${cli.rut?`<p style="font-size:12px;color:#6b7280;margin:3px 0">RUT: ${cli.rut}</p>`:''}
+                        <p style="font-size:14px;font-weight:700;margin:0">${E(cli.razon_social||'—')}</p>
+                        ${cli.rut?`<p style="font-size:12px;color:#6b7280;margin:3px 0">RUT: ${E(cli.rut)}</p>`:''}
                         ${atencionHTML}
-                        ${cli.email?`<p style="font-size:12px;color:#6b7280;margin:3px 0">${cli.email}</p>`:''}
-                        ${cli.telefono?`<p style="font-size:12px;color:#6b7280;margin:3px 0">Tel: ${cli.telefono}</p>`:''}
-                        ${cli.direccion?`<p style="font-size:12px;color:#6b7280;margin:3px 0">${cli.direccion}</p>`:''}
+                        ${cli.email?`<p style="font-size:12px;color:#6b7280;margin:3px 0">${E(cli.email)}</p>`:''}
+                        ${cli.telefono?`<p style="font-size:12px;color:#6b7280;margin:3px 0">Tel: ${E(cli.telefono)}</p>`:''}
+                        ${cli.direccion?`<p style="font-size:12px;color:#6b7280;margin:3px 0">${E(cli.direccion)}</p>`:''}
                     </div>
                     <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px 18px">
                         <p style="font-size:10px;color:#64748b;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin:0 0 8px">Ruta</p>
-                        <p style="font-size:13px;margin:4px 0"><strong>Origen:</strong> ${cot.origen||'—'}</p>
-                        <p style="font-size:13px;margin:4px 0"><strong>Destino:</strong> ${cot.destino||'—'}</p>
-                        ${cot.tipo_carga?`<p style="font-size:13px;margin:4px 0"><strong>Tipo Carga:</strong> ${cot.tipo_carga}</p>`:''}
+                        <p style="font-size:13px;margin:4px 0"><strong>Origen:</strong> ${E(cot.origen||'—')}</p>
+                        <p style="font-size:13px;margin:4px 0"><strong>Destino:</strong> ${E(cot.destino||'—')}</p>
+                        ${cot.tipo_carga?`<p style="font-size:13px;margin:4px 0"><strong>Tipo Carga:</strong> ${E(cot.tipo_carga)}</p>`:''}
                         <p style="font-size:12px;color:#6b7280;margin:8px 0 0">Estado: <span style="padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600;background:#fef3c7;color:#92400e">${(cot.estado||'pendiente').charAt(0).toUpperCase()+(cot.estado||'pendiente').slice(1)}</span></p>
                     </div>
                 </div>
@@ -5575,7 +5579,7 @@ function renderImportPreview(data) {
                 `<option value="${f.key}"${m.field===f.key?' selected':''}>${f.label}${f.required?' *':''}</option>`
             ).join('');
         return `<tr style="border-bottom:1px solid #f3f4f6">
-            <td style="padding:8px 12px;font-weight:600">${m.header || '(vacío)'}</td>
+            <td style="padding:8px 12px;font-weight:600">${_escapeHtml(m.header || '(vacío)')}</td>
             <td style="padding:8px 12px"><select onchange="importUpdateMapping(${idx},this.value)"
                 style="width:100%;padding:4px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px">${options}</select></td>
             <td style="padding:8px 12px;text-align:center">
@@ -5594,7 +5598,7 @@ function renderImportPreview(data) {
     previewBody.innerHTML = (data.preview || []).slice(0, 10).map(row => {
         const valid = row._valid !== false;
         return `<tr style="background:${valid?'white':'#fef2f2'}">` +
-            activeMappings.map(m => `<td style="padding:6px 10px;font-size:12px;border-bottom:1px solid #f3f4f6">${row[m.field]||'—'}</td>`).join('') +
+            activeMappings.map(m => `<td style="padding:6px 10px;font-size:12px;border-bottom:1px solid #f3f4f6">${_escapeHtml(row[m.field]||'—')}</td>`).join('') +
             '</tr>';
     }).join('') || '<tr><td colspan="99" style="padding:12px;text-align:center;color:#9ca3af">Sin datos para previsualizar</td></tr>';
 
@@ -5604,7 +5608,7 @@ function renderImportPreview(data) {
     if (data.errors?.length) {
         errBox.style.display = 'block';
         errList.innerHTML = data.errors.slice(0, 20).map(e =>
-            `<p style="margin:2px 0">Fila ${e.row}: ${e.errors.map(er => er.message).join(', ')}</p>`
+            `<p style="margin:2px 0">Fila ${e.row}: ${_escapeHtml(e.errors.map(er => er.message).join(', '))}</p>`
         ).join('');
     } else {
         errBox.style.display = 'none';
@@ -5800,8 +5804,8 @@ function _renderCombRows(rows) {
     if (!t) return;
     t.innerHTML = rows.length ? rows.map(c => `<tr>
         <td>${fmtDate(c.fecha)}</td>
-        <td>${c.vehiculos?.patente || '—'}</td>
-        <td style="color:#6366f1;font-weight:600">${c.numero_factura || '—'}</td>
+        <td>${_escapeHtml(c.vehiculos?.patente || '—')}</td>
+        <td style="color:#6366f1;font-weight:600">${_escapeHtml(c.numero_factura || '—')}</td>
         <td>${(c.litros || 0).toFixed(1)} L</td>
         <td>$${fmt(c.precio_litro)}</td>
         <td><strong>$${fmt(c.total)}</strong></td>
@@ -5862,9 +5866,9 @@ async function renderGastos() {
     _gastosData = data || [];
     t.innerHTML = _gastosData.length ? _gastosData.map(g => `<tr>
         <td>${fmtDate(g.fecha)}</td>
-        <td>${g.vehiculos?.patente || '—'}</td>
-        <td><span class="badge badge-info">${g.categoria}</span></td>
-        <td>${g.descripcion}</td>
+        <td>${_escapeHtml(g.vehiculos?.patente || '—')}</td>
+        <td><span class="badge badge-info">${_escapeHtml(g.categoria)}</span></td>
+        <td>${_escapeHtml(g.descripcion)}</td>
         <td><strong>$${fmt(g.monto)}</strong></td>
         <td style="white-space:nowrap">
             <button class="btn btn-sm" style="background:#6c757d;color:#fff;margin-right:4px" onclick="editarGasto('${g.id}')">✏️</button>
@@ -5921,9 +5925,9 @@ async function renderMantenimiento() {
     if (error) { t.innerHTML = `<tr class="empty-row"><td colspan="7">⚠️ ${_esc(error.message)}</td></tr>`; return; }
     _mantenimientoData = data || [];
     t.innerHTML = _mantenimientoData.length ? _mantenimientoData.map(m => `<tr>
-        <td>${m.vehiculos?.patente || '—'}</td>
-        <td>${m.tipo}</td>
-        <td>${m.descripcion}</td>
+        <td>${_escapeHtml(m.vehiculos?.patente || '—')}</td>
+        <td>${_escapeHtml(m.tipo)}</td>
+        <td>${_escapeHtml(m.descripcion)}</td>
         <td>${fmt(m.km_programado)} km</td>
         <td>${fmtDate(m.fecha_programada)}</td>
         <td><span class="badge ${m.estado === 'realizado' ? 'badge-success' : 'badge-warning'}">${m.estado || 'pendiente'}</span></td>
@@ -6021,7 +6025,7 @@ function casillasRender() {
                     <button onclick="casillasMover(${i},1)"  style="border:none;background:#e5e7eb;border-radius:3px;padding:1px 5px;font-size:10px;line-height:1;cursor:pointer;opacity:${i===lista.length-1?'0.3':'1'}" ${i===lista.length-1?'disabled':''}>▼</button>
                 </div>
                 <div>
-                    <span style="font-weight:700;font-size:13px;color:#111827">${c.nombre}</span>
+                    <span style="font-weight:700;font-size:13px;color:#111827">${_escapeHtml(c.nombre)}</span>
                     <span style="margin-left:8px;font-size:11px;background:#ede9fe;color:#5b21b6;padding:2px 7px;border-radius:12px">${tipoBadge[c.tipo] || c.tipo}</span>
                 </div>
             </div>
@@ -6072,11 +6076,11 @@ function renderCasillasEnForm(datosExtra) {
         const val = datos[c.nombre] !== undefined ? datos[c.nombre] : '';
         const inputId = 'iVCasilla_' + c.nombre.replace(/\s+/g,'_');
         let input = '';
-        if (c.tipo === 'texto')  input = `<input type="text"   id="${inputId}" value="${val}" placeholder="${c.nombre}" style="width:100%;padding:7px 10px;border:1.5px solid #d1d5db;border-radius:7px;font-size:13px">`;
-        if (c.tipo === 'numero') input = `<input type="number" id="${inputId}" value="${val}" placeholder="0"            style="width:100%;padding:7px 10px;border:1.5px solid #d1d5db;border-radius:7px;font-size:13px">`;
-        if (c.tipo === 'fecha')  input = `<input type="date"   id="${inputId}" value="${val}"                           style="width:100%;padding:7px 10px;border:1.5px solid #d1d5db;border-radius:7px;font-size:13px">`;
+        if (c.tipo === 'texto')  input = `<input type="text"   id="${inputId}" value="${_escapeHtml(val)}" placeholder="${_escapeHtml(c.nombre)}" style="width:100%;padding:7px 10px;border:1.5px solid #d1d5db;border-radius:7px;font-size:13px">`;
+        if (c.tipo === 'numero') input = `<input type="number" id="${inputId}" value="${_escapeHtml(val)}" placeholder="0"            style="width:100%;padding:7px 10px;border:1.5px solid #d1d5db;border-radius:7px;font-size:13px">`;
+        if (c.tipo === 'fecha')  input = `<input type="date"   id="${inputId}" value="${_escapeHtml(val)}"                           style="width:100%;padding:7px 10px;border:1.5px solid #d1d5db;border-radius:7px;font-size:13px">`;
         if (c.tipo === 'si_no')  input = `<label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="${inputId}" ${val ? 'checked' : ''} style="width:16px;height:16px"><span style="font-size:13px">Sí</span></label>`;
-        return `<div class="form-group"><label style="font-size:12px;color:#374151">${c.nombre}</label>${input}</div>`;
+        return `<div class="form-group"><label style="font-size:12px;color:#374151">${_escapeHtml(c.nombre)}</label>${input}</div>`;
     }).join('');
     el.innerHTML = `<div style="margin-top:4px;margin-bottom:4px;padding:12px 14px;border:1.5px solid #fcd34d;border-radius:10px;background:#fffbeb">
         <div style="font-size:11px;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">📋 Campos adicionales</div>
@@ -6143,19 +6147,15 @@ async function crearUsuario(e) {
     const rol      = document.getElementById('iURol').value;
 
     try {
-        // 1. Crear usuario en Supabase Auth
-        const { data: authData, error: authErr } = await sb.auth.admin
-            ? await sb.auth.admin.createUser({ email, password, email_confirm: true })
-            : { data: null, error: { message: 'Solo el admin puede crear usuarios' } };
-
-        // Fallback: usar signUp si no hay admin SDK (cliente web)
-        let authUserId = authData?.user?.id;
-        if (authErr || !authUserId) {
-            // Intentar con signUp (el usuario recibirá email de confirmación)
-            const { data: signUpData, error: signUpErr } = await sb.auth.signUp({ email, password });
-            if (signUpErr) throw signUpErr;
-            authUserId = signUpData?.user?.id;
-        }
+        // 1. Crear usuario en Supabase Auth con un cliente temporal:
+        // signUp sobre `sb` reemplazaría la sesión del admin por la del
+        // usuario nuevo (el admin quedaría deslogueado).
+        const sbTmp = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+            auth: { persistSession: false, autoRefreshToken: false }
+        });
+        const { data: signUpData, error: signUpErr } = await sbTmp.auth.signUp({ email, password });
+        if (signUpErr) throw signUpErr;
+        const authUserId = signUpData?.user?.id;
 
         if (!authUserId) throw new Error('No se pudo obtener el ID del nuevo usuario');
 
@@ -6625,7 +6625,7 @@ async function renderBitacora() {
     if (tabsEl) {
         tabsEl.innerHTML = tipos.length > 1
             ? [`<button onclick="filtrarBitacora(null,this)" style="padding:4px 10px;border:none;border-radius:6px;cursor:pointer;font-size:11px;font-weight:700;background:${_bitacoraFiltro===null?'#2563eb':'#e5e7eb'};color:${_bitacoraFiltro===null?'white':'#374151'}">Todos</button>`,
-               ...tipos.map(tp=>`<button onclick="filtrarBitacora('${tp}',this)" style="padding:4px 10px;border:none;border-radius:6px;cursor:pointer;font-size:11px;font-weight:700;background:${_bitacoraFiltro===tp?'#2563eb':'#e5e7eb'};color:${_bitacoraFiltro===tp?'white':'#374151'}">${tp}</button>`)
+               ...tipos.map(tp=>{ const tpSafe = String(tp).replace(/\\/g,'\\\\').replace(/'/g,"\\'"); return `<button onclick="filtrarBitacora('${_escapeHtml(tpSafe)}',this)" style="padding:4px 10px;border:none;border-radius:6px;cursor:pointer;font-size:11px;font-weight:700;background:${_bitacoraFiltro===tp?'#2563eb':'#e5e7eb'};color:${_bitacoraFiltro===tp?'white':'#374151'}">${_escapeHtml(tp)}</button>`; })
               ].join('')
             : '';
     }
@@ -6647,11 +6647,11 @@ function _renderBitacoraTabla() {
     const rows = _bitacoraFiltro ? _bitacoraData.filter(r=>r.tipo===_bitacoraFiltro) : _bitacoraData;
     t.innerHTML = rows.length ? rows.map(r=>`<tr>
         <td>${fmtDate(r.fecha)}</td>
-        <td><span class="badge badge-info" style="font-size:10px">${r.tipo}</span></td>
-        <td style="font-size:12px">${r.descripcion||'—'}</td>
+        <td><span class="badge badge-info" style="font-size:10px">${_escapeHtml(r.tipo)}</span></td>
+        <td style="font-size:12px">${_escapeHtml(r.descripcion||'—')}</td>
         <td>${r.km ? fmt(r.km)+' km' : '—'}</td>
         <td>${r.costo ? '<strong>$'+fmt(r.costo)+'</strong>' : '—'}</td>
-        <td style="font-size:12px">${r.taller||'—'}</td>
+        <td style="font-size:12px">${_escapeHtml(r.taller||'—')}</td>
         <td><button class="btn btn-danger btn-sm" onclick="eliminarBitacora('${r.id}')">✕</button></td>
     </tr>`).join('')
     : '<tr class="empty-row"><td colspan="7">Sin registros</td></tr>';
@@ -6815,8 +6815,8 @@ async function _renderAlmMovimientos() {
         <td>${fmtDate(m.fecha)}</td>
         <td><strong>${m.unidades_logisticas?.numero_bl||'—'}</strong></td>
         <td><span class="badge ${evColor[m.tipo_evento]||'badge-info'}" style="font-size:10px">${m.tipo_evento}</span></td>
-        <td style="font-size:12px">${m.descripcion||'—'}</td>
-        <td style="font-size:12px">${m.usuario||'—'}</td>
+        <td style="font-size:12px">${_escapeHtml(m.descripcion||'—')}</td>
+        <td style="font-size:12px">${_escapeHtml(m.usuario||'—')}</td>
     </tr>`).join('') : '<tr class="empty-row"><td colspan="5">Sin movimientos</td></tr>';
 }
 
@@ -6831,12 +6831,12 @@ async function _renderAlmDespacho() {
     const colEst = { recibido:'badge-info', en_bodega:'badge-success' };
     t.innerHTML = (data||[]).length ? (data||[]).map(u=>`<tr>
         <td><input type="checkbox" class="chkAlmUnit" value="${u.id}"></td>
-        <td><strong>${u.numero_bl||'—'}</strong>${u.numero_contenedor?`<div style="font-size:10px;color:#6366f1">${u.numero_contenedor}</div>`:''}</td>
-        <td style="font-size:12px">${u.clientes?.razon_social||'—'}</td>
+        <td><strong>${_escapeHtml(u.numero_bl||'—')}</strong>${u.numero_contenedor?`<div style="font-size:10px;color:#6366f1">${_escapeHtml(u.numero_contenedor)}</div>`:''}</td>
+        <td style="font-size:12px">${_escapeHtml(u.clientes?.razon_social||'—')}</td>
         <td style="font-size:12px">
-            ${u.descripcion||'—'} ${u.numero_bultos>1?`(${u.numero_bultos} bultos)`:''}
-            ${u.direccion_destino?`<div style="font-size:10px;color:#6b7280">📍 ${u.direccion_destino}</div>`:''}
-            ${u.contacto_descarga?`<div style="font-size:10px;color:#6b7280">👤 ${u.contacto_descarga} ${u.telefono_descarga||''}</div>`:''}
+            ${_escapeHtml(u.descripcion||'—')} ${u.numero_bultos>1?`(${u.numero_bultos} bultos)`:''}
+            ${u.direccion_destino?`<div style="font-size:10px;color:#6b7280">📍 ${_escapeHtml(u.direccion_destino)}</div>`:''}
+            ${u.contacto_descarga?`<div style="font-size:10px;color:#6b7280">👤 ${_escapeHtml(u.contacto_descarga)} ${_escapeHtml(u.telefono_descarga||'')}</div>`:''}
         </td>
         <td><span class="badge ${colEst[u.estado]||'badge-info'}">${u.estado?.replace(/_/g,' ')}</span></td>
     </tr>`).join('') : '<tr class="empty-row"><td colspan="5">Sin unidades disponibles para despacho</td></tr>';
@@ -6846,7 +6846,7 @@ async function _renderAlmDespacho() {
         const { data: viajes } = await sb.from('viajes').select('id,origen,destino,fecha')
             .eq('empresa_id',currentEmpresa.id).order('fecha',{ascending:false}).limit(50).then(r=>r,()=>({data:[]}));
         sel.innerHTML = '<option value="">Seleccionar viaje destino...</option>' +
-            (viajes||[]).map(v=>`<option value="${v.id}">${fmtDate(v.fecha)} — ${v.origen||'?'} → ${v.destino||'?'}</option>`).join('');
+            (viajes||[]).map(v=>`<option value="${v.id}">${fmtDate(v.fecha)} — ${_escapeHtml(v.origen||'?')} → ${_escapeHtml(v.destino||'?')}</option>`).join('');
     }
 }
 
@@ -6860,10 +6860,10 @@ async function _renderAlmIncidencias() {
         .order('updated_at',{ascending:false}).then(r=>r,()=>({data:[]}));
     t.innerHTML = (data||[]).length ? (data||[]).map(u=>`<tr>
         <td>${fmtDate(u.updated_at||u.created_at)}</td>
-        <td><strong>${u.numero_bl||'—'}</strong></td>
+        <td><strong>${_escapeHtml(u.numero_bl||'—')}</strong></td>
         <td><span class="badge badge-danger">${u.estado}</span></td>
-        <td style="font-size:12px">${u.motivo_incidencia||'—'}</td>
-        <td style="font-size:12px">${u.responsable_incidencia||'—'}</td>
+        <td style="font-size:12px">${_escapeHtml(u.motivo_incidencia||'—')}</td>
+        <td style="font-size:12px">${_escapeHtml(u.responsable_incidencia||'—')}</td>
     </tr>`).join('') : '<tr class="empty-row"><td colspan="5">Sin incidencias registradas</td></tr>';
 }
 
@@ -7515,7 +7515,7 @@ function _formatearValorCampo(val, tipo) {
     if (tipo === 'si_no')  return val ? '<span style="color:#16a34a;font-weight:600">✔ Sí</span>' : '<span style="color:#dc2626;font-weight:600">✗ No</span>';
     if (tipo === 'moneda') return '<strong>$' + fmt(Number(val)||0) + '</strong>';
     if (tipo === 'fecha')  return fmtDate(val);
-    if (tipo === 'url')    return `<a href="${_escapeHtml(val)}" target="_blank" style="color:#2563eb">${_escapeHtml(val)}</a>`;
+    if (tipo === 'url')    { const href = /^https?:\/\//i.test(val) ? val : '#'; return `<a href="${_escapeHtml(href)}" target="_blank" style="color:#2563eb">${_escapeHtml(val)}</a>`; }
     if (tipo === 'email')  return `<a href="mailto:${_escapeHtml(val)}" style="color:#2563eb">${_escapeHtml(val)}</a>`;
     if (tipo === 'texto_largo') return `<span style="font-size:12px">${_escapeHtml(String(val)).slice(0,80)}${String(val).length>80?'…':''}</span>`;
     return _escapeHtml(String(val));

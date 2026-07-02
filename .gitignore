@@ -9,6 +9,7 @@ CONFIG_BACKUP_*.txt
 VERIFICACION_*.txt
 *credentials*
 *secrets*.txt
+*.secret
 
 # Backups y versiones antiguas
 *_backup_*.html

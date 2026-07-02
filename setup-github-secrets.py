@@ -63,14 +63,11 @@ def main():
     key_id  = key_data["key_id"]
     print(f"✅ Autenticado.\n")
 
-    secrets = {
-        "SURGE_LOGIN": "ssaavedra.importaciones@gmail.com",
-        "SURGE_PASS":  "No8686no",
-    }
-
     print("Configurando secrets de deploy...")
-    for name, value in secrets.items():
-        set_secret(headers, pub_key, key_id, name, value)
+    surge_login = input("SURGE_LOGIN (email de Surge): ").strip()
+    surge_pass  = getpass.getpass("SURGE_PASS (contraseña de Surge): ").strip()
+    if surge_login: set_secret(headers, pub_key, key_id, "SURGE_LOGIN", surge_login)
+    if surge_pass:  set_secret(headers, pub_key, key_id, "SURGE_PASS", surge_pass)
 
     print("\nIngresa los otros valores (Enter para omitir):")
     surge_token = getpass.getpass("SURGE_TOKEN (dejar vacío si no tienes): ").strip()

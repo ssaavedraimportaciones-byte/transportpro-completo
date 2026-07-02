@@ -1,49 +1,39 @@
-name: Deploy a Surge
+name: Deploy GitHub Pages
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   workflow_dispatch:
 
-# Requiere estos GitHub Secrets (Settings → Secrets and variables → Actions):
-#   SURGE_LOGIN   email de la cuenta de Surge
-#   SURGE_TOKEN   token de despliegue de Surge  (surge token)
-#   SURGE_DOMAIN  dominio destino, p.ej. transportpro-nuevo.surge.sh
-#   SUPABASE_DB_URL  cadena de conexión Postgres de Supabase (para migraciones)
-# NUNCA pongas estos valores en el archivo: son secretos.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
 jobs:
   deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Desplegar a Surge
-        env:
-          SURGE_LOGIN: ${{ secrets.SURGE_LOGIN }}
-          SURGE_TOKEN: ${{ secrets.SURGE_TOKEN }}
-          SURGE_DOMAIN: ${{ secrets.SURGE_DOMAIN }}
+      - name: Preparar archivos públicos
         run: |
-          set -e
-          if [ -z "$SURGE_TOKEN" ] || [ -z "$SURGE_LOGIN" ] || [ -z "$SURGE_DOMAIN" ]; then
-            echo "::error::Faltan secrets SURGE_LOGIN / SURGE_TOKEN / SURGE_DOMAIN. Configúralos en Settings → Secrets." >&2
-            exit 1
-          fi
-          npm install -g surge --no-fund --no-audit --silent
-          surge . "$SURGE_DOMAIN"
-          echo "✅ Deploy completado"
+          set -euo pipefail
+          mkdir -p dist
+          cp index.html dist/index.html
+          if [ -f landing.html ]; then cp landing.html dist/landing.html; fi
 
-      - name: Aplicar migraciones Supabase
-        env:
-          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
-        run: |
-          set -e
-          if [ -z "$SUPABASE_DB_URL" ]; then
-            echo "::error::Falta el secret SUPABASE_DB_URL. No se aplican migraciones." >&2
-            exit 1
-          fi
-          which psql || sudo apt-get install -y postgresql-client -qq
-          for f in $(ls supabase/migrations/*.sql 2>/dev/null | sort); do
-            echo "→ $f"
-            psql "$SUPABASE_DB_URL" -f "$f" --set ON_ERROR_STOP=0 2>&1 | grep -v "^NOTICE" || true
-          done
-          echo "✅ Migraciones listas"
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+      - name: Publicar
+        id: deployment
+        uses: actions/deploy-pages@v4

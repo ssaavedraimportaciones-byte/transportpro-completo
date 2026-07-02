@@ -10,7 +10,7 @@ Este documento contiene el registro de todas las intervenciones realizadas para 
 ## 🔐 Credenciales de Acceso (Reseteadas)
 Para evitar problemas de inicio de sesión o "pantallas en blanco", se unificaron las credenciales de los perfiles de administrador:
 *   **Usuario:** `ssaavedra.importaciones@gmail.com`
-*   **Contraseña:** `Admin2026tp`
+*   **Contraseña:** (redactada — ver gestor de contraseñas)
 
 ## 🚀 Soluciones Implementadas
 
