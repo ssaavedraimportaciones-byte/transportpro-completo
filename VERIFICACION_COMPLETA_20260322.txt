@@ -7,8 +7,8 @@
 1. FRONTEND (transportpro-nuevo.surge.sh)
 ═══════════════════════════════════════════════════════════════════════
 
-✅ Login Sebastian (admin): ssaavedra.importaciones@gmail.com / TransportPro2026
-✅ Login Matías (operador): matias.navea.perez@gmail.com / 852710
+✅ Login Sebastian (admin): ssaavedra.importaciones@gmail.com (contraseña redactada)
+✅ Login Matías (operador): matias.navea.perez@gmail.com (contraseña redactada)
 ✅ Dashboard: Viajes, Ingresos, Vehículos, Por Cobrar
 ✅ Módulo Viajes: CRUD completo (crear, leer, tabla con datos)
 ✅ Módulo Clientes: CRUD completo (crear Logística Sur Ltda OK)

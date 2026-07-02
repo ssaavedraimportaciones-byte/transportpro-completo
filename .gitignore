@@ -2,3 +2,7 @@
 .env.*
 *.env
 node_modules/
+.DS_Store
+CONFIG_BACKUP*
+*_backup_*.html
+*.secret

@@ -11,36 +11,39 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Obtener token y desplegar
+      - name: Desplegar solo archivos públicos
         env:
-          SURGE_TOKEN_SECRET: ${{ secrets.SURGE_TOKEN }}
+          SURGE_LOGIN: ${{ secrets.SURGE_LOGIN }}
+          SURGE_TOKEN: ${{ secrets.SURGE_TOKEN }}
         run: |
           set -e
+          if [ -z "$SURGE_TOKEN" ] || [ -z "$SURGE_LOGIN" ]; then
+            echo "❌ Faltan secrets SURGE_LOGIN / SURGE_TOKEN. Configúralos en Settings → Secrets."
+            exit 1
+          fi
 
-          # ── Paso 1: obtener token ────────────────────────────────────────
-          # Prioridad: 1) GitHub Secret, 2) token conocido
-          TOKEN="${SURGE_TOKEN_SECRET:-54cccb47e7306cdb5c063c73ad10af44}"
-          echo "Token length: ${#TOKEN}"
+          # Publicar ÚNICAMENTE los archivos de la app.
+          # Nunca desplegar el repo completo: expondría documentación
+          # interna, backups y migraciones en la URL pública.
+          mkdir -p dist
+          cp index.html dist/index.html
+          cp landing.html dist/landing.html
 
-          # ── Paso 2: instalar surge CLI ───────────────────────────────────
-          echo "=== Instalando surge CLI ==="
           npm install -g surge --no-fund --no-audit --silent
-          echo "Surge version: $(surge --version)"
-
-          # ── Paso 3: desplegar ────────────────────────────────────────────
-          echo "=== Desplegando a transportpro-nuevo.surge.sh ==="
-          SURGE_LOGIN='ssaavedra.importaciones@gmail.com' \
-          SURGE_TOKEN="$TOKEN" \
-          surge . transportpro-nuevo.surge.sh
-
+          surge dist transportpro-nuevo.surge.sh
           echo "✅ Deploy completado"
 
       - name: Aplicar migraciones Supabase
+        env:
+          DB_URL: ${{ secrets.DB_URL }}
         run: |
+          if [ -z "$DB_URL" ]; then
+            echo "⚠️ Secret DB_URL no configurado — se omiten migraciones."
+            exit 0
+          fi
           which psql || sudo apt-get install -y postgresql-client -qq
-          DB="postgresql://postgres.ozmnfdndauyzcsxunxig:TransportPro2026DB@aws-0-sa-east-1.pooler.supabase.com:6543/postgres"
           for f in $(ls supabase/migrations/*.sql 2>/dev/null | sort); do
             echo "→ $f"
-            psql "$DB" -f "$f" --set ON_ERROR_STOP=0 2>&1 | grep -v "^NOTICE" || true
+            psql "$DB_URL" -f "$f" --set ON_ERROR_STOP=0 2>&1 | grep -v "^NOTICE" || true
           done
           echo "✅ Migraciones listas"
