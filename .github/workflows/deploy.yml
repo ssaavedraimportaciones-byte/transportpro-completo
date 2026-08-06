@@ -5,42 +5,45 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+# Requiere estos GitHub Secrets (Settings → Secrets and variables → Actions):
+#   SURGE_LOGIN   email de la cuenta de Surge
+#   SURGE_TOKEN   token de despliegue de Surge  (surge token)
+#   SURGE_DOMAIN  dominio destino, p.ej. transportpro-nuevo.surge.sh
+#   SUPABASE_DB_URL  cadena de conexión Postgres de Supabase (para migraciones)
+# NUNCA pongas estos valores en el archivo: son secretos.
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Obtener token y desplegar
+      - name: Desplegar a Surge
         env:
-          SURGE_TOKEN_SECRET: ${{ secrets.SURGE_TOKEN }}
+          SURGE_LOGIN: ${{ secrets.SURGE_LOGIN }}
+          SURGE_TOKEN: ${{ secrets.SURGE_TOKEN }}
+          SURGE_DOMAIN: ${{ secrets.SURGE_DOMAIN }}
         run: |
           set -e
-
-          # ── Paso 1: obtener token ────────────────────────────────────────
-          # Prioridad: 1) GitHub Secret, 2) token conocido
-          TOKEN="${SURGE_TOKEN_SECRET:-54cccb47e7306cdb5c063c73ad10af44}"
-          echo "Token length: ${#TOKEN}"
-
-          # ── Paso 2: instalar surge CLI ───────────────────────────────────
-          echo "=== Instalando surge CLI ==="
+          if [ -z "$SURGE_TOKEN" ] || [ -z "$SURGE_LOGIN" ] || [ -z "$SURGE_DOMAIN" ]; then
+            echo "::error::Faltan secrets SURGE_LOGIN / SURGE_TOKEN / SURGE_DOMAIN. Configúralos en Settings → Secrets." >&2
+            exit 1
+          fi
           npm install -g surge --no-fund --no-audit --silent
-          echo "Surge version: $(surge --version)"
-
-          # ── Paso 3: desplegar ────────────────────────────────────────────
-          echo "=== Desplegando a transportpro-nuevo.surge.sh ==="
-          SURGE_LOGIN='ssaavedra.importaciones@gmail.com' \
-          SURGE_TOKEN="$TOKEN" \
-          surge . transportpro-nuevo.surge.sh
-
+          surge . "$SURGE_DOMAIN"
           echo "✅ Deploy completado"
 
       - name: Aplicar migraciones Supabase
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
+          set -e
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "::error::Falta el secret SUPABASE_DB_URL. No se aplican migraciones." >&2
+            exit 1
+          fi
           which psql || sudo apt-get install -y postgresql-client -qq
-          DB="postgresql://postgres.ozmnfdndauyzcsxunxig:TransportPro2026DB@aws-0-sa-east-1.pooler.supabase.com:6543/postgres"
           for f in $(ls supabase/migrations/*.sql 2>/dev/null | sort); do
             echo "→ $f"
-            psql "$DB" -f "$f" --set ON_ERROR_STOP=0 2>&1 | grep -v "^NOTICE" || true
+            psql "$SUPABASE_DB_URL" -f "$f" --set ON_ERROR_STOP=0 2>&1 | grep -v "^NOTICE" || true
           done
           echo "✅ Migraciones listas"
