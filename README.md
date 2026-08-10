@@ -77,13 +77,15 @@ npx serve .            # o: python3 -m http.server 8080
 
 ### 4. Desplegar
 
+- **GitHub Pages (producción)**: cada push a `main` publica solamente
+  `index.html` y `landing.html` mediante `.github/workflows/deploy.yml`. No
+  requiere credenciales de hosting ni expone el resto del repositorio.
 - **Vercel**: el `vercel.json` incluido sirve los HTML como estáticos.
   `vercel --prod`.
-- **Surge**: hay un workflow en `.github/workflows/deploy.yml` que publica al
-  hacer push a `main`. Requiere los secrets `SURGE_LOGIN`, `SURGE_TOKEN`,
-  `SURGE_DOMAIN` y `SUPABASE_DB_URL` (ver [`SECURITY.md`](SECURITY.md)).
-  Configúralos con `setup-github-secrets.py` o en Settings → Secrets.
 - **Netlify**: ver `GUIA-NETLIFY-DEPLOY.md`.
+
+El secret `DB_URL` solo se usa para ejecutar manualmente el workflow de
+migraciones de Supabase; el despliegue del frontend no toca la base de datos.
 
 ## Seguridad (resumen)
 
