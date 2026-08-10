@@ -1,4 +1,28 @@
+# Entorno y secretos — NUNCA versionar
 .env
 .env.*
 *.env
 node_modules/
+
+# Secretos / backups de configuración (contienen claves)
+CONFIG_BACKUP_*.txt
+VERIFICACION_*.txt
+*credentials*
+*secrets*.txt
+
+# Backups y versiones antiguas
+*_backup_*.html
+*_backup_*.sql
+*.bak
+
+# Datos de prueba / adjuntos
+*.xlsx
+*.docx
+
+# Sistema
+.DS_Store
+Thumbs.db
+
+# Supabase local
+supabase/.temp/
+supabase/.branches/
