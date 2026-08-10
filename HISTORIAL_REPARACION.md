@@ -3,7 +3,7 @@
 Este documento contiene el registro de todas las intervenciones realizadas para estabilizar, reparar y mejorar el sistema TransportPro.
 
 ## 📌 Estado del Sistema
-*   **Plataforma Activa:** `https://transportpro-nuevo.surge.sh/`
+*   **Plataforma Activa:** `https://ssaavedraimportaciones-byte.github.io/transportpro-completo/`
 *   **Proyecto Supabase:** `ozmnfdndauyzcsxunxig`
 *   **Directorio Local de Desarrollo:** `/Users/macbookpro/Desktop/transportpro_v2/`
 
