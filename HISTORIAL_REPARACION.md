@@ -3,7 +3,7 @@
 Este documento contiene el registro de todas las intervenciones realizadas para estabilizar, reparar y mejorar el sistema TransportPro.
 
 ## 📌 Estado del Sistema
-*   **Plataforma Activa:** `https://digitalplat.org/`
+*   **Plataforma Activa:** `https://transportpro.eu.org/`
 *   **Proyecto Supabase:** `ozmnfdndauyzcsxunxig`
 *   **Directorio Local de Desarrollo:** `/Users/macbookpro/Desktop/transportpro_v2/`
 
