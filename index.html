@@ -8,11 +8,18 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Supabase JS — versión FIJA (nunca usar la etiqueta flotante @2:
+         un build nuevo del CDN puede romper window.supabase y dejar la
+         página en blanco). Respaldo síncrono a un segundo CDN si el
+         primero falla o está bloqueado. -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.8/dist/umd/supabase.js"></script>
+    <script>window.supabase||document.write('\x3Cscript src="https://unpkg.com/@supabase/supabase-js@2.39.8/dist/umd/supabase.js">\x3C/script>')</script>
     <!-- SheetJS — exportar a Excel .xlsx real -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+    <script>window.XLSX||document.write('\x3Cscript src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js">\x3C/script>')</script>
     <!-- Chart.js — gráficos del dashboard -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script>window.Chart||document.write('\x3Cscript src="https://unpkg.com/chart.js@4.4.0/dist/chart.umd.min.js">\x3C/script>')</script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
@@ -2328,6 +2335,19 @@ window._dashChartsConfig = {};
 const SUPABASE_URL      = 'https://ozmnfdndauyzcsxunxig.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im96bW5mZG5kYXV5emNzeHVueGlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxMDMwNjMsImV4cCI6MjA4OTY3OTA2M30.zxn6HYIW-chr2kfbwwQFFBvNXaXBgDrlBr5nyrk0A58';
 
+// Guardia: si ningún CDN entregó supabase-js, mostrar un aviso claro
+// (con reintento) en lugar de una página en blanco.
+if (!window.supabase || typeof window.supabase.createClient !== 'function') {
+    document.body.innerHTML =
+        '<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;font-family:system-ui,sans-serif;background:#f9fafb;padding:24px">'
+      + '<div style="max-width:420px;text-align:center;background:#fff;padding:32px;border-radius:16px;box-shadow:0 10px 40px rgba(0,0,0,.08)">'
+      + '<div style="font-size:44px;margin-bottom:12px">🚚</div>'
+      + '<h2 style="color:#1f2937;margin-bottom:10px">No se pudieron cargar los componentes</h2>'
+      + '<p style="color:#6b7280;font-size:14px;line-height:1.5;margin-bottom:20px">Revisa tu conexión a internet e inténtalo de nuevo. Si el problema persiste, espera unos minutos.</p>'
+      + '<button onclick="location.reload()" style="background:#2563eb;color:#fff;border:none;padding:12px 28px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">Reintentar</button>'
+      + '</div></div>';
+    throw new Error('supabase-js no disponible: los CDN no respondieron');
+}
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let currentUser    = null;
