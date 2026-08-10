@@ -63,23 +63,13 @@ def main():
     key_id  = key_data["key_id"]
     print(f"✅ Autenticado.\n")
 
-    secrets = {
-        "SURGE_LOGIN": "ssaavedra.importaciones@gmail.com",
-        "SURGE_PASS":  "No8686no",
-    }
+    print("GitHub Pages no requiere secretos de despliegue.")
+    print("\nIngresa la conexión de Supabase para el workflow manual de migraciones (Enter para omitir):")
+    db_url = getpass.getpass("DB_URL (postgresql://...): ").strip()
 
-    print("Configurando secrets de deploy...")
-    for name, value in secrets.items():
-        set_secret(headers, pub_key, key_id, name, value)
+    if db_url: set_secret(headers, pub_key, key_id, "DB_URL", db_url)
 
-    print("\nIngresa los otros valores (Enter para omitir):")
-    surge_token = getpass.getpass("SURGE_TOKEN (dejar vacío si no tienes): ").strip()
-    db_url      = getpass.getpass("DB_URL (postgresql://...): ").strip()
-
-    if surge_token: set_secret(headers, pub_key, key_id, "SURGE_TOKEN", surge_token)
-    if db_url:      set_secret(headers, pub_key, key_id, "DB_URL", db_url)
-
-    print("\n🎉 Listo. GitHub Actions va a deployar automáticamente ahora.\n")
+    print("\n🎉 Listo. El deploy de GitHub Pages funciona sin credenciales adicionales.\n")
 
 if __name__ == "__main__":
     main()

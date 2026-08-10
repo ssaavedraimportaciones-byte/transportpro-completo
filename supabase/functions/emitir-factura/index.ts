@@ -43,6 +43,29 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     )
 
+    // 2b. Verificar que quien llama es un usuario autenticado que
+    // pertenece a la empresa indicada (el empresa_id del body no se
+    // acepta a ciegas: permitiría emitir DTE con la API key de otra
+    // empresa).
+    const authHeader = req.headers.get("Authorization") ?? ""
+    const anonClient = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: authHeader } } }
+    )
+    const { data: userData, error: userErr } = await anonClient.auth.getUser()
+    if (userErr || !userData?.user) {
+      return ok({ exito: false, error: "No autorizado: sesión inválida" })
+    }
+    const { data: caller } = await supabase
+      .from("usuarios")
+      .select("empresa_id, rol")
+      .eq("auth_uid", userData.user.id)
+      .maybeSingle()
+    if (!caller || (caller.empresa_id !== empresa_id && caller.rol !== "superadmin")) {
+      return ok({ exito: false, error: "No autorizado para esta empresa" })
+    }
+
     const { data: empresa, error: empresaErr } = await supabase
       .from("empresas")
       .select("haulmer_api_key, rut_empresa, razon_social, direccion, comuna, ciudad")

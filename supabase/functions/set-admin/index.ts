@@ -23,6 +23,17 @@ serve(async (req) => {
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
 
+  // Autorización estricta: solo quien presenta el service_role key puede
+  // invocar esta función. Sin este check cualquier usuario podría
+  // autopromoverse a admin.
+  const authHeader = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
+  if (!serviceKey || authHeader !== serviceKey) {
+    return new Response(JSON.stringify({ error: "No autorizado" }), {
+      status: 401,
+      headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+    });
+  }
+
   const supabase = createClient(supabaseUrl, serviceKey);
 
   let body: { user_id?: string; email?: string; nombre?: string; empresa_nombre?: string };
