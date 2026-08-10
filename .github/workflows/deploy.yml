@@ -28,6 +28,7 @@ jobs:
           set -euo pipefail
           mkdir -p dist
           cp index.html dist/index.html
+          cp CNAME dist/CNAME
           if [ -f landing.html ]; then cp landing.html dist/landing.html; fi
 
       - uses: actions/configure-pages@v5
