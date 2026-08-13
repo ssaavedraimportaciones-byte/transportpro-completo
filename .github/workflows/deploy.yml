@@ -29,6 +29,8 @@ jobs:
           mkdir -p dist
           cp index.html dist/index.html
           if [ -f landing.html ]; then cp landing.html dist/landing.html; fi
+          if [ -f admin-profesional.html ]; then cp admin-profesional.html dist/admin-profesional.html; fi
+          if [ -f transportpro-login.html ]; then cp transportpro-login.html dist/transportpro-login.html; fi
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
