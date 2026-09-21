@@ -2739,6 +2739,46 @@ async function iniciarApp() {
     }
     saasInit();
     cargarModulosCustom().catch(e => console.warn('[modulos custom]', e));
+    setTimeout(() => { try { _revisarRespaldoPendiente(); } catch(e) { console.warn('[respaldo]', e); } }, 3000);
+}
+
+// ── Recordatorio automático de respaldo ──────────────────────
+// Supabase (plan gratuito) no hace respaldos automáticos, así que el
+// sistema avisa cuando toca descargar uno para no quedar sin resguardo.
+const _RESPALDO_DIAS = 7;
+function _respaldoKey() { return 'tp_ultimo_respaldo_' + (currentEmpresa?.id || 'x'); }
+
+function _revisarRespaldoPendiente() {
+    if (!currentEmpresa) return;
+    let ultimo = null;
+    try { ultimo = localStorage.getItem(_respaldoKey()); } catch(e) { return; }
+    const dias = ultimo ? Math.floor((Date.now() - Number(ultimo)) / 86400000) : null;
+    if (ultimo && dias < _RESPALDO_DIAS) return;
+
+    const aviso = document.createElement('div');
+    aviso.id = 'avisoRespaldo';
+    aviso.style.cssText = 'position:fixed;bottom:18px;right:18px;max-width:330px;background:#fff;border:2px solid #f59e0b;border-radius:12px;padding:14px 16px;box-shadow:0 10px 30px rgba(0,0,0,.15);z-index:9999;font-size:13px';
+    aviso.innerHTML =
+        '<div style="font-weight:700;color:#92400e;margin-bottom:6px">🛡️ Respaldo de seguridad</div>'
+      + '<div style="color:#4b5563;line-height:1.45;margin-bottom:10px">'
+      + (ultimo ? 'Han pasado <strong>' + dias + ' días</strong> desde tu último respaldo.'
+                : 'Aún no has descargado ningún respaldo de tus datos.')
+      + '</div>'
+      + '<div style="display:flex;gap:8px">'
+      + '<button class="btn btn-sm" style="background:#059669;color:#fff;font-weight:700" onclick="_descargarRespaldo()">📥 Descargar ahora</button>'
+      + '<button class="btn btn-sm" style="background:#f3f4f6;color:#374151" onclick="_posponerRespaldo()">Más tarde</button>'
+      + '</div>';
+    document.body.appendChild(aviso);
+}
+
+function _descargarRespaldo() {
+    try { localStorage.setItem(_respaldoKey(), String(Date.now())); } catch(e) {}
+    document.getElementById('avisoRespaldo')?.remove();
+    exportarTodo();
+}
+
+function _posponerRespaldo() {
+    document.getElementById('avisoRespaldo')?.remove();
 }
 
 async function logout() {
