@@ -610,7 +610,7 @@ setInterval(function() {
             </div>
             <!-- Filtros -->
             <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
-                <input type="text" id="fVBuscar" placeholder="🔍 Buscar cliente, ruta, guía, contenedor..."
+                <input type="text" id="fVBuscar" placeholder="🔍 Buscar N° viaje, fecha, generador de carga, cliente, ruta, guía, contenedor, factura..."
                     style="flex:1;min-width:200px;padding:7px 10px;border:2px solid #e5e7eb;border-radius:7px;font-size:13px"
                     oninput="filtrarViajes()">
                 <select id="fVTipoCarga" onchange="filtrarViajes()"
@@ -636,11 +636,11 @@ setInterval(function() {
             </div>
             <table>
                 <thead id="theadViajes"><tr>
-                    <th>N° Viaje</th><th>Fecha</th><th>Cliente</th><th>Conductor</th><th>Ruta</th>
+                    <th>N° Viaje</th><th>Fecha</th><th>Generador de Carga</th><th>Cliente</th><th>Conductor</th><th>Ruta</th>
                     <th>Tipo Carga</th><th>N° Guía</th><th>Tarifa</th><th>Estado</th><th>Acciones</th>
                 </tr></thead>
                 <tbody id="tViajes">
-                    <tr class="loading-row"><td colspan="10">Cargando viajes...</td></tr>
+                    <tr class="loading-row"><td colspan="11">Cargando viajes...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -1416,11 +1416,16 @@ setInterval(function() {
         <form onsubmit="saveViaje(event)">
             <div class="form-grid">
                 <div class="form-group"><label>Fecha *</label><input type="date" id="iVFecha" required></div>
+                <div class="form-group"><label>Generador de Carga</label>
+                    <input type="text" id="iVGeneradorCarga" list="dlGeneradorCarga" placeholder="Empresa que genera la carga">
+                    <datalist id="dlGeneradorCarga"></datalist>
+                </div>
                 <div class="form-group"><label>Cliente *</label><select id="iVCliente" required><option value="">Seleccionar...</option></select></div>
                 <div class="form-group"><label>Vehículo</label><select id="iVVehiculo"><option value="">Sin vehículo</option></select></div>
                 <div class="form-group"><label>Conductor</label><select id="iVConductor"><option value="">Sin conductor</option></select></div>
                 <div class="form-group"><label>Origen *</label><input type="text" id="iVOrigen" required placeholder="Ciudad origen"></div>
                 <div class="form-group"><label>Destino *</label><input type="text" id="iVDestino" required placeholder="Ciudad destino"></div>
+                <div class="form-group"><label>Nave</label><input type="text" id="iVNave" placeholder="Nombre de la nave"></div>
                 <div class="form-group"><label>KM Inicial</label><input type="number" id="iVKmI" placeholder="0"></div>
                 <div class="form-group"><label>Tarifa ($) *</label><input type="number" id="iVTarifa" required placeholder="0"></div>
                 <div class="form-group"><label>Tipo de Carga</label>
@@ -1439,6 +1444,14 @@ setInterval(function() {
                 </div>
                 <div class="form-group"><label>N° Guía de Despacho</label><input type="text" id="iVNumGuia" placeholder="GD-000000"></div>
                 <div class="form-group"><label>N° Contenedor</label><input type="text" id="iVNumContenedor" placeholder="ABCD1234567"></div>
+                <div class="form-group"><label>N° Factura</label><input type="text" id="iVNumFactura" placeholder="F-000000"></div>
+                <div class="form-group"><label>Estado de Pago</label>
+                    <select id="iVFacturaPagada" onchange="_actualizarBadgeFacturaViaje()">
+                        <option value="false">No pagada</option>
+                        <option value="true">Pagada</option>
+                    </select>
+                    <span id="viFacturaPagadaBadge" class="badge badge-danger" style="margin-top:6px;display:inline-block">🔴 No pagada</span>
+                </div>
                 <div class="form-group"><label>Estado</label>
                     <select id="iVEstado">
                         <option value="planificado">Planificado</option>
@@ -2892,7 +2905,7 @@ function closeModal(id) {
     _cm.classList.remove('open');
     document.querySelector(`#${id} form`)?.reset();
     const resets = {
-        mViaje:       () => { _editingViajeId = null; _editingViajeData = null; document.querySelector('#mViaje .modal-header h2').textContent = 'Nuevo Viaje'; },
+        mViaje:       () => { _editingViajeId = null; _editingViajeData = null; document.querySelector('#mViaje .modal-header h2').textContent = 'Nuevo Viaje'; _actualizarBadgeFacturaViaje(); },
         mCliente:     () => { _editingClienteId = null; document.querySelector('#mCliente .modal-header h2').textContent = 'Nuevo Cliente'; },
         mVehiculo:    () => { _editingVehiculoId = null; document.querySelector('#mVehiculo .modal-header h2').textContent = 'Nuevo Vehículo'; },
         mConductor:   () => { _editingConductorId = null; document.querySelector('#mConductor .modal-header h2').textContent = 'Nuevo Conductor'; },
@@ -3230,8 +3243,8 @@ async function exportarTodo() {
 
     // Viajes
     addSheet('Viajes', [
-        ['N° Viaje','Fecha','Cliente','Conductor','Vehículo','Origen','Destino','Tipo Carga','N° Guía','N° Contenedor','KM Inicial','KM Final','Tarifa ($)','Estado','Observaciones'],
-        ...(viajes||[]).map(v => ['VJ-'+shortId(v.id), v.fecha||'', v.clientes?.razon_social||'', v.conductores?.nombre||'', v.vehiculos?.patente||'', v.origen||'', v.destino||'', v.tipo_carga||'', v.numero_guia||'', v.numero_contenedor||'', v.km_inicial||'', v.km_final||'', v.tarifa||0, v.estado||'', v.observaciones||''])
+        ['N° Viaje','Fecha','Generador de Carga','Cliente','Conductor','Vehículo','Nave','Origen','Destino','Tipo Carga','N° Guía','N° Contenedor','KM Inicial','KM Final','Tarifa ($)','Estado','N° Factura','Factura Pagada','Observaciones'],
+        ...(viajes||[]).map(v => ['VJ-'+shortId(v.id), v.fecha||'', v.generador_carga||'', v.clientes?.razon_social||'', v.conductores?.nombre||'', v.vehiculos?.patente||'', v.nave||'', v.origen||'', v.destino||'', v.tipo_carga||'', v.numero_guia||'', v.numero_contenedor||'', v.km_inicial||'', v.km_final||'', v.tarifa||0, v.estado||'', v.numero_factura||'', v.factura_pagada?'Pagada':'No pagada', v.observaciones||''])
     ]);
 
     // Facturas
@@ -3329,7 +3342,7 @@ async function renderViajes() {
     t.innerHTML = '<tr class="loading-row"><td colspan="10">Cargando...</td></tr>';
 
     let { data, error } = await sb.from('viajes')
-        .select('id, cliente_id, vehiculo_id, conductor_id, fecha, origen, destino, km_inicial, tarifa, estado, tipo_carga, numero_guia, numero_contenedor, observaciones, datos_extra, clientes(rut, razon_social), vehiculos(patente), conductores(nombre)')
+        .select('id, cliente_id, vehiculo_id, conductor_id, fecha, origen, destino, km_inicial, tarifa, estado, tipo_carga, numero_guia, numero_contenedor, generador_carga, nave, numero_factura, factura_pagada, observaciones, datos_extra, clientes(rut, razon_social), vehiculos(patente), conductores(nombre)')
         .eq('empresa_id', currentEmpresa.id)
         .order('fecha', { ascending: false });
 
@@ -3342,6 +3355,7 @@ async function renderViajes() {
     if (error) { t.innerHTML = `<tr class="empty-row"><td colspan="10">⚠️ ${_esc(error.message)}</td></tr>`; return; }
 
     _viajesData = data || [];
+    _actualizarDatalistGeneradorCarga();
     filtrarViajes();
 }
 
@@ -3357,12 +3371,13 @@ function filtrarViajes() {
     const thead = document.getElementById('theadViajes');
     if (thead) {
         const casillasThs = casillas.map(c => `<th style="background:#f3f0ff;color:#5b21b6">${_escapeHtml(c.nombre)}</th>`).join('');
-        thead.innerHTML = `<tr><th>N° Viaje</th><th>Fecha</th><th>Cliente</th><th>Conductor</th><th>Ruta</th><th>Tipo Carga</th><th>N° Guía</th><th>Tarifa</th><th>Estado</th>${casillasThs}<th>Acciones</th></tr>`;
+        thead.innerHTML = `<tr><th>N° Viaje</th><th>Fecha</th><th>Generador de Carga</th><th>Cliente</th><th>Conductor</th><th>Ruta</th><th>Tipo Carga</th><th>N° Guía</th><th>Tarifa</th><th>Estado</th>${casillasThs}<th>Acciones</th></tr>`;
     }
-    const totalCols = 10 + casillas.length;
+    const totalCols = 11 + casillas.length;
 
     const filtrados = _viajesData.filter(v => {
         const txt = [
+            'VJ-' + shortId(v.id), v.fecha, v.generador_carga, v.numero_factura,
             v.clientes?.razon_social, v.origen, v.destino,
             v.numero_guia, v.numero_contenedor, v.clientes?.rut
         ].join(' ').toLowerCase();
@@ -3385,6 +3400,7 @@ function filtrarViajes() {
         return `<tr>
         <td><strong>VJ-${shortId(v.id)}</strong></td>
         <td>${fmtDate(v.fecha)}</td>
+        <td style="font-size:12px">${_escapeHtml(v.generador_carga || '—')}</td>
         <td>${_escapeHtml(v.clientes?.razon_social || '—')}</td>
         <td style="font-size:12px">${_escapeHtml(v.conductores?.nombre || '—')}</td>
         <td>${_escapeHtml(v.origen || '—')} → ${_escapeHtml(v.destino || '—')}</td>
@@ -3423,6 +3439,11 @@ function editarViaje(id) {
     document.getElementById('iVTipoCarga').value      = v.tipo_carga || '';
     document.getElementById('iVNumGuia').value        = v.numero_guia || '';
     document.getElementById('iVNumContenedor').value  = v.numero_contenedor || '';
+    document.getElementById('iVGeneradorCarga').value = v.generador_carga || '';
+    document.getElementById('iVNave').value           = v.nave || '';
+    document.getElementById('iVNumFactura').value     = v.numero_factura || '';
+    document.getElementById('iVFacturaPagada').value  = v.factura_pagada ? 'true' : 'false';
+    _actualizarBadgeFacturaViaje();
     document.getElementById('iVObs').value            = v.observaciones || localStorage.getItem('tp_viaje_obs_' + v.id) || '';
     // Select values are restored in openModal after async cargarSelectsViaje()
     openModal('mViaje');
@@ -3438,6 +3459,25 @@ function facturaDesdeViaje(viajeId) {
         const elMonto = document.getElementById('iFMonto');
         if (elMonto) elMonto.value = v.tarifa;
     }
+}
+
+// Refleja en un badge de color el estado de pago de la factura del viaje
+function _actualizarBadgeFacturaViaje() {
+    const sel   = document.getElementById('iVFacturaPagada');
+    const badge = document.getElementById('viFacturaPagadaBadge');
+    if (!sel || !badge) return;
+    const pagada = sel.value === 'true';
+    badge.className   = 'badge ' + (pagada ? 'badge-success' : 'badge-danger');
+    badge.textContent = pagada ? '🟢 Pagada' : '🔴 No pagada';
+}
+
+// Autocompleta "Generador de Carga" con el historial ya registrado por la empresa
+function _actualizarDatalistGeneradorCarga() {
+    const dl = document.getElementById('dlGeneradorCarga');
+    if (!dl) return;
+    const valores = [...new Set((_viajesData || []).map(v => v.generador_carga).filter(Boolean))]
+        .sort((a, b) => a.localeCompare(b, 'es'));
+    dl.innerHTML = valores.map(v => `<option value="${_escapeHtml(v)}">`).join('');
 }
 
 async function saveViaje(e) {
@@ -3464,6 +3504,10 @@ async function saveViaje(e) {
             tipo_carga:          document.getElementById('iVTipoCarga').value    || null,
             numero_guia:         document.getElementById('iVNumGuia').value      || null,
             numero_contenedor:   document.getElementById('iVNumContenedor').value || null,
+            generador_carga:     document.getElementById('iVGeneradorCarga').value.trim() || null,
+            nave:                document.getElementById('iVNave').value.trim()          || null,
+            numero_factura:      document.getElementById('iVNumFactura').value.trim()     || null,
+            factura_pagada:      document.getElementById('iVFacturaPagada').value === 'true',
             observaciones:       document.getElementById('iVObs').value           || null,
             ...(casillasData !== null ? { datos_extra: casillasData } : {})
         };
@@ -4329,9 +4373,11 @@ async function exportarModulo(modulo, conCalculos) {
         const cols = [
             { label: 'N° Viaje',       val: f => 'VJ-' + shortId(f.id) },
             { label: 'Fecha',          key: 'fecha' },
+            { label: 'Generador de Carga', key: 'generador_carga' },
             { label: 'Cliente',        val: f => f.clientes?.razon_social || '' },
             { label: 'Conductor',      val: f => f.conductores?.nombre || '' },
             { label: 'Vehículo',       val: f => f.vehiculos?.patente || '' },
+            { label: 'Nave',           key: 'nave' },
             { label: 'Origen',         key: 'origen' },
             { label: 'Destino',        key: 'destino' },
             { label: 'Tipo Carga',     key: 'tipo_carga' },
@@ -4341,6 +4387,8 @@ async function exportarModulo(modulo, conCalculos) {
             { label: 'KM Final',       key: 'km_final' },
             { label: 'Tarifa ($)',     key: 'tarifa' },
             { label: 'Estado',         key: 'estado' },
+            { label: 'N° Factura',     key: 'numero_factura' },
+            { label: 'Factura Pagada', val: f => f.factura_pagada ? 'Pagada' : 'No pagada' },
             { label: 'Observaciones',  key: 'observaciones' },
         ];
         if (conCalculos) cols.push(
