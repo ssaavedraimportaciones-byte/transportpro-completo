@@ -2692,6 +2692,30 @@ async function cargarSesion(userId) {
     iniciarApp();
 }
 
+// Pantalla de bloqueo real para empresas suspendidas (sub_status='suspended').
+// Oculta toda la navegación y el contenido; el único botón activo es logout.
+function _mostrarPantallaSuspendida() {
+    document.querySelectorAll('.tab-btn').forEach(b => b.style.display = 'none');
+    const statsBar = document.querySelector('.stats-grid');
+    if (statsBar) statsBar.style.display = 'none';
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+
+    if (document.getElementById('pantallaSuspendida')) return;
+    const cont = document.querySelector('.container');
+    const overlay = document.createElement('div');
+    overlay.id = 'pantallaSuspendida';
+    overlay.style.cssText = 'max-width:520px;margin:60px auto;background:#fff;border-radius:16px;padding:40px;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,.12)';
+    overlay.innerHTML =
+        '<div style="font-size:48px;margin-bottom:12px">🔒</div>'
+      + '<h2 style="color:#991b1b;margin-bottom:10px">Cuenta suspendida</h2>'
+      + '<p style="color:#4b5563;line-height:1.6;margin-bottom:24px">'
+      + 'Tu suscripción a TransportPro está suspendida por falta de pago.<br>'
+      + 'Contacta a tu proveedor de TransportPro para regularizar el pago y recuperar el acceso.'
+      + '</p>'
+      + '<button class="btn btn-danger" onclick="logout()">Cerrar Sesión</button>';
+    (cont || document.body).appendChild(overlay);
+}
+
 async function iniciarApp() {
     document.getElementById('login').style.display = 'none';
     document.getElementById('app').style.display   = 'block';
@@ -2726,6 +2750,14 @@ async function iniciarApp() {
     if (rol !== 'admin') {
         const tUsuarios = document.getElementById('tabUsuarios');
         if (tUsuarios) tUsuarios.style.display = 'none';
+    }
+
+    // Bloqueo real por falta de pago: si el dueño del sistema suspendió
+    // la empresa, no se le deja ver ni usar ningún módulo (antes solo
+    // se mostraba un aviso y el acceso seguía funcionando igual).
+    if (currentEmpresa.sub_status === 'suspended') {
+        _mostrarPantallaSuspendida();
+        return;
     }
 
     try {
